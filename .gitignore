@@ -102,6 +102,8 @@ celerybeat.pid
 *.sage.py
 
 # Environments
+this.commit_msg
+*.ini
 .env
 .venv
 env/
