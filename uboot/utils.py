@@ -11,7 +11,7 @@ def catch_kbdint(func: callable):
 
 
 class Log():
-    _show_debug: bool = False
+    debug_mode: bool = False
     _last_len: int = 0
 
     @staticmethod
@@ -29,6 +29,6 @@ class Log():
 
     @staticmethod
     def debug(text: str, end: str = '\n') -> None:
-        if not Log._show_debug:
+        if not Log.debug_mode:
             return
         Log.print(text, end=end)
