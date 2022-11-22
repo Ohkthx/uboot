@@ -24,6 +24,16 @@ class DiscordConfig():
         return val
 
     @property
+    def react_role_msg_id(self) -> int:
+        val = self._config.get('ReactRoleMsgId', '0')
+        return int(val)
+
+    @property
+    def react_role_id(self) -> int:
+        val = self._config.get('ReactRoleChannelId', '0')
+        return int(val)
+
+    @property
     def market_id(self) -> int:
         val = self._config.get('MarketChannelId', '0')
         return int(val)
@@ -64,6 +74,8 @@ class ProjectConfig():
         config['DISCORD'] = {}
         config['DISCORD']['Token'] = 'unset'
         config['DISCORD']['Prefix'] = '?'
+        config['DISCORD']['ReactRoleMsgId'] = '0'
+        config['DISCORD']['ReactRoleChannelId'] = '0'
         config['DISCORD']['MarketChannelId'] = '0'
         config['DISCORD']['ExpirationDays'] = '30'
         with open(CONFIG_FILENAME, 'w') as configfile:
@@ -86,6 +98,8 @@ class ProjectConfig():
         try:
             token = str(discord.get('Token', 'unset'))
             prefix = str(discord.get('Prefix', '?'))
+            int(discord.get('ReactRoleMsgId', '0'))
+            int(discord.get('ReactRoleChannelId', '0'))
             int(discord.get('MarketChannelId', '0'))
             int(discord.get('ExpirationDays', '0'))
             if token == 'unset' or prefix == "":

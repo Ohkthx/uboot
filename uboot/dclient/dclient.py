@@ -9,6 +9,8 @@ from discord.ext import commands, tasks
 
 from utils import Log
 from config import DiscordConfig
+from db import SqliteDb
+from react_role import ReactRole
 from .helper import thread_close
 
 
@@ -25,8 +27,35 @@ class DiscordBot(commands.Bot):
         super().__init__(command_prefix=config.prefix, intents=intents,
                          member_cache_flags=member_cache)
         self._extensions: list[str] = ['dclient.cogs.general',
-                                       'dclient.cogs.threads']
+                                       'dclient.cogs.threads',
+                                       'dclient.cogs.react_role']
+        self._db = SqliteDb("test")
+        self.react_roles = self._db.role.load_many()
         self._config = config
+
+    def add_react_role(self, react: str, role: int, guild_id: int) -> bool:
+        for pair in self.react_roles:
+            if pair.reaction == react or pair.role_id == role:
+                return False
+
+        self.react_roles.append(ReactRole(react, role, guild_id))
+        self._db.role.save_many(self.react_roles)
+        return True
+
+    def rm_react_role(self, react: str, role: int, guild_id: int) -> bool:
+        react_role: Optional[ReactRole] = None
+        for pair in self.react_roles:
+            if pair.reaction == react or pair.role_id == role:
+                react_role = pair
+                break
+        if react_role is None:
+            return False
+
+        # Remove the role from the tracked.
+        self.react_roles = [r for r in self.react_roles if r.role_id != role]
+
+        self._db.role.delete_one(react_role)
+        return True
 
     @tasks.loop(minutes=15)
     async def archiver(self) -> None:
@@ -82,23 +111,52 @@ class DiscordBot(commands.Bot):
         if open_tag not in thread.applied_tags:
             await thread.add_tags(open_tag)
 
+    async def react_proc(self, payload: RawReactionActionEvent):
+        if payload.guild_id is None:
+            return None
+
+        # Validate the guild for the reaction.
+        guild = self.get_guild(payload.guild_id)
+        if guild is None:
+            return None
+
+        # Check if it is a react-role.
+        react_role: Optional[ReactRole] = None
+        for pair in self.react_roles:
+            if (pair.reaction == payload.emoji.name
+                    and pair.guild_id == guild.id):
+                react_role = pair
+                break
+        if react_role is None:
+            return None
+
+        # Validate the member/user exists.
+        user = guild.get_member(payload.user_id)
+        if user is None:
+            user = await guild.fetch_member(payload.user_id)
+        if user is None or user.bot:
+            return None
+
+        # Get the role related to the reaction.
+        guild_role = guild.get_role(react_role.role_id)
+        if guild_role is None:
+            return None
+
+        return (user, guild_role)
+
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
-        user = self.get_user(payload.user_id)
-        if user is None:
-            user = await self.fetch_user(payload.user_id)
-        if user is None:
+        pair = await self.react_proc(payload)
+        if pair is None:
             return
 
-        print(f"{user} added {payload.emoji}")
+        await pair[0].add_roles(pair[1])
 
     async def on_raw_reaction_remove(self, payload: RawReactionActionEvent):
-        user = self.get_user(payload.user_id)
-        if user is None:
-            user = await self.fetch_user(payload.user_id)
-        if user is None:
+        pair = await self.react_proc(payload)
+        if pair is None:
             return
 
-        print(f"{user} removed {payload.emoji}")
+        await pair[0].remove_roles(pair[1])
 
     @staticmethod
     def init_run(config: DiscordConfig) -> None:

@@ -13,7 +13,7 @@ class Threads(commands.Cog):
         self._bot = bot
         self.delete_after = 5.0
 
-    @commands.group()
+    @commands.group(name="thread")
     @commands.has_guild_permissions(manage_messages=True)
     async def thread(self, ctx: commands.Context) -> None:
         if not isinstance(ctx.channel, discord.Thread):
