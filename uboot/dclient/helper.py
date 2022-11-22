@@ -23,22 +23,19 @@ async def thread_close(tag_rm_name: str, tag_add_name: str,
     rm_tag = find_tag(tag_rm_name, thread.parent)
     add_tag = find_tag(tag_add_name, thread.parent)
 
-    # Remove the rm tag if applied.
-    if rm_tag is not None and rm_tag in thread.applied_tags:
-        await thread.remove_tags(rm_tag)
-
-    # Attempt to apply the add tag.
-    if add_tag is None:
-        await thread.send("'closed' tag is not available in this thread.")
-    elif add_tag not in thread.applied_tags:
-        await thread.add_tags(add_tag)
-
-    # Archive and Lock.
-    await thread.edit(archived=True, locked=True, reason=reason)
+    tags = list(thread.applied_tags)
+    if rm_tag is not None and rm_tag in tags:
+        tags = [t for t in tags if t.name != tag_rm_name]
+    if add_tag is not None and add_tag not in tags:
+        tags.append(add_tag)
 
     # Unsubscribe everyone.
     for subscriber in await thread.fetch_members():
         await thread.remove_user(subscriber)
+
+    # Archive and Lock.
+    await thread.edit(archived=True, locked=True, reason=reason,
+                      applied_tags=tags)
 
     # Message owner that their thread is closed.
     if thread.guild and thread.owner_id:

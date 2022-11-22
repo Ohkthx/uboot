@@ -1,6 +1,3 @@
-from datetime import datetime
-from typing import Optional
-
 import discord
 from discord.ext import commands
 
@@ -9,13 +6,16 @@ from dclient.helper import find_tag, thread_close
 
 
 class Threads(commands.Cog):
+    """Thread management for manually assigning thread status."""
+
     def __init__(self, bot: DiscordBot) -> None:
-        self._bot = bot
+        self.bot = bot
         self.delete_after = 5.0
 
     @commands.group(name="thread")
     @commands.has_guild_permissions(manage_messages=True)
     async def thread(self, ctx: commands.Context) -> None:
+        """Thread management for manually assigning thread status."""
         if not isinstance(ctx.channel, discord.Thread):
             await ctx.message.delete()
             await ctx.send("cannot be used outside of a thread.",
@@ -27,6 +27,7 @@ class Threads(commands.Cog):
 
     @thread.command(name='open')
     async def open(self, ctx: commands.Context) -> None:
+        """Marks a thread with the open tag."""
         if not isinstance(ctx.channel, discord.Thread):
             return
 
@@ -48,6 +49,7 @@ class Threads(commands.Cog):
 
     @thread.command(name='close')
     async def close(self, ctx: commands.Context) -> None:
+        """Unsubscribes all users, closes, and archives the current thread."""
         if not isinstance(ctx.channel, discord.Thread):
             return
 
@@ -58,10 +60,10 @@ class Threads(commands.Cog):
             if owner:
                 user_msg = f"{user_msg} by {ctx.author}"
 
-        await thread_close('open', 'closed', ctx.channel, reason,
-                           f"{user_msg}.")
         await ctx.channel.send(f"Thread closed by {ctx.author}.")
         await ctx.message.delete()
+        await thread_close('open', 'closed', ctx.channel, reason,
+                           f"{user_msg}.")
 
 
 async def setup(bot: DiscordBot) -> None:

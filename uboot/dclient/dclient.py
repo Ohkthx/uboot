@@ -22,15 +22,29 @@ intents.members = True  # pylint: disable=assigning-non-slot
 member_cache = discord.MemberCacheFlags(joined=True)
 
 
+@commands.command()
+@commands.guild_only()
+@commands.is_owner()
+async def sync(ctx: commands.Context) -> None:
+    """Syncs the current slash commands with the guild."""
+    if ctx.guild is None:
+        return
+    synced = await ctx.bot.tree.sync()
+    await ctx.send(f"Synced {len(synced)} commands to the current guild.")
+
+
 class DiscordBot(commands.Bot):
     def __init__(self, config: DiscordConfig) -> None:
-        super().__init__(command_prefix=config.prefix, intents=intents,
+        super().__init__(command_prefix=commands.when_mentioned,
+                         intents=intents,
                          member_cache_flags=member_cache)
         self._extensions: list[str] = ['dclient.cogs.general',
                                        'dclient.cogs.threads',
                                        'dclient.cogs.react_role']
+        self.add_command(sync)
         self._db = SqliteDb("test")
         self.react_roles = self._db.role.load_many()
+        self.all_users = self._db.user.load_many()
         self._config = config
 
     def add_react_role(self, react: str, role: int, guild_id: int) -> bool:
@@ -72,7 +86,6 @@ class DiscordBot(commands.Bot):
             elapsed = datetime.now(timezone.utc) - thread.created_at
             if elapsed > timedelta(days=self._config.market_expiration):
                 # Expired, update the name.
-                name = thread.name
                 if "[expired]" not in thread.name.lower():
                     await thread.edit(name=f"[EXPIRED] {thread.name}")
 
@@ -97,7 +110,7 @@ class DiscordBot(commands.Bot):
         await self.session.close()
 
     async def on_thread_create(self, thread: discord.Thread) -> None:
-        if type(thread.parent) is not discord.ForumChannel:
+        if not isinstance(thread.parent, discord.ForumChannel):
             return
 
         open_tag: Optional[discord.ForumTag] = None

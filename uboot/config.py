@@ -17,13 +17,6 @@ class DiscordConfig():
         return val
 
     @property
-    def prefix(self) -> str:
-        val = self._config.get('Prefix', '?')
-        if val is None or val == "":
-            return '?'
-        return val
-
-    @property
     def react_role_msg_id(self) -> int:
         val = self._config.get('ReactRoleMsgId', '0')
         return int(val)
@@ -73,7 +66,6 @@ class ProjectConfig():
         config['DEFAULT']['Debug'] = 'False'
         config['DISCORD'] = {}
         config['DISCORD']['Token'] = 'unset'
-        config['DISCORD']['Prefix'] = '?'
         config['DISCORD']['ReactRoleMsgId'] = '0'
         config['DISCORD']['ReactRoleChannelId'] = '0'
         config['DISCORD']['MarketChannelId'] = '0'
@@ -97,12 +89,11 @@ class ProjectConfig():
             raise ValueError("'DISCORD' is unset in configuration file.")
         try:
             token = str(discord.get('Token', 'unset'))
-            prefix = str(discord.get('Prefix', '?'))
             int(discord.get('ReactRoleMsgId', '0'))
             int(discord.get('ReactRoleChannelId', '0'))
             int(discord.get('MarketChannelId', '0'))
             int(discord.get('ExpirationDays', '0'))
-            if token == 'unset' or prefix == "":
+            if token == 'unset':
                 raise ValueError()
         except (ValueError, Exception) as err:
             raise ValueError("invalid values in configuration file.")
