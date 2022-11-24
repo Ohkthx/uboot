@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 from dclient import DiscordBot
-from dclient.helper import find_tag, thread_close
+from dclient.helper import find_tag, thread_close, get_member
 
 
 class Threads(commands.Cog):
@@ -21,7 +21,7 @@ class Threads(commands.Cog):
             await ctx.send("cannot be used outside of a thread.",
                            delete_after=self.delete_after)
             return
-        if ctx.invoked_subcommand is None:
+        if not ctx.invoked_subcommand:
             await ctx.send('invalid thread command.',
                            delete_after=self.delete_after)
 
@@ -39,7 +39,7 @@ class Threads(commands.Cog):
 
         # Find the open tag from available tags and apply it.
         open_tag = find_tag("open", ctx.channel.parent)
-        if open_tag is None:
+        if not open_tag:
             await ctx.send("'open' tag is not available in this thread.",
                            delete_after=self.delete_after)
         elif open_tag not in ctx.channel.applied_tags:
@@ -56,7 +56,8 @@ class Threads(commands.Cog):
         reason = f"thread close command called by {ctx.author} {ctx.author.id}"
         user_msg = f"Your thread '{ctx.channel.name}' was closed"
         if ctx.guild and ctx.channel.owner_id:
-            owner = await ctx.guild.fetch_member(ctx.channel.owner_id)
+            owner = await get_member(self.bot, ctx.guild.id,
+                                     ctx.channel.owner_id)
             if owner:
                 user_msg = f"{user_msg} by {ctx.author}"
 

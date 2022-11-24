@@ -19,6 +19,7 @@ class DbSocket():
             'create_table': "",
             'save_many': "",
             'delete': "",
+            'insert': "",
             'load_many': "",
             'table_exists': "SELECT name "
             "FROM sqlite_master "
@@ -60,6 +61,16 @@ class DbSocket():
         self._cursor.executemany(query, data)
         self._session.commit()
         self._is_saving = False
+
+    def _insert(self, table_name: str, value_key: str, set_key: str) -> None:
+        table_name = DbSocket._clean_name(table_name)
+        self._create_table(table_name)
+
+        query = self.query['insert'].format(table_name=table_name,
+                                            value_key=value_key,
+                                            set_key=set_key)
+        self._cursor.execute(query)
+        self._session.commit()
 
     def _delete(self, table_name: str, where_key: str) -> None:
         table_name = DbSocket._clean_name(table_name)

@@ -9,7 +9,7 @@ from dclient import DiscordBot
 
 class General(commands.Cog):
     def __init__(self, bot: DiscordBot) -> None:
-        self._bot = bot
+        self.bot = bot
 
     @commands.command(name='ping')
     async def ping(self, ctx: commands.Context) -> None:
@@ -35,7 +35,7 @@ class General(commands.Cog):
         async for message in ctx.channel.history():
             if limit <= 0:
                 return
-            if message.author == self._bot.user:
+            if message.author == self.bot.user:
                 limit -= 1
                 await message.delete()
 

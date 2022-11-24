@@ -1,6 +1,10 @@
 from typing import Optional
 
 import discord
+from discord import ForumChannel, TextChannel
+from discord.ext import commands
+
+from react_role import ReactRole
 
 
 def find_tag(tag: str, ch: discord.ForumChannel) -> Optional[discord.ForumTag]:
@@ -8,6 +12,56 @@ def find_tag(tag: str, ch: discord.ForumChannel) -> Optional[discord.ForumTag]:
         if avail_tag.name.lower() == tag.lower():
             return avail_tag
     return None
+
+
+async def get_guild(bot: commands.Bot,
+                    guild_id: int) -> Optional[discord.Guild]:
+    guild = bot.get_guild(guild_id)
+    if not guild:
+        try:
+            guild = await bot.fetch_guild(guild_id)
+        except:
+            return None
+    return guild
+
+
+async def get_member(bot: commands.Bot, guild_id: int,
+                     user_id: int) -> Optional[discord.Member]:
+    guild = await get_guild(bot, guild_id)
+    if not guild:
+        return None
+
+    member = guild.get_member(user_id)
+    if not member:
+        try:
+            member = await guild.fetch_member(user_id)
+        except:
+            return None
+    return member
+
+
+async def get_channel(bot: commands.Bot,
+                      channel_id: int) -> Optional[discord.abc.GuildChannel]:
+    channel = bot.get_channel(channel_id)
+    if not channel:
+        try:
+            channel = await bot.fetch_channel(channel_id)
+        except:
+            return None
+    return channel
+
+
+async def get_message(bot: commands.Bot, channel_id: int,
+                      message_id: int) -> Optional[discord.Message]:
+    channel = await get_channel(bot, channel_id)
+    if not channel or not isinstance(channel, (TextChannel, ForumChannel)):
+        return None
+
+    try:
+        message = await channel.fetch_message(message_id)
+        return message
+    except:
+        return None
 
 
 async def thread_close(tag_rm_name: str, tag_add_name: str,
@@ -40,7 +94,43 @@ async def thread_close(tag_rm_name: str, tag_add_name: str,
     # Message owner that their thread is closed.
     if thread.guild and thread.owner_id:
         owner = thread.guild.get_member(thread.owner_id)
-        if owner is None:
-            owner = await thread.guild.fetch_member(thread.owner_id)
+        if not owner:
+            try:
+                owner = await thread.guild.fetch_member(thread.owner_id)
+            except:
+                return
         if owner:
             await owner.send(user_msg)
+
+
+async def react_processor(bot: commands.Bot, react_roles: list[ReactRole],
+                          payload: discord.RawReactionActionEvent):
+    if not payload.guild_id:
+        return None
+
+    # Validate the guild for the reaction.
+    guild = bot.get_guild(payload.guild_id)
+    if not guild:
+        return None
+
+    # Check if it is a react-role.
+    react_role: Optional[ReactRole] = None
+    for pair in react_roles:
+        if (pair.reaction == payload.emoji.name
+                and pair.guild_id == guild.id):
+            react_role = pair
+            break
+    if not react_role:
+        return None
+
+    # Validate the member/user exists.
+    user = await get_member(bot, guild.id, payload.user_id)
+    if not user or user.bot:
+        return None
+
+    # Get the role related to the reaction.
+    guild_role = guild.get_role(react_role.role_id)
+    if not guild_role:
+        return None
+
+    return (user, guild_role)

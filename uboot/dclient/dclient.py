@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Union
+from typing import Optional
 
 import aiohttp
 import discord
@@ -9,9 +9,10 @@ from discord.ext import commands, tasks
 
 from utils import Log
 from config import DiscordConfig
+from settings import SettingsManager
 from db import SqliteDb
 from react_role import ReactRole
-from .helper import thread_close
+from .helper import thread_close, react_processor, get_channel
 
 
 intents = discord.Intents.default()
@@ -27,25 +28,26 @@ member_cache = discord.MemberCacheFlags(joined=True)
 @commands.is_owner()
 async def sync(ctx: commands.Context) -> None:
     """Syncs the current slash commands with the guild."""
-    if ctx.guild is None:
+    if not ctx.guild:
         return
     synced = await ctx.bot.tree.sync()
     await ctx.send(f"Synced {len(synced)} commands to the current guild.")
 
 
 class DiscordBot(commands.Bot):
-    def __init__(self, config: DiscordConfig) -> None:
-        super().__init__(command_prefix=commands.when_mentioned,
+    def __init__(self, prefix: str) -> None:
+        super().__init__(command_prefix=commands.when_mentioned_or(prefix),
                          intents=intents,
                          member_cache_flags=member_cache)
         self._extensions: list[str] = ['dclient.cogs.general',
                                        'dclient.cogs.threads',
-                                       'dclient.cogs.react_role']
+                                       'dclient.cogs.react_role',
+                                       'dclient.cogs.settings']
         self.add_command(sync)
         self._db = SqliteDb("test")
         self.react_roles = self._db.role.load_many()
         self.all_users = self._db.user.load_many()
-        self._config = config
+        self._db.guild.load_many()
 
     def add_react_role(self, react: str, role: int, guild_id: int) -> bool:
         for pair in self.react_roles:
@@ -62,7 +64,7 @@ class DiscordBot(commands.Bot):
             if pair.reaction == react or pair.role_id == role:
                 react_role = pair
                 break
-        if react_role is None:
+        if not react_role:
             return False
 
         # Remove the role from the tracked.
@@ -73,24 +75,28 @@ class DiscordBot(commands.Bot):
 
     @tasks.loop(minutes=15)
     async def archiver(self) -> None:
-        market = await self.fetch_channel(self._config.market_id)
-        if not isinstance(market, discord.ForumChannel):
-            return
-
-        reason = "post expired."
-        for thread in market.threads:
-            if thread.archived or thread.created_at is None:
+        for guild in self.guilds:
+            setting = SettingsManager.get(guild.id)
+            if 0 in (setting.market_channel_id, setting.expiration_days):
                 continue
+            market_ch = await get_channel(self, setting.market_channel_id)
+            if not market_ch or not isinstance(market_ch, discord.ForumChannel):
+                return
 
-            msg = f"Your post '{thread.name}' expired."
-            elapsed = datetime.now(timezone.utc) - thread.created_at
-            if elapsed > timedelta(days=self._config.market_expiration):
-                # Expired, update the name.
-                if "[expired]" not in thread.name.lower():
-                    await thread.edit(name=f"[EXPIRED] {thread.name}")
+            reason = "post expired."
+            for thread in market_ch.threads:
+                if thread.archived or not thread.created_at:
+                    continue
 
-                # Close the thread.
-                await thread_close('none', 'expired', thread, reason, msg)
+                msg = f"Your post '{thread.name}' expired."
+                elapsed = datetime.now(timezone.utc) - thread.created_at
+                if elapsed > timedelta(days=setting.expiration_days):
+                    # Expired, update the name.
+                    if "[expired]" not in thread.name.lower():
+                        await thread.edit(name=f"[EXPIRED] {thread.name}")
+
+                    # Close the thread.
+                    await thread_close('none', 'expired', thread, reason, msg)
 
     @archiver.before_loop
     async def wait_on_login(self) -> None:
@@ -118,55 +124,22 @@ class DiscordBot(commands.Bot):
             if tag.name.lower() == "open":
                 open_tag = tag
                 break
-        if open_tag is None:
+        if not open_tag:
             return
 
         if open_tag not in thread.applied_tags:
             await thread.add_tags(open_tag)
 
-    async def react_proc(self, payload: RawReactionActionEvent):
-        if payload.guild_id is None:
-            return None
-
-        # Validate the guild for the reaction.
-        guild = self.get_guild(payload.guild_id)
-        if guild is None:
-            return None
-
-        # Check if it is a react-role.
-        react_role: Optional[ReactRole] = None
-        for pair in self.react_roles:
-            if (pair.reaction == payload.emoji.name
-                    and pair.guild_id == guild.id):
-                react_role = pair
-                break
-        if react_role is None:
-            return None
-
-        # Validate the member/user exists.
-        user = guild.get_member(payload.user_id)
-        if user is None:
-            user = await guild.fetch_member(payload.user_id)
-        if user is None or user.bot:
-            return None
-
-        # Get the role related to the reaction.
-        guild_role = guild.get_role(react_role.role_id)
-        if guild_role is None:
-            return None
-
-        return (user, guild_role)
-
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
-        pair = await self.react_proc(payload)
-        if pair is None:
+        pair = await react_processor(self, self.react_roles, payload)
+        if not pair:
             return
 
         await pair[0].add_roles(pair[1])
 
     async def on_raw_reaction_remove(self, payload: RawReactionActionEvent):
-        pair = await self.react_proc(payload)
-        if pair is None:
+        pair = await react_processor(self, self.react_roles, payload)
+        if not pair:
             return
 
         await pair[0].remove_roles(pair[1])
@@ -177,7 +150,7 @@ class DiscordBot(commands.Bot):
             handler = logging.FileHandler(filename='discord.log',
                                           encoding='utf-8',
                                           mode='w')
-            dbot: DiscordBot = DiscordBot(config)
+            dbot: DiscordBot = DiscordBot(config.prefix)
             dbot.run(config.token, log_handler=handler,
                      log_level=logging.DEBUG)
         except KeyboardInterrupt:
