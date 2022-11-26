@@ -21,6 +21,9 @@ class User():
         self.gambles_won = raw[4]
         self.last_message = datetime.now() - timedelta(seconds=20)
 
+    def __str__(self) -> str:
+        return f"id: {self.id}, gold: {self.gold}, msgs: {self.msg_count}"
+
     @property
     def _raw(self) -> UserRaw:
         return (self.id, self.gold, self.msg_count, self.gambles,
@@ -50,3 +53,7 @@ class Manager():
             user = User(make_raw(user_id))
             Manager.add(user)
         return user
+
+    @staticmethod
+    def getall() -> list[User]:
+        return list(Manager._users.values())

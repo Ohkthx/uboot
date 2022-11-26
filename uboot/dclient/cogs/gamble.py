@@ -6,6 +6,7 @@ from discord.ext.commands import param
 
 from managers import users
 from dclient import DiscordBot
+from dclient.helper import get_member
 
 
 def roll_dice() -> int:
@@ -23,8 +24,35 @@ class Gamble(commands.Cog):
         if not ctx.invoked_subcommand:
             await ctx.send('invalid gamble command.')
 
+    @gamble.command(name="show")
+    async def show(self, ctx: commands.Context) -> None:
+        """Shows the leaderboard."""
+        all_users = users.Manager.getall()
+        all_users = list(filter(lambda u: u.gambles > 0, all_users))
+        all_users.sort(key=lambda u: u.gold, reverse=True)
+
+        pos: int = 0
+        user_board: list[str] = []
+        for u in all_users:
+            if pos >= 10:
+                break
+
+            user = await get_member(self.bot, ctx.guild.id, u.id)
+            if not user:
+                continue
+            pos += 1
+            win_rate = (1 + (u.gambles_won - u.gambles) /
+                        u.gambles) * 100
+            wr = f"Win-Rate: {win_rate:0.2f}%"
+            user_board.append(f"{pos}: **{user}** - {u.gold}gp - {wr}")
+        summary = "\n".join(user_board)
+        embed = discord.Embed(title="Top 10 Gamblers",
+                              description=summary)
+        embed.set_footer(text=f"Total gamblers: {len(all_users)}")
+        await ctx.send(embed=embed)
+
     @gamble.command(name="stats")
-    async def show(self, ctx: commands.Context):
+    async def stats(self, ctx: commands.Context):
         """Shows all of the user statistics."""
         user = users.Manager.get(ctx.author.id)
 
