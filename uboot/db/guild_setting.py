@@ -1,7 +1,7 @@
 from typing import Optional
 from .db_socket import DbSocket
 
-from settings import SettingsManager, Settings
+from managers import settings
 
 
 class GuildSettingDb(DbSocket):
@@ -20,13 +20,13 @@ class GuildSettingDb(DbSocket):
             "{condition}"
         self.query['load_many'] = "SELECT * FROM [{table_name}]"
 
-    def save_many(self, settings: list[Settings]) -> None:
+    def save_many(self, settings: list[settings.Settings]) -> None:
         if len(settings) == 0:
             return
         items = list(map(lambda s: s._raw, settings))
         self._save_many("guild", items)
 
-    def update(self, settings: Settings) -> None:
+    def update(self, settings: settings.Settings) -> None:
         s = settings
         value_key = f"{s.guild_id}, {s.market_channel_id}, "\
             f"{s.react_role_channel_id}, {s.react_role_msg_id}, "\
@@ -37,6 +37,7 @@ class GuildSettingDb(DbSocket):
             f"expiration_days = {s.expiration_days}"
         self._insert("guild", value_key, set_key)
 
-    def load_many(self) -> list[Settings]:
+    def load_many(self) -> list[settings.Settings]:
         raw_settings = self._load_many("guild", "")
-        return [SettingsManager.add(Settings(s)) for s in raw_settings]
+        return [settings.Manager.add(settings.Settings(s))
+                for s in raw_settings]

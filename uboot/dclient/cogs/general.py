@@ -18,6 +18,12 @@ class General(commands.Cog):
         latency = (now_ts - ctx.message.created_at.timestamp()) * 1000
         await ctx.send(f"Pong!  Latency: {abs(latency):0.2f} ms.")
 
+    @commands.command(name="s2s")
+    async def s2s(self, ctx: commands.Context) -> None:
+        """Sucks to suck."""
+        await ctx.message.delete()
+        await ctx.send("Sucks to suck.")
+
     @commands.has_permissions(manage_messages=True)
     @commands.command(name='rm')
     async def rm(self, ctx: commands.Context,

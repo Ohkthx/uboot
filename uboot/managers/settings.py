@@ -1,5 +1,3 @@
-from typing import Optional
-
 # 0: int - guild_id
 # 1: int - market_channel_id
 # 2: int - react_role_channel_id
@@ -27,18 +25,18 @@ class Settings():
                 self.expiration_days)
 
 
-class SettingsManager():
+class Manager():
     _guilds: dict[int, Settings] = {}
 
     @staticmethod
     def add(setting: Settings) -> Settings:
-        SettingsManager._guilds[setting.guild_id] = setting
+        Manager._guilds[setting.guild_id] = setting
         return setting
 
     @staticmethod
-    def get(guild_id: int) -> Optional[Settings]:
-        setting = SettingsManager._guilds.get(guild_id)
-        if setting is None:
+    def get(guild_id: int) -> Settings:
+        setting = Manager._guilds.get(guild_id)
+        if not setting:
             setting = Settings(make_raw(guild_id))
-            SettingsManager.add(setting)
+            Manager.add(setting)
         return setting

@@ -4,10 +4,10 @@ import discord
 from discord import ForumChannel, TextChannel
 from discord.ext import commands
 
-from react_role import ReactRole
+from managers import react_roles
 
 
-def find_tag(tag: str, ch: discord.ForumChannel) -> Optional[discord.ForumTag]:
+def find_tag(tag: str, ch: ForumChannel) -> Optional[discord.ForumTag]:
     for avail_tag in ch.available_tags:
         if avail_tag.name.lower() == tag.lower():
             return avail_tag
@@ -20,7 +20,7 @@ async def get_guild(bot: commands.Bot,
     if not guild:
         try:
             guild = await bot.fetch_guild(guild_id)
-        except:
+        except BaseException:
             return None
     return guild
 
@@ -35,7 +35,7 @@ async def get_member(bot: commands.Bot, guild_id: int,
     if not member:
         try:
             member = await guild.fetch_member(user_id)
-        except:
+        except BaseException:
             return None
     return member
 
@@ -46,7 +46,7 @@ async def get_channel(bot: commands.Bot,
     if not channel:
         try:
             channel = await bot.fetch_channel(channel_id)
-        except:
+        except BaseException:
             return None
     return channel
 
@@ -54,13 +54,13 @@ async def get_channel(bot: commands.Bot,
 async def get_message(bot: commands.Bot, channel_id: int,
                       message_id: int) -> Optional[discord.Message]:
     channel = await get_channel(bot, channel_id)
-    if not channel or not isinstance(channel, (TextChannel, ForumChannel)):
+    if not channel or not isinstance(channel, TextChannel):
         return None
 
     try:
         message = await channel.fetch_message(message_id)
         return message
-    except:
+    except BaseException:
         return None
 
 
@@ -69,7 +69,7 @@ async def thread_close(tag_rm_name: str, tag_add_name: str,
                        reason: str,
                        user_msg: str) -> None:
 
-    if not isinstance(thread.parent, discord.ForumChannel):
+    if not isinstance(thread.parent, ForumChannel):
         await thread.send('thread is not in a forum channel.')
         return
 
@@ -97,13 +97,13 @@ async def thread_close(tag_rm_name: str, tag_add_name: str,
         if not owner:
             try:
                 owner = await thread.guild.fetch_member(thread.owner_id)
-            except:
+            except BaseException:
                 return
         if owner:
             await owner.send(user_msg)
 
 
-async def react_processor(bot: commands.Bot, react_roles: list[ReactRole],
+async def react_processor(bot: commands.Bot,
                           payload: discord.RawReactionActionEvent):
     if not payload.guild_id:
         return None
@@ -114,12 +114,7 @@ async def react_processor(bot: commands.Bot, react_roles: list[ReactRole],
         return None
 
     # Check if it is a react-role.
-    react_role: Optional[ReactRole] = None
-    for pair in react_roles:
-        if (pair.reaction == payload.emoji.name
-                and pair.guild_id == guild.id):
-            react_role = pair
-            break
+    react_role = react_roles.Manager.find(guild.id, payload.emoji.name)
     if not react_role:
         return None
 

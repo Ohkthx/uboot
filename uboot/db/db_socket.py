@@ -69,7 +69,10 @@ class DbSocket():
         query = self.query['insert'].format(table_name=table_name,
                                             value_key=value_key,
                                             set_key=set_key)
-        self._cursor.execute(query)
+        try:
+            res = self._cursor.execute(query)
+        except BaseException as err:
+            print(f"SQL EXCEPTION:\n{err}")
         self._session.commit()
 
     def _delete(self, table_name: str, where_key: str) -> None:

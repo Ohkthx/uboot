@@ -9,9 +9,8 @@ from discord.ext import commands, tasks
 
 from utils import Log
 from config import DiscordConfig
-from settings import SettingsManager
+from managers import settings, users, react_roles
 from db import SqliteDb
-from react_role import ReactRole
 from .helper import thread_close, react_processor, get_channel
 
 
@@ -39,48 +38,47 @@ class DiscordBot(commands.Bot):
         super().__init__(command_prefix=commands.when_mentioned_or(prefix),
                          intents=intents,
                          member_cache_flags=member_cache)
+        self.prefix = prefix
         self._extensions: list[str] = ['dclient.cogs.general',
                                        'dclient.cogs.threads',
                                        'dclient.cogs.react_role',
-                                       'dclient.cogs.settings']
+                                       'dclient.cogs.settings',
+                                       'dclient.cogs.gamble']
         self.add_command(sync)
         self._db = SqliteDb("test")
-        self.react_roles = self._db.role.load_many()
-        self.all_users = self._db.user.load_many()
+        self._db.role.load_many()
+        self._db.user.load_many()
         self._db.guild.load_many()
 
-    def add_react_role(self, react: str, role: int, guild_id: int) -> bool:
-        for pair in self.react_roles:
-            if pair.reaction == react or pair.role_id == role:
-                return False
+    def add_react_role(self, react: str, role_id: int, guild_id: int) -> bool:
+        react_role = react_roles.Manager.find(guild_id, react)
+        if react_role and (react_role.reaction == react or react_role.role_id):
+            return False
 
-        self.react_roles.append(ReactRole(react, role, guild_id))
-        self._db.role.save_many(self.react_roles)
+        raw = (role_id, guild_id, react)
+        react_role = react_roles.Manager.add(react_roles.ReactRole(raw))
+        self._db.role.update(react_role)
         return True
 
-    def rm_react_role(self, react: str, role: int, guild_id: int) -> bool:
-        react_role: Optional[ReactRole] = None
-        for pair in self.react_roles:
-            if pair.reaction == react or pair.role_id == role:
-                react_role = pair
-                break
+    def rm_react_role(self, react: str, role_id: int) -> bool:
+        react_role = react_roles.Manager.get(role_id)
         if not react_role:
             return False
 
         # Remove the role from the tracked.
-        self.react_roles = [r for r in self.react_roles if r.role_id != role]
-
+        react_roles.Manager.remove(react_role)
         self._db.role.delete_one(react_role)
         return True
 
     @tasks.loop(minutes=15)
     async def archiver(self) -> None:
         for guild in self.guilds:
-            setting = SettingsManager.get(guild.id)
+            setting = settings.Manager.get(guild.id)
             if 0 in (setting.market_channel_id, setting.expiration_days):
                 continue
             market_ch = await get_channel(self, setting.market_channel_id)
-            if not market_ch or not isinstance(market_ch, discord.ForumChannel):
+            if not market_ch or not isinstance(
+                    market_ch, discord.ForumChannel):
                 return
 
             reason = "post expired."
@@ -115,6 +113,18 @@ class DiscordBot(commands.Bot):
         await super().close()
         await self.session.close()
 
+    async def on_message(self, msg: discord.Message) -> None:
+        await self.process_commands(msg)
+        if not self.user or msg.author == self.user:
+            return
+        if self.user in msg.mentions or msg.content.startswith(self.prefix):
+            return
+
+        # Add to user gold count.
+        user = users.Manager.get(msg.author.id)
+        user.add_message()
+        self._db.user.update(user)
+
     async def on_thread_create(self, thread: discord.Thread) -> None:
         if not isinstance(thread.parent, discord.ForumChannel):
             return
@@ -131,14 +141,14 @@ class DiscordBot(commands.Bot):
             await thread.add_tags(open_tag)
 
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
-        pair = await react_processor(self, self.react_roles, payload)
+        pair = await react_processor(self, payload)
         if not pair:
             return
 
         await pair[0].add_roles(pair[1])
 
     async def on_raw_reaction_remove(self, payload: RawReactionActionEvent):
-        pair = await react_processor(self, self.react_roles, payload)
+        pair = await react_processor(self, payload)
         if not pair:
             return
 

@@ -25,6 +25,20 @@ class Threads(commands.Cog):
             await ctx.send('invalid thread command.',
                            delete_after=self.delete_after)
 
+    @thread.command(name='leave')
+    async def leave(self, ctx: commands.Context) -> None:
+        """Leave a thread. Later losers."""
+        if not isinstance(ctx.channel, discord.Thread):
+            return
+
+        if not isinstance(ctx.channel.parent, discord.ForumChannel):
+            await ctx.message.delete()
+            await ctx.send('thread is not in a forum channel.',
+                           delete_after=self.delete_after)
+            return
+
+        await ctx.channel.remove_user(ctx.author)
+
     @thread.command(name='open')
     async def open(self, ctx: commands.Context) -> None:
         """Marks a thread with the open tag."""

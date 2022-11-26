@@ -6,7 +6,7 @@ from discord.ext.commands import param
 
 from dclient import DiscordBot
 from dclient.helper import get_channel, get_message
-from settings import SettingsManager
+from managers import settings
 
 
 async def validate_channel(bot: DiscordBot, ctx: commands.Context,
@@ -30,12 +30,12 @@ class Settings(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send('invalid setting command.')
 
-    @setting.command(name='list')
-    async def list(self, ctx: commands.Context) -> None:
-        """Lists all of the current settings for the server."""
+    @setting.command(name='show')
+    async def show(self, ctx: commands.Context) -> None:
+        """Shows all of the current settings for the server."""
         if ctx.guild is None:
             return
-        setting = SettingsManager.get(ctx.guild.id)
+        setting = settings.Manager.get(ctx.guild.id)
 
         items: list[str] = []
         for key, value in setting.__dict__.items():
@@ -68,7 +68,7 @@ class Settings(commands.Cog):
                 await ctx.send(f"Channel is not a basic 'Forum Channel'")
                 return
 
-        setting = SettingsManager.get(ctx.guild.id)
+        setting = settings.Manager.get(ctx.guild.id)
         setting.market_channel_id = channel_id
         self.bot._db.guild.update(setting)
         await ctx.send(f"Market Channel Id updated to: {channel_str}")
@@ -95,7 +95,7 @@ class Settings(commands.Cog):
                 await ctx.send(f"Channel is not a basic 'Text Channel'")
                 return
 
-        setting = SettingsManager.get(ctx.guild.id)
+        setting = settings.Manager.get(ctx.guild.id)
         setting.react_role_channel_id = channel_id
         self.bot._db.guild.update(setting)
         await ctx.send(f"React-Role Channel Id updated to: {channel_str}")
@@ -111,7 +111,7 @@ class Settings(commands.Cog):
             await ctx.send("Message Id must be >= 0. Disable by setting to 0.")
             return
 
-        setting = SettingsManager.get(ctx.guild.id)
+        setting = settings.Manager.get(ctx.guild.id)
         channel_id = setting.react_role_channel_id
         if channel_id <= 0 and message_id != 0:
             await ctx.send("Please the the react-role channel id first.")
@@ -149,7 +149,7 @@ class Settings(commands.Cog):
         if days < 0:
             await ctx.send("Days must be >= 0. Disable by setting to 0.")
             return
-        setting = SettingsManager.get(ctx.guild.id)
+        setting = settings.Manager.get(ctx.guild.id)
         setting.expiration_days = days
         self.bot._db.guild.update(setting)
 

@@ -4,7 +4,7 @@ from discord.ext.commands import param
 
 from dclient import DiscordBot
 from dclient.helper import get_channel, get_message
-from settings import SettingsManager
+from managers import settings, react_roles
 
 
 class ReactRole(commands.Cog):
@@ -37,7 +37,7 @@ class ReactRole(commands.Cog):
             await ctx.send("role id cannot be <= 0.")
             return
 
-        setting = SettingsManager.get(ctx.guild.id)
+        setting = settings.Manager.get(ctx.guild.id)
         channel_id = setting.react_role_channel_id
         message_id = setting.react_role_msg_id
 
@@ -76,7 +76,7 @@ class ReactRole(commands.Cog):
         # Add the base reaction to the message to represent the role.
         try:
             await react_msg.add_reaction(emoji)
-        except:
+        except BaseException:
             await ctx.send("could not add emoji, may be custom or invalid.")
             return
         msg = "role may already be bound."
@@ -94,7 +94,7 @@ class ReactRole(commands.Cog):
         if not ctx.guild:
             return
 
-        setting = SettingsManager.get(ctx.guild.id)
+        setting = settings.Manager.get(ctx.guild.id)
         channel_id = setting.react_role_channel_id
         message_id = setting.react_role_msg_id
 
@@ -106,22 +106,22 @@ class ReactRole(commands.Cog):
 
         # Remove the role locally.
         msg = "role may already be unbound."
-        added = self.bot.rm_react_role(emoji, role_id, ctx.guild.id)
+        added = self.bot.rm_react_role(emoji, role_id)
         if added:
             msg = "reaction and role unbound."
         await ctx.send(msg)
 
-    @react_role.command(name='list')
-    async def list(self, ctx: commands.Context):
-        """Displays a list of currently bound emojis to roles."""
+    @react_role.command(name='show')
+    async def show(self, ctx: commands.Context):
+        """Shows a list of currently bound emojis to roles."""
         # Make sure the guild is valid.
         if not ctx.guild:
             await ctx.send("could not identify the guild.")
             return
 
         res: list[str] = []
-        react_roles = self.bot.react_roles
-        for rrole in react_roles:
+        rroles = react_roles.Manager.guild_roles(ctx.guild.id)
+        for rrole in rroles:
             role = ctx.guild.get_role(rrole.role_id)
             if not role:
                 continue
