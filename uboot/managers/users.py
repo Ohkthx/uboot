@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 # 0 : int - user_id
 # 1 : int - gold
 # 2 : int - msg_count
@@ -17,15 +19,20 @@ class User():
         self.msg_count = raw[2]
         self.gambles = raw[3]
         self.gambles_won = raw[4]
+        self.last_message = datetime.now() - timedelta(seconds=20)
 
     @property
     def _raw(self) -> UserRaw:
         return (self.id, self.gold, self.msg_count, self.gambles,
                 self.gambles_won)
 
-    def add_message(self):
-        self.gold += 1
+    def add_message(self) -> None:
         self.msg_count += 1
+        now = datetime.now()
+        time_diff = now - self.last_message
+        if time_diff >= timedelta(seconds=15):
+            self.gold += 1
+            self.last_message = now
 
 
 class Manager():
