@@ -13,7 +13,6 @@ class Threads(commands.Cog):
         self.delete_after = 5.0
 
     @commands.group(name="thread")
-    @commands.has_guild_permissions(manage_messages=True)
     async def thread(self, ctx: commands.Context) -> None:
         """Thread management for manually assigning thread status."""
         if not isinstance(ctx.channel, discord.Thread):
@@ -39,7 +38,15 @@ class Threads(commands.Cog):
 
         await ctx.channel.remove_user(ctx.author)
 
+    @thread.command(name='isdone')
+    @commands.has_guild_permissions(manage_messages=True)
+    async def isdone(self, ctx: commands.Context) -> None:
+        await ctx.send("Is the thread ready to be permanently closed?\n"
+                       "If so, please type `?thread close`")
+        await ctx.message.delete()
+
     @thread.command(name='open')
+    @commands.has_guild_permissions(manage_messages=True)
     async def open(self, ctx: commands.Context) -> None:
         """Marks a thread with the open tag."""
         if not isinstance(ctx.channel, discord.Thread):
@@ -59,19 +66,22 @@ class Threads(commands.Cog):
         elif open_tag not in ctx.channel.applied_tags:
             await ctx.channel.add_tags(open_tag)
 
-        await ctx.message.delete()
-
     @thread.command(name='close')
     async def close(self, ctx: commands.Context) -> None:
         """Unsubscribes all users, closes, and archives the current thread."""
         if not isinstance(ctx.channel, discord.Thread):
             return
 
+        owner_id = ctx.channel.owner_id
+        if owner_id != ctx.author.id and not ctx.author.guild_permissions.manage_messages:
+            msg = "only the owner of the thread or an admin can close thread."
+            await ctx.send(msg)
+            return
+
         reason = f"thread close command called by {ctx.author} {ctx.author.id}"
         user_msg = f"Your thread '{ctx.channel.name}' was closed"
-        if ctx.guild and ctx.channel.owner_id:
-            owner = await get_member(self.bot, ctx.guild.id,
-                                     ctx.channel.owner_id)
+        if ctx.guild and owner_id:
+            owner = await get_member(self.bot, ctx.guild.id, owner_id)
             if owner:
                 user_msg = f"{user_msg} by {ctx.author}"
 

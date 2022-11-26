@@ -76,7 +76,7 @@ class Gamble(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.is_owner()
-    @gamble.command(name="give")
+    @commands.command(name="give")
     async def give(self, ctx: commands.Context,
                    amount: int = param(description="Amount to give."),
                    to: discord.Member = param(description="Recipient")):
@@ -89,7 +89,8 @@ class Gamble(commands.Cog):
         await ctx.send(f"{to} holdings were {text} "
                        f"{abs(amount)}gp by {ctx.author}.")
 
-    @gamble.command(name="bet")
+    @commands.guild_only()
+    @commands.command(name="bet")
     async def bet(self, ctx: commands.Context,
                   amount: int = param(description="Amount to bet. 20gp min."),
                   side: str = param(description="High, low, or seven")):
@@ -138,7 +139,7 @@ class Gamble(commands.Cog):
         self.bot._db.user.update(user)
 
         msg = f"Current gamble amount: {amount}gp.\n"\
-            f"You roll the dice for {dice[0]}, {dice[1]}.\n"\
+            f"❊**{ctx.author}** rolls {dice[0]}, {dice[1]}❊\n"\
             f"Totaling {total}!\n\n{res}. Current holdings: {user.gold}gp."
 
         await ctx.send(msg)
