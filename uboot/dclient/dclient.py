@@ -21,12 +21,15 @@ intents.members = True  # pylint: disable=assigning-non-slot
 
 member_cache = discord.MemberCacheFlags(joined=True)
 
+defaultHelp = commands.DefaultHelpCommand(no_category="HELP")
+
 
 class DiscordBot(commands.Bot):
     def __init__(self, prefix: str) -> None:
         super().__init__(command_prefix=commands.when_mentioned_or(prefix),
                          intents=intents,
-                         member_cache_flags=member_cache)
+                         member_cache_flags=member_cache,
+                         help_command=defaultHelp)
         self.prefix = prefix
         self._extensions: list[str] = ['dclient.cogs.general',
                                        'dclient.cogs.threads',

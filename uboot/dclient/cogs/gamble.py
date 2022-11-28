@@ -14,15 +14,23 @@ def roll_dice() -> tuple[int, int]:
 
 
 class Gamble(commands.Cog):
-    """Gambling related commands."""
+    """Betting Guideline:
+    You have three options, 'high', 'low', or 'seven'.
+    The result is the total from 2 dice rolls.
+        High:  8-12    with a 1:1 payout.
+        Low:   1-6     with a 1:1 payout.
+        Seven: 7       with a 4:1 payout.
+
+    example:
+        ?bet 40 low"""
 
     def __init__(self, bot: DiscordBot) -> None:
         self.bot = bot
 
     @commands.guild_only()
-    @commands.command(name="show")
-    async def show(self, ctx: commands.Context) -> None:
-        """Shows the leaderboard."""
+    @commands.command(name="leaderboard")
+    async def leaderboard(self, ctx: commands.Context) -> None:
+        """Shows the current gambling leaderboard."""
         if not ctx.guild:
             return
         all_users = users.Manager.getall()
@@ -55,7 +63,11 @@ class Gamble(commands.Cog):
                         description="Optional Id of the user to lookup.",
                         default=lambda ctx: ctx.author,
                         displayed_default="self")):
-        """Shows all of the user statistics."""
+        """Shows statistics for a specified user, defaults to you.
+        examples:
+            ?stats
+            ?stats @Gatekeeper
+            ?stats 1044706648964472902"""
         user_l = users.Manager.get(user.id)
         gold_t = user_l.gold
         if self.bot.user and self.bot.user.id == user.id:
@@ -90,7 +102,9 @@ class Gamble(commands.Cog):
     async def spawn(self, ctx: commands.Context,
                     amount: int = param(description="Amount to spawn."),
                     to: discord.Member = param(description="Recipient")):
-        """Give or remove gold from a user."""
+        """Give or remove gold from a user.
+        example:
+            ?spawn 40 @Gatekeeper"""
         user = users.Manager.get(to.id)
         user.gold += amount
         self.bot._db.user.update(user)
@@ -104,7 +118,9 @@ class Gamble(commands.Cog):
     async def give(self, ctx: commands.Context,
                    amount: int = param(description="Amount to give."),
                    to: discord.Member = param(description="Recipient")):
-        """Give gold to a user."""
+        """Give gold from yourself to another user.
+        example:
+            ?give 40 @Gatekeeper"""
         from_user = users.Manager.get(ctx.author.id)
         if amount > from_user.gold:
             amount = from_user.gold
@@ -134,7 +150,12 @@ class Gamble(commands.Cog):
     async def bet(self, ctx: commands.Context,
                   amount: int = param(description="Amount to bet. 20gp min."),
                   side: str = param(description="High, low, or seven")):
-        """Place a bet in a game of dice."""
+        """Place your bet, requires an amount and position (high, low, seven)
+        The amount required is either 20gp OR 10% of your current gold.
+
+        Check your current gold with: ?stats
+        example:
+            ?bet 40 low"""
         if amount <= 0:
             await ctx.send("cannot be 0 or less.")
             return

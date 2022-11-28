@@ -6,7 +6,11 @@ from dclient.helper import find_tag, thread_close, get_member
 
 
 class Threads(commands.Cog):
-    """Thread management for manually assigning thread status."""
+    """Thread management for manually assigning thread status.
+    Additional 'help' information:
+        ?help thread
+        ?help thread [command]
+    """
 
     def __init__(self, bot: DiscordBot) -> None:
         self.bot = bot
@@ -15,7 +19,14 @@ class Threads(commands.Cog):
     @commands.guild_only()
     @commands.group(name="thread")
     async def thread(self, ctx: commands.Context) -> None:
-        """Thread management for manually assigning thread status."""
+        """Thread management for manually assigning thread status.
+        Additional 'help' information:
+            ?help thread [command]
+
+        examples:
+            ?thread open
+            ?thread close
+        """
         if not isinstance(ctx.channel, discord.Thread):
             await ctx.message.delete()
             await ctx.send("cannot be used outside of a thread.",
@@ -70,7 +81,14 @@ class Threads(commands.Cog):
 
     @thread.command(name='close')
     async def close(self, ctx: commands.Context) -> None:
-        """Unsubscribes all users, closes, and archives the current thread."""
+        """Performs a full clean up and closure on the thread.
+        Actions:
+            Unsubscribes all participants in the thread.
+            Marks the thread with the 'close' tag if it is available.
+            Removes the 'open' tag if it is assigned.
+            Closes the thread.
+            Locks the thread.
+        """
         if not isinstance(ctx.channel, discord.Thread) or not ctx.guild:
             return
 

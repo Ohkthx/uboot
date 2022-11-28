@@ -21,7 +21,12 @@ async def validate_channel(bot: DiscordBot, ctx: commands.Context,
 
 
 class Admin(commands.Cog):
-    """Admin commands for managing a server."""
+    """Grouped administrative commands for managing a server.
+    Additional 'help' information on subgroups:
+        ?help server
+        ?help server settings
+        ?help server react-role
+    """
 
     def __init__(self, bot: DiscordBot) -> None:
         self.bot = bot
@@ -30,7 +35,11 @@ class Admin(commands.Cog):
     @commands.has_guild_permissions(manage_messages=True)
     @commands.group(name='server')
     async def server(self, ctx: commands.Context) -> None:
-        """Server management and settings."""
+        """Grouped administrative commands for managing a server.
+        Additional 'help' information on subgroups:
+            ?help server settings
+            ?help server react-role
+        """
         if not ctx.invoked_subcommand:
             await ctx.send('invalid server command.')
 
@@ -38,14 +47,24 @@ class Admin(commands.Cog):
     async def rm(self, ctx: commands.Context,
                  limit: int = param(
                      description="Amount of messages to delete.")) -> None:
-        """Removes 'n' amount of messages."""
+        """Removes 'n' amount of messages.
+        example:
+            ?server rm 10
+        """
         c = ctx.channel
         if isinstance(c, discord.Thread) or isinstance(c, discord.TextChannel):
             await c.purge(limit=limit + 1)
 
     @server.group(name="settings")
     async def settings(self, ctx: commands.Context) -> None:
-        """Set various settings for the discord bot."""
+        """Set various server specific settings for the discord bot.
+        Information on specific settings:
+            ?help server settings [command]
+
+        examples:
+            ?server settings market-channel 1234567890
+            ?server settings expiration 10
+        """
         if ctx.invoked_subcommand is None:
             await ctx.send('invalid setting command.')
 
@@ -69,7 +88,10 @@ class Admin(commands.Cog):
     async def market_channel(self, ctx: commands.Context,
                              channel_id: int = param(
                                  description="Channel Id of the Market.")) -> None:
-        """Sets the channel id for the current market channel."""
+        """Sets the channel id for the current market channel.
+        example:
+            ?server settings market-channel 1234567890
+        """
         if not ctx.guild:
             return
         if channel_id < 0:
@@ -96,7 +118,10 @@ class Admin(commands.Cog):
     async def react_role_channel(self, ctx: commands.Context,
                                  channel_id: int = param(
                                      description="Channel Id for Emoji Reaction Roles.")):
-        """Sets the channel id for the emoji reaction roles."""
+        """Sets the channel id for the emoji reaction roles.
+        example:
+            ?server settings react-role-channel 1234567890
+        """
         if not ctx.guild:
             return
         if channel_id < 0:
@@ -123,7 +148,10 @@ class Admin(commands.Cog):
     async def react_role_msg(self, ctx: commands.Context,
                              message_id: int = param(
                                  description="Message Id for Emoji Reaction Roles.")):
-        """Sets the message id for emoji reaction roles."""
+        """Sets the message id for emoji reaction roles.
+        example:
+            ?server settings react-role-msg 1234567890
+        """
         if not ctx.guild:
             return
         if message_id < 0:
@@ -162,7 +190,10 @@ class Admin(commands.Cog):
                                 days: int = param(
                                     description="Amount of days till "
                                     "market posts expire.")):
-        """Sets the amount of days until market posts are set to expire."""
+        """Sets the amount of days until market posts are set to expire.
+        example:
+            ?server settings expiration 15
+        """
         if not ctx.guild:
             return
         if days < 0:
@@ -179,7 +210,13 @@ class Admin(commands.Cog):
 
     @server.group(name="react-role")
     async def react_role(self, ctx: commands.Context) -> None:
-        """Used to bind or unbind emoji reactions to roles."""
+        """Used to bind or unbind emoji reactions to roles.
+
+        examples:
+            ?server react-role bind 😄 1234567890
+            ?server react-role bind 😄 1234567890 True
+            ?server react-role unbind 😄 1234567890
+        """
         if not ctx.invoked_subcommand:
             await ctx.message.delete()
             await ctx.send('invalid react-role command.')
@@ -192,7 +229,17 @@ class Admin(commands.Cog):
                    reverse: bool = param(description="Reverse assignment, "
                                          "selecting reaction removes role.",
                                          default=False)):
-        """Binds an emoji that can be reacted to for role assignment."""
+        """Binds an emoji that can be reacted to for role assignment.
+        Only built-in emojis are currently supported.
+
+        Default behaviour is 'reverse' being false, which means that
+        reacting to the message GRANTS the role. If 'reverse' is set to
+        'True' then selecting a reaction will REMOVE the bound role.
+
+        examples:
+            ?server react-role bind 😄 1234567890
+            ?server react-role bind 😄 1234567890 True
+        """
         if not ctx.guild:
             return
 
@@ -254,7 +301,11 @@ class Admin(commands.Cog):
                      ctx: commands.Context,
                      emoji: str = param(description="Emoji to unbind."),
                      role_id: int = param(description="Numeric Id of the role.")):
-        """Unbinds an emoji reaction from the role specified."""
+        """Unbinds an emoji from role assignment.
+
+        example:
+            ?server react-role unbind 😄 1234567890
+        """
         if not ctx.guild:
             return
 
