@@ -43,7 +43,8 @@ class DiscordBot(commands.Bot):
                                        'dclient.cogs.threads',
                                        'dclient.cogs.react_role',
                                        'dclient.cogs.settings',
-                                       'dclient.cogs.gamble']
+                                       'dclient.cogs.gamble',
+                                       'dclient.cogs.button']
         self.add_command(sync)
         self._db = SqliteDb("test")
         self._db.role.load_many()

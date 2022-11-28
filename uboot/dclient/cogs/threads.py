@@ -69,23 +69,27 @@ class Threads(commands.Cog):
     @thread.command(name='close')
     async def close(self, ctx: commands.Context) -> None:
         """Unsubscribes all users, closes, and archives the current thread."""
-        if not isinstance(ctx.channel, discord.Thread):
+        if not isinstance(ctx.channel, discord.Thread) or not ctx.guild:
             return
 
         owner_id = ctx.channel.owner_id
-        if owner_id != ctx.author.id and not ctx.author.guild_permissions.manage_messages:
+        author = await get_member(self.bot, ctx.guild.id, ctx.author.id)
+        if not author:
+            return
+
+        if owner_id != author.id and not author.guild_permissions.manage_messages:
             msg = "only the owner of the thread or an admin can close thread."
             await ctx.send(msg)
             return
 
-        reason = f"thread close command called by {ctx.author} {ctx.author.id}"
+        reason = f"thread close command called by {author} {author.id}"
         user_msg = f"Your thread '{ctx.channel.name}' was closed"
         if ctx.guild and owner_id:
             owner = await get_member(self.bot, ctx.guild.id, owner_id)
             if owner:
-                user_msg = f"{user_msg} by {ctx.author}"
+                user_msg = f"{user_msg} by {author}"
 
-        await ctx.channel.send(f"Thread closed by {ctx.author}.")
+        await ctx.channel.send(f"Thread closed by {author}.")
         await ctx.message.delete()
         await thread_close('open', 'closed', ctx.channel, reason,
                            f"{user_msg}.")
