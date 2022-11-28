@@ -61,6 +61,14 @@ class Gamble(commands.Cog):
                         displayed_default="self")):
         """Shows all of the user statistics."""
         user_l = users.Manager.get(user.id)
+        gold_t = user_l.gold
+        if self.bot.user and self.bot.user.id == user.id:
+            # Get all of the gold lost from users.
+            total: int = 0
+            for u in users.Manager.getall():
+                if u.gold < u.msg_count:
+                    total += (u.msg_count - u.gold)
+            gold_t = total
 
         win_rate = 0
         if user_l.gambles > 0:
@@ -69,7 +77,7 @@ class Gamble(commands.Cog):
 
         embed = discord.Embed(title=user)
         embed.add_field(name="Gambling Stats", value='-' * 32, inline=False)
-        embed.add_field(name="Gold", value=user_l.gold)
+        embed.add_field(name="Gold", value=gold_t)
         embed.add_field(name="Messages", value=user_l.msg_count)
         embed.add_field(name="ㅤ", value="ㅤ")
         embed.add_field(name="Gambles", value=user_l.gambles)

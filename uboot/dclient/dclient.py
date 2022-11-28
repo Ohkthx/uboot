@@ -71,6 +71,18 @@ class DiscordBot(commands.Bot):
         self._db.role.delete_one(react_role)
         return True
 
+    @tasks.loop(minutes=1)
+    async def status_update(self) -> None:
+        if not self.user:
+            return
+        user = users.Manager.get(self.user.id)
+        win_rate = 0
+        if user.gambles > 0:
+            win_rate = (1 + (user.gambles_won - user.gambles) /
+                        user.gambles) * 100
+        activity = discord.Game(f"win-rate: {win_rate:0.2f}%")
+        await self.change_presence(activity=activity)
+
     @tasks.loop(minutes=15)
     async def archiver(self) -> None:
         for guild in self.guilds:
@@ -97,8 +109,12 @@ class DiscordBot(commands.Bot):
                     # Close the thread.
                     await thread_close('none', 'expired', thread, reason, msg)
 
+    @status_update.before_loop
+    async def status_update_wait_on_login(self) -> None:
+        await self.wait_until_ready()
+
     @archiver.before_loop
-    async def wait_on_login(self) -> None:
+    async def archiver_wait_on_login(self) -> None:
         await self.wait_until_ready()
 
     async def setup_hook(self) -> None:
@@ -106,6 +122,7 @@ class DiscordBot(commands.Bot):
         for ext in self._extensions:
             await self.load_extension(ext)
         self.archiver.start()  # pylint: disable=no-member
+        self.status_update.start()  # pylint: disable=no-member
 
     async def on_ready(self) -> None:
         Log.debug(f"Logged in as {self.user}")
