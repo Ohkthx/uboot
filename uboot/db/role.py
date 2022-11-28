@@ -9,9 +9,9 @@ class RoleDb(DbSocket):
         super().__init__(filename)
         self.query['create_table'] = "CREATE TABLE IF NOT EXISTS {table_name} "\
             "( role_id INTEGER PRIMARY KEY DESC, "\
-            "guild_id INTEGER, reaction TEXT )"
+            "guild_id INTEGER, reaction TEXT, reversed INTEGER )"
         self.query['save_many'] = "INSERT OR IGNORE INTO {table_name} "\
-            "VALUES(?, ?, ?)"
+            "VALUES(?, ?, ?, ?)"
         self.query['insert'] = "INSERT INTO {table_name} "\
             "VALUES ({value_key}) ON CONFLICT(role_id) "\
             "DO UPDATE SET {set_key}"
@@ -27,7 +27,7 @@ class RoleDb(DbSocket):
 
     def update(self, react_role: react_roles.ReactRole) -> None:
         r = react_role
-        value_key = f"{r.role_id}, {r.guild_id}, '{r.reaction}'"
+        value_key = f"{r.role_id}, {r.guild_id}, '{r.reaction}', {r.reversed}"
         set_key = f"reaction = '{r.reaction}'"
         self._insert("roles", value_key, set_key)
 

@@ -22,17 +22,6 @@ intents.members = True  # pylint: disable=assigning-non-slot
 member_cache = discord.MemberCacheFlags(joined=True)
 
 
-@commands.command()
-@commands.guild_only()
-@commands.is_owner()
-async def sync(ctx: commands.Context) -> None:
-    """Syncs the current slash commands with the guild."""
-    if not ctx.guild:
-        return
-    synced = await ctx.bot.tree.sync()
-    await ctx.send(f"Synced {len(synced)} commands to the current guild.")
-
-
 class DiscordBot(commands.Bot):
     def __init__(self, prefix: str) -> None:
         super().__init__(command_prefix=commands.when_mentioned_or(prefix),
@@ -41,22 +30,21 @@ class DiscordBot(commands.Bot):
         self.prefix = prefix
         self._extensions: list[str] = ['dclient.cogs.general',
                                        'dclient.cogs.threads',
-                                       'dclient.cogs.react_role',
-                                       'dclient.cogs.settings',
                                        'dclient.cogs.gamble',
+                                       'dclient.cogs.admin',
                                        'dclient.cogs.button']
-        self.add_command(sync)
         self._db = SqliteDb("test")
         self._db.role.load_many()
         self._db.user.load_many()
         self._db.guild.load_many()
 
-    def add_react_role(self, react: str, role_id: int, guild_id: int) -> bool:
+    def add_react_role(self, react: str, role_id: int,
+                       guild_id: int, reverse: bool) -> bool:
         react_role = react_roles.Manager.find(guild_id, react)
         if react_role and (react_role.reaction == react or react_role.role_id):
             return False
 
-        raw = (role_id, guild_id, react)
+        raw = (role_id, guild_id, react, reverse)
         react_role = react_roles.Manager.add(react_roles.ReactRole(raw))
         self._db.role.update(react_role)
         return True
@@ -159,18 +147,24 @@ class DiscordBot(commands.Bot):
             await thread.add_tags(open_tag)
 
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
-        pair = await react_processor(self, payload)
-        if not pair:
+        values = await react_processor(self, payload)
+        if not values:
             return
 
-        await pair[0].add_roles(pair[1])
+        if values[2]:
+            await values[0].remove_roles(values[1])
+        else:
+            await values[0].add_roles(values[1])
 
     async def on_raw_reaction_remove(self, payload: RawReactionActionEvent):
-        pair = await react_processor(self, payload)
-        if not pair:
+        values = await react_processor(self, payload)
+        if not values:
             return
 
-        await pair[0].remove_roles(pair[1])
+        if values[2]:
+            await values[0].add_roles(values[1])
+        else:
+            await values[0].remove_roles(values[1])
 
     @staticmethod
     def init_run(config: DiscordConfig) -> None:

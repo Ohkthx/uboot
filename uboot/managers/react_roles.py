@@ -1,9 +1,10 @@
 from typing import Optional
 
-# 0: int - role_id
-# 1: int - guild_id
-# 2: str - reaction
-ReactRoleRaw = tuple[int, int, str]
+# 0: int  - role_id
+# 1: int  - guild_id
+# 2: str  - reaction
+# 3: bool - reversed
+ReactRoleRaw = tuple[int, int, str, bool]
 
 
 def make_raw(role_id: int) -> ReactRoleRaw:
@@ -15,10 +16,11 @@ class ReactRole():
         self.role_id = raw[0]
         self.guild_id = raw[1]
         self.reaction = raw[2]
+        self.reversed = raw[3]
 
     @property
     def _raw(self) -> ReactRoleRaw:
-        return (self.role_id, self.guild_id, self.reaction)
+        return (self.role_id, self.guild_id, self.reaction, self.reversed)
 
 
 class Manager():

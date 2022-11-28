@@ -128,4 +128,4 @@ async def react_processor(bot: commands.Bot,
     if not guild_role:
         return None
 
-    return (user, guild_role)
+    return (user, guild_role, react_role.reversed)

@@ -14,17 +14,13 @@ def roll_dice() -> tuple[int, int]:
 
 
 class Gamble(commands.Cog):
+    """Gambling related commands."""
+
     def __init__(self, bot: DiscordBot) -> None:
         self.bot = bot
 
-    @commands.group(name="gamble")
     @commands.guild_only()
-    async def gamble(self, ctx: commands.Context) -> None:
-        """Gambling!"""
-        if not ctx.invoked_subcommand:
-            await ctx.send('invalid gamble command.')
-
-    @gamble.command(name="show")
+    @commands.command(name="show")
     async def show(self, ctx: commands.Context) -> None:
         """Shows the leaderboard."""
         if not ctx.guild:
@@ -53,7 +49,7 @@ class Gamble(commands.Cog):
         embed.set_footer(text=f"Total gamblers: {len(all_users)}")
         await ctx.send(embed=embed)
 
-    @gamble.command(name="stats")
+    @commands.command(name="stats")
     async def stats(self, ctx: commands.Context,
                     user: discord.User = param(
                         description="Optional Id of the user to lookup.",
@@ -103,6 +99,7 @@ class Gamble(commands.Cog):
         await ctx.send(f"{to} holdings were {text} "
                        f"{abs(amount)}gp by {ctx.author}.")
 
+    @commands.guild_only()
     @commands.command(name="give")
     async def give(self, ctx: commands.Context,
                    amount: int = param(description="Amount to give."),

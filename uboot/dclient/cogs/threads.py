@@ -12,6 +12,7 @@ class Threads(commands.Cog):
         self.bot = bot
         self.delete_after = 5.0
 
+    @commands.guild_only()
     @commands.group(name="thread")
     async def thread(self, ctx: commands.Context) -> None:
         """Thread management for manually assigning thread status."""
@@ -41,6 +42,7 @@ class Threads(commands.Cog):
     @thread.command(name='isdone')
     @commands.has_guild_permissions(manage_messages=True)
     async def isdone(self, ctx: commands.Context) -> None:
+        """Prompts the members if the thread is complete or not."""
         await ctx.send("Is the thread ready to be permanently closed?\n"
                        "If so, please type `?thread close`")
         await ctx.message.delete()
