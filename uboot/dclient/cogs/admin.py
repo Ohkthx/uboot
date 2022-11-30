@@ -81,11 +81,13 @@ class Admin(commands.Cog):
     @server.command(name="support")
     async def support(self, ctx: commands.Context):
         """Creates the support ticket button."""
-        embed = discord.Embed(title="Found a bug, stuck, or need help?",
+        embed = discord.Embed(title="Found a bug, stuck, or need help in "
+                              "private?",
                               description="If you have found a bug or need "
-                              "additional assistance, feel free to press the "
+                              "additional assistance that is not publicly "
+                              "displayed, feel free to press the "
                               "button below and we will be right with you!",
-                              color=discord.Colour.brand_red())
+                              color=discord.Colour.green())
         await ctx.send(embed=embed, view=SupportView(self.bot))
 
     @server.group(name="settings")

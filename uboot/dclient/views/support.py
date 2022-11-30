@@ -10,7 +10,7 @@ class SupportView(ui.View):
         self.bot = bot
         super().__init__(timeout=None)
 
-    @ui.button(label='create ticket', style=discord.ButtonStyle.red,
+    @ui.button(label='✉ Create Ticket', style=discord.ButtonStyle.green,
                custom_id='support_view:support')
     async def support(self, interaction: discord.Interaction, button: ui.Button):
         modal = SupportModal(self.bot)
