@@ -72,7 +72,7 @@ class DbSocket():
         try:
             res = self._cursor.execute(query)
         except BaseException as err:
-            print(f"SQL EXCEPTION:\n{err}")
+            print(f"SQL EXCEPTION:\nQuery:\n{query}\n\n{err}")
         self._session.commit()
 
     def _delete(self, table_name: str, where_key: str) -> None:

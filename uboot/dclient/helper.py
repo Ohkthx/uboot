@@ -68,24 +68,21 @@ async def thread_close(tag_rm_name: str, tag_add_name: str,
                        thread: discord.Thread,
                        reason: str,
                        user_msg: str) -> None:
+    tags = []
+    if isinstance(thread.parent, ForumChannel):
+        # Find the tags from available tags.
+        rm_tag = find_tag(tag_rm_name, thread.parent)
+        add_tag = find_tag(tag_add_name, thread.parent)
 
-    if not isinstance(thread.parent, ForumChannel):
-        await thread.send('thread is not in a forum channel.')
-        return
+        tags = list(thread.applied_tags)
+        if rm_tag is not None and rm_tag in tags:
+            tags = [t for t in tags if t.name != tag_rm_name]
+        if add_tag is not None and add_tag not in tags:
+            tags.append(add_tag)
 
-    # Find the tags from available tags.
-    rm_tag = find_tag(tag_rm_name, thread.parent)
-    add_tag = find_tag(tag_add_name, thread.parent)
-
-    tags = list(thread.applied_tags)
-    if rm_tag is not None and rm_tag in tags:
-        tags = [t for t in tags if t.name != tag_rm_name]
-    if add_tag is not None and add_tag not in tags:
-        tags.append(add_tag)
-
-    # Unsubscribe everyone.
-    for subscriber in await thread.fetch_members():
-        await thread.remove_user(subscriber)
+        # Unsubscribe everyone.
+        for subscriber in await thread.fetch_members():
+            await thread.remove_user(subscriber)
 
     # Archive and Lock.
     await thread.edit(archived=True, locked=True, reason=reason,
@@ -97,10 +94,14 @@ async def thread_close(tag_rm_name: str, tag_add_name: str,
         if not owner:
             try:
                 owner = await thread.guild.fetch_member(thread.owner_id)
-            except BaseException:
+            except BaseException as err:
+                print(f"Error while closing thread: {err}")
                 return
-        if owner:
-            await owner.send(user_msg)
+        if owner and user_msg:
+            try:
+                await owner.send(user_msg)
+            except BaseException as err:
+                print(f"Error while sending closure message: {err}")
 
 
 async def react_processor(bot: commands.Bot,

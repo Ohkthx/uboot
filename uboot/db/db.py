@@ -1,6 +1,7 @@
 from .role import RoleDb
 from .user import UserDb
 from .guild_setting import GuildSettingDb
+from .ticket import TicketDb
 
 
 class SqliteDb():
@@ -10,6 +11,7 @@ class SqliteDb():
         self._role_db = RoleDb(f"dbs/uboot{suffix}.{filetype}")
         self._user_db = UserDb(f"dbs/uboot{suffix}.{filetype}")
         self._guild_db = GuildSettingDb(f"dbs/uboot{suffix}.{filetype}")
+        self._ticket_db = TicketDb(f"dbs/uboot{suffix}.{filetype}")
 
     @property
     def role(self) -> RoleDb:
@@ -22,6 +24,10 @@ class SqliteDb():
     @property
     def guild(self) -> GuildSettingDb:
         return self._guild_db
+
+    @property
+    def ticket(self) -> TicketDb:
+        return self._ticket_db
 
     @property
     def is_saving(self) -> bool:

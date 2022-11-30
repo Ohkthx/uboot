@@ -35,11 +35,29 @@ class DiscordBot(commands.Bot):
                                        'dclient.cogs.threads',
                                        'dclient.cogs.gamble',
                                        'dclient.cogs.admin',
-                                       'dclient.cogs.button']
+                                       'dclient.cogs.test',
+                                       'dclient.views.test',
+                                       'dclient.views.support',
+                                       'dclient.views.threads']
         self._db = SqliteDb("test")
         self._db.role.load_many()
         self._db.user.load_many()
         self._db.guild.load_many()
+        self._db.ticket.load_many()
+
+    async def setup_hook(self) -> None:
+        self.session = aiohttp.ClientSession()
+        for ext in self._extensions:
+            await self.load_extension(ext)
+        self.archiver.start()  # pylint: disable=no-member
+        self.status_update.start()  # pylint: disable=no-member
+
+    async def on_ready(self) -> None:
+        Log.debug(f"Logged in as {self.user}")
+
+    async def close(self) -> None:
+        await super().close()
+        await self.session.close()
 
     def add_react_role(self, react: str, role_id: int,
                        guild_id: int, reverse: bool) -> bool:
@@ -71,7 +89,7 @@ class DiscordBot(commands.Bot):
         if user.gambles > 0:
             win_rate = (1 + (user.gambles_won - user.gambles) /
                         user.gambles) * 100
-        activity = discord.Game(f"win-rate: {win_rate:0.2f}%")
+        activity = discord.Game(f"?help | win-rate: {win_rate:0.1f}%")
         await self.change_presence(activity=activity)
 
     @tasks.loop(minutes=15)
@@ -107,20 +125,6 @@ class DiscordBot(commands.Bot):
     @archiver.before_loop
     async def archiver_wait_on_login(self) -> None:
         await self.wait_until_ready()
-
-    async def setup_hook(self) -> None:
-        self.session = aiohttp.ClientSession()
-        for ext in self._extensions:
-            await self.load_extension(ext)
-        self.archiver.start()  # pylint: disable=no-member
-        self.status_update.start()  # pylint: disable=no-member
-
-    async def on_ready(self) -> None:
-        Log.debug(f"Logged in as {self.user}")
-
-    async def close(self) -> None:
-        await super().close()
-        await self.session.close()
 
     async def on_message(self, msg: discord.Message) -> None:
         await self.process_commands(msg)
