@@ -11,8 +11,8 @@ from utils import Log
 from config import DiscordConfig
 from managers import settings, users, react_roles
 from db import SqliteDb
-from .helper import thread_close, react_processor, get_channel
-from dclient.views.suggestion import SuggestionView
+from .helper import thread_close, react_processor, get_channel, find_tag
+from dclient.views.suggestion import SuggestionView, BasicThreadView
 
 
 intents = discord.Intents.default()
@@ -40,7 +40,6 @@ class DiscordBot(commands.Bot):
                                        'dclient.views.test',
                                        'dclient.views.support',
                                        'dclient.views.threads']
-        # 'dclient.views.suggestion']
         self._db = SqliteDb("test")
         self._db.role.load_many()
         self._db.user.load_many()
@@ -51,6 +50,7 @@ class DiscordBot(commands.Bot):
         self.session = aiohttp.ClientSession()
         for ext in self._extensions:
             await self.load_extension(ext)
+        self.add_view(BasicThreadView())
         self.add_view(SuggestionView())
         self.archiver.start()  # pylint: disable=no-member
         self.status_update.start()  # pylint: disable=no-member
@@ -148,19 +148,21 @@ class DiscordBot(commands.Bot):
         setting = settings.Manager.get(thread.guild.id)
         c_id = setting.suggestion_channel_id
         if c_id != 0 and c_id == thread.parent.id:
-            # Send the view.
+            # Send the view for a suggestion channel.
             embed = discord.Embed(title="Reviewer Panel",
                                   description="Only a reviewer can access the"
                                   " options below.\nAs a reviewer, please "
                                   "select either 'Approve' or 'Deny'. 'Close'"
                                   " the thread when complete.")
             await thread.send(embed=embed, view=SuggestionView())
+        elif find_tag('closed', thread.parent):
+            embed = discord.Embed(title="Support Panel",
+                                  description="Only support can access the"
+                                  " option below.\nAs support, please mark "
+                                  "'Close' when the thread is complete.")
+            await thread.send(embed=embed, view=BasicThreadView())
 
-        open_tag: Optional[discord.ForumTag] = None
-        for tag in thread.parent.available_tags:
-            if tag.name.lower() == "open":
-                open_tag = tag
-                break
+        open_tag = find_tag('open', thread.parent)
         if not open_tag:
             return
 

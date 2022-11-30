@@ -24,11 +24,15 @@ class SupportThreadView(ui.View):
 
         ticket = tickets.Manager.by_title(channel.name)
         if not ticket:
-            ticket = tickets.Manager.get(tickets.Manager.total()+1)
+            ticket = tickets.Manager.get(tickets.Manager.total() + 1)
             ticket.title = channel.name
 
         ticket.done = True
         self.bot._db.ticket.update(ticket)
+
+        res = interaction.response
+        await res.send_message("Support thread closed by "
+                               f"**{interaction.user}**.")
 
         user_msg = f"Your thread was closed by **{interaction.user}**."
         if interaction.user.id == channel.owner_id:
