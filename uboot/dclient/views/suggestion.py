@@ -40,8 +40,10 @@ class BasicThreadView(ui.View):
     @ui.button(label='🔒 Close', style=discord.ButtonStyle.grey,
                custom_id='basic_thread_view:close')
     async def close(self, interaction: discord.Interaction, button: ui.Button):
-        if not interaction.guild:
+        thread = interaction.channel
+        if not interaction.guild or not isinstance(thread, discord.Thread):
             return
+
         setting = settings.Manager.get(interaction.guild.id)
         role_id = setting.support_role_id
         role = await validate_user(interaction, interaction.guild,
@@ -56,10 +58,9 @@ class BasicThreadView(ui.View):
                               color=discord.Color.light_grey())
         await res.send_message(embed=embed)
 
-        channel = interaction.channel
-        if interaction.user.id == channel.owner_id:
+        if interaction.user.id == thread.owner_id:
             user_msg = ""
-        await thread_close("open", "closed", channel,
+        await thread_close("open", "closed", thread,
                            "unlisted closure", user_msg)
 
 
@@ -70,17 +71,17 @@ class SuggestionView(ui.View):
     @ui.button(label='🗹 Approve', style=discord.ButtonStyle.green,
                custom_id='suggestion_view:approve')
     async def approve(self, interaction: discord.Interaction, button: ui.Button):
-        if not interaction.guild:
+        thread = interaction.channel
+        if not interaction.guild or not isinstance(thread, discord.Thread):
             return
+        if not isinstance(thread.parent, discord.ForumChannel):
+            return
+
         setting = settings.Manager.get(interaction.guild.id)
         role_id = setting.suggestion_reviewer_role_id
         role = await validate_user(interaction, interaction.guild,
                                    role_id, "a reviewer")
         if not role:
-            return
-
-        thread = interaction.channel
-        if not isinstance(thread, discord.Thread):
             return
 
         # Find the tags from available tags.
@@ -106,17 +107,17 @@ class SuggestionView(ui.View):
     @ui.button(label='⨯ Deny', style=discord.ButtonStyle.red,
                custom_id='suggestion_view:deny')
     async def deny(self, interaction: discord.Interaction, button: ui.Button):
-        if not interaction.guild:
+        thread = interaction.channel
+        if not interaction.guild or not isinstance(thread, discord.Thread):
             return
+        if not isinstance(thread.parent, discord.ForumChannel):
+            return
+
         setting = settings.Manager.get(interaction.guild.id)
         role_id = setting.suggestion_reviewer_role_id
         role = await validate_user(interaction, interaction.guild,
                                    role_id, "a reviewer")
         if not role:
-            return
-
-        thread = interaction.channel
-        if not isinstance(thread, discord.Thread):
             return
 
         # Find the tags from available tags.
@@ -142,8 +143,12 @@ class SuggestionView(ui.View):
     @ui.button(label='🔒 Close', style=discord.ButtonStyle.grey,
                custom_id='suggestion_view:close')
     async def close(self, interaction: discord.Interaction, button: ui.Button):
-        if not interaction.guild:
+        thread = interaction.channel
+        if not interaction.guild or not isinstance(thread, discord.Thread):
             return
+        if not isinstance(thread.parent, discord.ForumChannel):
+            return
+
         setting = settings.Manager.get(interaction.guild.id)
         role_id = setting.suggestion_reviewer_role_id
         role = await validate_user(interaction, interaction.guild,
@@ -158,8 +163,7 @@ class SuggestionView(ui.View):
         res = interaction.response
         await res.send_message(embed=embed)
 
-        channel = interaction.channel
-        if interaction.user.id == channel.owner_id:
+        if interaction.user.id == thread.owner_id:
             user_msg = ""
-        await thread_close("open", "closed", channel,
+        await thread_close("open", "closed", thread,
                            "unlisted closure", user_msg)

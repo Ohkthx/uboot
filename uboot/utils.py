@@ -1,15 +1,6 @@
 from typing import Callable
 
 
-def catch_kbdint(func: callable):
-    def wrapper(*args, **kwargs):
-        try:
-            func(*args, **kwargs)
-        except KeyboardInterrupt:
-            print("CAUGHT KEYBOARD INTERRUPT.")
-    return wrapper
-
-
 class Log():
     debug_mode: bool = False
     _last_len: int = 0

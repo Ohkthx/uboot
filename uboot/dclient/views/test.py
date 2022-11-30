@@ -35,7 +35,7 @@ class PersistentView(ui.View):
                placeholder="Select one below.")
     async def select_dropdown(self, interaction: discord.Interaction,
                               select: Dropdown):
-        last_dropdown = select.values[0]
+        PersistentView.last_dropdown = select.values[0]
         res = interaction.response
         await res.send_message(f'You selected {select.values[0]}')
 
@@ -43,7 +43,8 @@ class PersistentView(ui.View):
                custom_id='persistent_view:green')
     async def green(self, interaction: discord.Interaction, button: ui.Button):
         res = interaction.response
-        await res.send_message(f'This is green, last: {self.last_dropdown}',
+        await res.send_message('This is green, last: '
+                               f'{PersistentView.last_dropdown}',
                                ephemeral=True)
 
     @ui.button(label='Red', style=discord.ButtonStyle.red,

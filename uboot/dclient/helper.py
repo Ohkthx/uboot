@@ -48,6 +48,8 @@ async def get_channel(bot: commands.Bot,
             channel = await bot.fetch_channel(channel_id)
         except BaseException:
             return None
+    if not isinstance(channel, discord.abc.GuildChannel):
+        return None
     return channel
 
 

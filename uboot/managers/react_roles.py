@@ -8,7 +8,7 @@ ReactRoleRaw = tuple[int, int, str, bool]
 
 
 def make_raw(role_id: int) -> ReactRoleRaw:
-    return (role_id, 0, "")
+    return (role_id, 0, "", False)
 
 
 class ReactRole():
