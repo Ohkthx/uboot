@@ -7,7 +7,7 @@ from discord.ext.commands import param
 
 from managers import settings, react_roles
 from dclient import DiscordBot
-from dclient.views import SupportView
+from dclient.views.support import SupportView
 from dclient.helper import get_channel, get_message
 
 

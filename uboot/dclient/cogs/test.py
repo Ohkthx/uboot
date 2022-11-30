@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 from dclient import DiscordBot
-from dclient.views import PersistentView
+from dclient.views.test import PersistentView
 
 
 class Test(commands.Cog):

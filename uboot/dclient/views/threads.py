@@ -12,7 +12,7 @@ class SupportThreadView(ui.View):
         self.bot = bot
         super().__init__(timeout=None)
 
-    @ui.button(label='close', style=discord.ButtonStyle.red,
+    @ui.button(label='🔒 Close', style=discord.ButtonStyle.grey,
                custom_id='support_thread_view:close')
     async def support(self, interaction: discord.Interaction, button: ui.Button):
         channel = interaction.channel

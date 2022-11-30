@@ -12,6 +12,7 @@ from config import DiscordConfig
 from managers import settings, users, react_roles
 from db import SqliteDb
 from .helper import thread_close, react_processor, get_channel
+from dclient.views.suggestion import SuggestionView
 
 
 intents = discord.Intents.default()
@@ -39,6 +40,7 @@ class DiscordBot(commands.Bot):
                                        'dclient.views.test',
                                        'dclient.views.support',
                                        'dclient.views.threads']
+        # 'dclient.views.suggestion']
         self._db = SqliteDb("test")
         self._db.role.load_many()
         self._db.user.load_many()
@@ -49,6 +51,7 @@ class DiscordBot(commands.Bot):
         self.session = aiohttp.ClientSession()
         for ext in self._extensions:
             await self.load_extension(ext)
+        self.add_view(SuggestionView())
         self.archiver.start()  # pylint: disable=no-member
         self.status_update.start()  # pylint: disable=no-member
 
@@ -141,6 +144,17 @@ class DiscordBot(commands.Bot):
     async def on_thread_create(self, thread: discord.Thread) -> None:
         if not isinstance(thread.parent, discord.ForumChannel):
             return
+
+        setting = settings.Manager.get(thread.guild.id)
+        c_id = setting.suggestion_channel_id
+        if c_id != 0 and c_id == thread.parent.id:
+            # Send the view.
+            embed = discord.Embed(title="Reviewer Panel",
+                                  description="Only a reviewer can access the"
+                                  " options below.\nAs a reviewer, please "
+                                  "select either 'Approve' or 'Deny'. 'Close'"
+                                  " the thread when complete.")
+            await thread.send(embed=embed, view=SuggestionView())
 
         open_tag: Optional[discord.ForumTag] = None
         for tag in thread.parent.available_tags:
