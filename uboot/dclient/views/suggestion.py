@@ -24,8 +24,11 @@ async def validate_user(interaction: discord.Interaction,
         return
     if not role in user.roles:
         res = interaction.response
-        await res.send_message(f"You must be {role_name} to do that.",
-                               ephemeral=True)
+        embed = discord.Embed(title="Invalid Permissions",
+                              description=f"You must have the {role.mention} "
+                              "role to do that.",
+                              color=discord.Color.red())
+        await res.send_message(embed=embed, ephemeral=True)
         return
     return role
 
@@ -48,7 +51,10 @@ class BasicThreadView(ui.View):
 
         res = interaction.response
         user_msg = f"Your thread was closed by **{interaction.user}**."
-        await res.send_message(user_msg)
+        embed = discord.Embed(title="Thread Closed",
+                              description=user_msg,
+                              color=discord.Color.light_grey())
+        await res.send_message(embed=embed)
 
         channel = interaction.channel
         if interaction.user.id == channel.owner_id:
@@ -90,9 +96,12 @@ class SuggestionView(ui.View):
         # Apply the new tags.
         await thread.edit(applied_tags=tags)
 
+        msg = f"Your suggestion was approved by **{interaction.user}**."
+        embed = discord.Embed(title="Suggestion Approved",
+                              description=msg,
+                              color=discord.Color.green())
         res = interaction.response
-        await res.send_message("Your suggestion was approved by "
-                               f"**{interaction.user}**.")
+        await res.send_message(embed=embed)
 
     @ui.button(label='⨯ Deny', style=discord.ButtonStyle.red,
                custom_id='suggestion_view:deny')
@@ -123,9 +132,12 @@ class SuggestionView(ui.View):
         # Apply the new tags.
         await thread.edit(applied_tags=tags)
 
+        msg = f"Your suggestion was denied by **{interaction.user}**."
+        embed = discord.Embed(title="Suggestion Denied",
+                              description=msg,
+                              color=discord.Color.red())
         res = interaction.response
-        await res.send_message("Your suggestion was denied by "
-                               f"**{interaction.user}**.")
+        await res.send_message(embed=embed)
 
     @ui.button(label='🔒 Close', style=discord.ButtonStyle.grey,
                custom_id='suggestion_view:close')
@@ -139,12 +151,14 @@ class SuggestionView(ui.View):
         if not role:
             return
 
+        user_msg = f"Your suggestion was closed by **{interaction.user}**."
+        embed = discord.Embed(title="Suggestion Closed",
+                              description=user_msg,
+                              color=discord.Color.light_grey())
         res = interaction.response
-        await res.send_message("Your suggestion was closed by "
-                               f"**{interaction.user}**.")
+        await res.send_message(embed=embed)
 
         channel = interaction.channel
-        user_msg = f"Your thread was closed by **{interaction.user}**."
         if interaction.user.id == channel.owner_id:
             user_msg = ""
         await thread_close("open", "closed", channel,
