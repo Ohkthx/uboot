@@ -24,16 +24,21 @@ class SupportThreadView(ui.View):
 
         ticket_info = channel.name.split('-')
         ticket = tickets.Manager.by_name(guild.id, channel.name)
-        if not ticket and len(ticket_info) == 2:
-            ticket_id = tickets.Manager.total(guild.id) + 1
-            ticket = tickets.Manager.get(guild.id, ticket_id)
-            ticket.title = ticket_info[1]
-
         if not ticket:
-            print(f"Could not close ticket in db: {channel.name}")
-        else:
-            ticket.done = True
-            self.bot._db.ticket.update(ticket)
+            ticket_id = tickets.Manager.total(guild.id) + 1
+            ticket_type = "unknown"
+            if len(ticket_info) == 2:
+                ticket_type = str(ticket_info[1])
+                try:
+                    ticket_id = int(ticket_info[0])
+                except:
+                    pass
+
+            ticket = tickets.Manager.get(guild.id, ticket_id)
+            ticket.title = ticket_type
+
+        ticket.done = True
+        self.bot._db.ticket.update(ticket)
 
         res = interaction.response
         await res.send_message("Support thread closed by "
@@ -42,7 +47,7 @@ class SupportThreadView(ui.View):
         user_msg = f"Your thread was closed by **{interaction.user}**."
         if interaction.user.id == channel.owner_id:
             user_msg = ""
-        await thread_close("open", "closed", channel,
+        await thread_close(["open", "in-progress"], "closed", channel,
                            "unlisted closure", user_msg)
 
 
