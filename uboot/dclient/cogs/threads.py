@@ -114,6 +114,21 @@ class Threads(commands.Cog):
         await thread_close('open', 'closed', ctx.channel, reason,
                            f"{user_msg}.")
 
+    @thread.command(name='box')
+    @commands.has_guild_permissions(manage_messages=True)
+    async def box(self, ctx: commands.Context) -> None:
+        """Creates the close, approve, denied, etc. box in the event it
+        was not created at thread creation."""
+        await ctx.message.delete()
+        thread = ctx.channel
+        if not thread or not isinstance(thread, discord.Thread):
+            return
+
+        if not isinstance(thread.parent, discord.ForumChannel):
+            return
+
+        await self.bot.on_thread_create(thread)
+
 
 async def setup(bot: DiscordBot) -> None:
     await bot.add_cog(Threads(bot))

@@ -14,20 +14,26 @@ class SupportThreadView(ui.View):
     @ui.button(label='🔒 Close', style=discord.ButtonStyle.grey,
                custom_id='support_thread_view:close')
     async def support(self, interaction: discord.Interaction, button: ui.Button):
+        guild = interaction.guild
         channel = interaction.channel
-        if not channel:
+        if not guild or not channel:
             return
 
         if not isinstance(channel, discord.Thread):
             return
 
-        ticket = tickets.Manager.by_title(channel.name)
-        if not ticket:
-            ticket = tickets.Manager.get(tickets.Manager.total() + 1)
-            ticket.title = channel.name
+        ticket_info = channel.name.split('-')
+        ticket = tickets.Manager.by_name(guild.id, channel.name)
+        if not ticket and len(ticket_info) == 2:
+            ticket_id = tickets.Manager.total(guild.id) + 1
+            ticket = tickets.Manager.get(guild.id, ticket_id)
+            ticket.title = ticket_info[1]
 
-        ticket.done = True
-        self.bot._db.ticket.update(ticket)
+        if not ticket:
+            print(f"Could not close ticket in db: {channel.name}")
+        else:
+            ticket.done = True
+            self.bot._db.ticket.update(ticket)
 
         res = interaction.response
         await res.send_message("Support thread closed by "

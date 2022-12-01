@@ -7,7 +7,7 @@ from discord.ext.commands import param
 
 from managers import settings, react_roles
 from dclient import DiscordBot
-from dclient.views.support import SupportView
+from dclient.views.support import GetSupportView
 from dclient.helper import get_channel, get_message, get_member, get_role
 
 
@@ -113,14 +113,8 @@ class Admin(commands.Cog):
     @server.command(name="support")
     async def support(self, ctx: commands.Context):
         """Creates the support ticket button."""
-        embed = discord.Embed(title="Found a bug, stuck, or need help in "
-                              "private?",
-                              description="If you have found a bug or need "
-                              "additional assistance that is not publicly "
-                              "displayed, feel free to press the "
-                              "button below and we will be right with you!",
-                              color=discord.Colour.green())
-        await ctx.send(embed=embed, view=SupportView(self.bot))
+        await ctx.send(embed=GetSupportView.embed,
+                       view=GetSupportView(self.bot))
 
     @server.group(name="settings")
     async def settings(self, ctx: commands.Context) -> None:

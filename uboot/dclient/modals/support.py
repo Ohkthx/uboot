@@ -11,14 +11,10 @@ from dclient.views.threads import SupportThreadView
 
 
 class SupportModal(ui.Modal, title='Support Request'):
-    def __init__(self, bot: DiscordBot) -> None:
+    def __init__(self, bot: DiscordBot, issue: str) -> None:
         self.bot = bot
+        self.issue = issue.lower()
         super().__init__()
-
-    item = ui.TextInput(
-        label='Category for request',
-        placeholder='in-game, discord, website, or other',
-    )
 
     description = ui.TextInput(
         label='Description for request',
@@ -51,14 +47,14 @@ class SupportModal(ui.Modal, title='Support Request'):
             return
 
         user = interaction.user
-        ticket_id = tickets.Manager.total() + 1
-        title = f"ticket-{ticket_id}"
-        thread = await channel.create_thread(name=title,
+        ticket_id = tickets.Manager.total(interaction.guild.id) + 1
+        thread_name = f"{ticket_id}-{self.issue}"
+        thread = await channel.create_thread(name=thread_name,
                                              type=discord.ChannelType.private_thread)
-        embed = discord.Embed(title=f"New ticket opened!  id: {title}",
+        embed = discord.Embed(title=f"New ticket opened!  id: {thread_name}",
                               color=discord.Colour.brand_red(),
                               description=f"Created by: {user.mention}, id: {user.id}\n\n"
-                              f"Type: **{self.item.value}**\n"
+                              f"Type: **{self.issue.replace('_', '-')}**\n"
                               f"{self.description.value}\n\n"
                               "Please provide any additional relatable "
                               "information such as username, location, time, "
@@ -75,8 +71,8 @@ class SupportModal(ui.Modal, title='Support Request'):
         await thread.add_user(interaction.user)
         await res.send_message('Ticket opened! Click the link to access: '
                                f'{thread.mention}', ephemeral=True)
-        ticket = tickets.Manager.get(ticket_id)
-        ticket.title = title
+        ticket = tickets.Manager.get(interaction.guild.id, ticket_id)
+        ticket.title = self.issue
         self.bot._db.ticket.update(ticket)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:

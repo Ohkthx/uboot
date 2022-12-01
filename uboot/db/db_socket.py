@@ -17,10 +17,13 @@ class DbSocket():
         self._cursor = self._session.cursor()
         self._query = {
             'create_table': "",
+            'save_one': "",
             'save_many': "",
             'delete': "",
             'insert': "",
+            'update': "",
             'load_many': "",
+            'load_one': "",
             'table_exists': "SELECT name "
             "FROM sqlite_master "
             "WHERE name = '{table_name}'"
@@ -52,6 +55,16 @@ class DbSocket():
         query = self.query['create_table'].format(table_name=table_name)
         self._cursor.execute(query)
 
+    def _save_one(self, table_name: str, data) -> None:
+        self._is_saving = True
+        table_name = DbSocket._clean_name(table_name)
+        self._create_table(table_name)
+
+        query = self.query['save_one'].format(table_name=table_name,)
+        self._cursor.execute(query, data)
+        self._session.commit()
+        self._is_saving = False
+
     def _save_many(self, table_name: str, data) -> None:
         self._is_saving = True
         table_name = DbSocket._clean_name(table_name)
@@ -70,9 +83,19 @@ class DbSocket():
                                             value_key=value_key,
                                             set_key=set_key)
         try:
-            res = self._cursor.execute(query)
+            self._cursor.execute(query)
         except BaseException as err:
             print(f"SQL EXCEPTION:\nQuery:\n{query}\n\n{err}")
+        self._session.commit()
+
+    def _update(self, table_name: str, set_key: str, where_key: str) -> None:
+        table_name = DbSocket._clean_name(table_name)
+        self._create_table(table_name)
+
+        query = self.query['update'].format(table_name=table_name,
+                                            set_key=set_key,
+                                            where_key=where_key)
+        self._cursor.execute(query)
         self._session.commit()
 
     def _delete(self, table_name: str, where_key: str) -> None:
@@ -84,6 +107,15 @@ class DbSocket():
                                             condition=where_key)
         self._cursor.execute(query)
         self._session.commit()
+
+    def _load_one(self, table_name: str, where_key: str) -> None:
+        table_name = DbSocket._clean_name(table_name)
+        if not self._table_exists(table_name):
+            return
+
+        query = self.query['load_one'].format(table_name=table_name,
+                                              condition=where_key)
+        return self._cursor.execute(query).fetchone()
 
     def _load_many(self,
                    table_name: str,
