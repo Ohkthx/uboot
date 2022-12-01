@@ -146,7 +146,8 @@ class DiscordBot(commands.Bot):
                         await thread.edit(name=f"[EXPIRED] {thread.name}")
 
                     # Close the thread.
-                    await thread_close('none', 'expired', thread, reason, msg)
+                    await thread_close(['none'], 'expired',
+                                       thread, reason, msg)
 
     @status_update.before_loop
     async def status_update_wait_on_login(self) -> None:

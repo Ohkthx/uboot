@@ -37,6 +37,42 @@ class BasicThreadView(ui.View):
     def __init__(self) -> None:
         super().__init__(timeout=None)
 
+    @ui.button(label='In Progress', style=discord.ButtonStyle.blurple,
+               custom_id='basic_thread_view:progress')
+    async def progress(self, interaction: discord.Interaction, button: ui.Button):
+        thread = interaction.channel
+        if not interaction.guild or not isinstance(thread, discord.Thread):
+            return
+        if not isinstance(thread.parent, discord.ForumChannel):
+            return
+
+        setting = settings.Manager.get(interaction.guild.id)
+        role_id = setting.support_role_id
+        role = await validate_user(interaction, interaction.guild,
+                                   role_id, "support")
+        if not role:
+            return
+
+        res = interaction.response
+        user_msg = f"Your thread was marked in-progress by **{interaction.user}**."
+        embed = discord.Embed(title="Labeled as being in-progress",
+                              description=user_msg,
+                              color=discord.Colour.blue())
+        await res.send_message(embed=embed)
+
+        # Find the tags from available tags.
+        rm_names = ['closed']
+        add_tag = find_tag('in-progress', thread.parent)
+
+        tags = list(thread.applied_tags)
+        for name in rm_names:
+            tags = [t for t in tags if t.name != name]
+        if add_tag is not None and add_tag not in tags:
+            tags.append(add_tag)
+
+        # Apply the new tags.
+        await thread.edit(applied_tags=tags)
+
     @ui.button(label='🔒 Close', style=discord.ButtonStyle.grey,
                custom_id='basic_thread_view:close')
     async def close(self, interaction: discord.Interaction, button: ui.Button):
@@ -60,7 +96,7 @@ class BasicThreadView(ui.View):
 
         if interaction.user.id == thread.owner_id:
             user_msg = ""
-        await thread_close("open", "closed", thread,
+        await thread_close(["open", "in-progress"], "closed", thread,
                            "unlisted closure", user_msg)
 
 
@@ -165,5 +201,5 @@ class SuggestionView(ui.View):
 
         if interaction.user.id == thread.owner_id:
             user_msg = ""
-        await thread_close("open", "closed", thread,
+        await thread_close(["open", "in-progress"], "closed", thread,
                            "unlisted closure", user_msg)

@@ -82,19 +82,18 @@ async def get_message(bot: commands.Bot, channel_id: int,
         return None
 
 
-async def thread_close(tag_rm_name: str, tag_add_name: str,
+async def thread_close(tag_rm_names: list[str], tag_add_name: str,
                        thread: discord.Thread,
                        reason: str,
                        user_msg: str) -> None:
     tags = []
     if isinstance(thread.parent, ForumChannel):
         # Find the tags from available tags.
-        rm_tag = find_tag(tag_rm_name, thread.parent)
         add_tag = find_tag(tag_add_name, thread.parent)
 
         tags = list(thread.applied_tags)
-        if rm_tag is not None and rm_tag in tags:
-            tags = [t for t in tags if t.name != tag_rm_name]
+        for name in tag_rm_names:
+            tags = [t for t in tags if t.name != name]
         if add_tag is not None and add_tag not in tags:
             tags.append(add_tag)
 

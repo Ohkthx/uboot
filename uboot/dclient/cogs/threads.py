@@ -111,7 +111,7 @@ class Threads(commands.Cog):
 
         await ctx.channel.send(f"Thread closed by {author}.")
         await ctx.message.delete()
-        await thread_close('open', 'closed', ctx.channel, reason,
+        await thread_close(['open', 'in-progress'], 'closed', ctx.channel, reason,
                            f"{user_msg}.")
 
     @thread.command(name='box')
