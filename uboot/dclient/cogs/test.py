@@ -20,7 +20,7 @@ class Test(commands.Cog):
 
     @test.command(name="persist")
     async def persist(self, ctx: commands.Context):
-        """Starts a persistent view."""
+        """Creates a persistent view."""
         await ctx.send("What's your favourite colour?",
                        view=PersistentView(self.bot))
 

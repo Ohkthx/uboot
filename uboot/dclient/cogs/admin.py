@@ -8,7 +8,7 @@ from discord.ext.commands import param
 from managers import settings, react_roles
 from dclient import DiscordBot
 from dclient.views.support import SupportView
-from dclient.helper import get_channel, get_message
+from dclient.helper import get_channel, get_message, get_member, get_role
 
 
 class Admin(commands.Cog):
@@ -33,6 +33,38 @@ class Admin(commands.Cog):
         """
         if not ctx.invoked_subcommand:
             await ctx.send('invalid server command.')
+
+    @commands.is_owner()
+    @server.command(name="sudo")
+    async def sudo(self, ctx: commands.Context,
+                   length: int = param(description="Amount of time to "
+                                       "hold the role.",
+                                       default=5)):
+        """Elevatates permissions."""
+        await ctx.message.delete()
+        if not self.bot.user or not ctx.guild:
+            return
+
+        user = await get_member(self.bot, ctx.guild.id, ctx.author.id)
+        if not user:
+            return
+
+        bot_role = await get_role(self.bot, ctx.guild.id, self.bot.user.name)
+        if not bot_role:
+            return
+
+        try:
+            for role in ctx.guild.roles:
+                if role.position >= bot_role.position or role.is_bot_managed():
+                    continue
+
+                if role.permissions.administrator:
+                    await user.add_roles(role)
+                    await ctx.author.send(f"Given the {role.name} role.")
+                    self.bot.set_sudoer(user, role, length, datetime.now())
+                    return
+        except BaseException as err:
+            print(f"ERROR: {err}")
 
     @server.command(name='rm')
     async def rm(self, ctx: commands.Context,

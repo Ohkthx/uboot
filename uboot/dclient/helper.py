@@ -14,6 +14,22 @@ def find_tag(tag: str, ch: ForumChannel) -> Optional[discord.ForumTag]:
     return None
 
 
+async def get_role(bot: commands.Bot, guild_id: int,
+                   role_name: str) -> Optional[discord.Role]:
+    guild = await get_guild(bot, guild_id)
+    if not guild:
+        return None
+
+    role = next((r for r in guild.roles if r.name == role_name), None)
+    if not role:
+        try:
+            roles = await guild.fetch_roles()
+            role = next((r for r in roles if r.name == role_name), None)
+        except BaseException:
+            return None
+    return role
+
+
 async def get_guild(bot: commands.Bot,
                     guild_id: int) -> Optional[discord.Guild]:
     guild = bot.get_guild(guild_id)

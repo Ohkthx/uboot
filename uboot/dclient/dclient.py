@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -25,6 +26,22 @@ member_cache = discord.MemberCacheFlags(joined=True)
 defaultHelp = commands.DefaultHelpCommand(no_category="HELP")
 
 
+class Sudoer():
+    def __init__(self, user: discord.Member, role: discord.Role,
+                 length: int, timestamp: datetime) -> None:
+        self.user = user
+        self.role = role
+        self.length = length
+        self.timestamp = timestamp
+
+    def isexpired(self) -> bool:
+        now = datetime.now()
+        return now - self.timestamp > timedelta(minutes=self.length)
+
+    async def unbind(self) -> None:
+        await self.user.remove_roles(self.role)
+
+
 class DiscordBot(commands.Bot):
     def __init__(self, prefix: str) -> None:
         super().__init__(command_prefix=commands.when_mentioned_or(prefix),
@@ -45,6 +62,11 @@ class DiscordBot(commands.Bot):
         self._db.user.load_many()
         self._db.guild.load_many()
         self._db.ticket.load_many()
+        self.sudoer: Optional[Sudoer] = None
+
+    def set_sudoer(self, user: discord.Member, role: discord.Role,
+                   length: int, timestamp: datetime) -> None:
+        self.sudoer = Sudoer(user, role, length, timestamp)
 
     async def setup_hook(self) -> None:
         self.session = aiohttp.ClientSession()
@@ -85,6 +107,11 @@ class DiscordBot(commands.Bot):
 
     @tasks.loop(minutes=1)
     async def status_update(self) -> None:
+        if self.sudoer and self.sudoer.isexpired():
+            await self.sudoer.unbind()
+            await self.sudoer.user.send("Sudo status expired.")
+            self.sudoer = None
+
         if not self.user:
             return
         user = users.Manager.get(self.user.id)
@@ -148,6 +175,7 @@ class DiscordBot(commands.Bot):
         setting = settings.Manager.get(thread.guild.id)
         c_id = setting.suggestion_channel_id
         if c_id != 0 and c_id == thread.parent.id:
+            time.sleep(1)
             # Send the view for a suggestion channel.
             embed = discord.Embed(title="Reviewer Panel",
                                   description="Only a reviewer can access the"
@@ -156,6 +184,7 @@ class DiscordBot(commands.Bot):
                                   " the thread when complete.")
             await thread.send(embed=embed, view=SuggestionView())
         elif find_tag('closed', thread.parent):
+            time.sleep(1)
             embed = discord.Embed(title="Support Panel",
                                   description="Only support can access the"
                                   " option below.\nAs support, please mark "
