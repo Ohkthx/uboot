@@ -14,8 +14,8 @@ def find_tag(tag: str, ch: ForumChannel) -> Optional[discord.ForumTag]:
     return None
 
 
-async def get_role(bot: commands.Bot, guild_id: int,
-                   role_name: str) -> Optional[discord.Role]:
+async def get_role_by_name(bot: commands.Bot, guild_id: int,
+                           role_name: str) -> Optional[discord.Role]:
     guild = await get_guild(bot, guild_id)
     if not guild:
         return None
@@ -25,6 +25,22 @@ async def get_role(bot: commands.Bot, guild_id: int,
         try:
             roles = await guild.fetch_roles()
             role = next((r for r in roles if r.name == role_name), None)
+        except BaseException:
+            return None
+    return role
+
+
+async def get_role(bot: commands.Bot, guild_id: int,
+                   role_id: int) -> Optional[discord.Role]:
+    guild = await get_guild(bot, guild_id)
+    if not guild:
+        return None
+
+    role = next((r for r in guild.roles if r.id == role_id), None)
+    if not role:
+        try:
+            roles = await guild.fetch_roles()
+            role = next((r for r in roles if r.id == role_id), None)
         except BaseException:
             return None
     return role
@@ -85,7 +101,7 @@ async def get_message(bot: commands.Bot, channel_id: int,
 async def thread_close(tag_rm_names: list[str], tag_add_name: str,
                        thread: discord.Thread,
                        reason: str,
-                       user_msg: str) -> None:
+                       user_msg: Optional[str] = None) -> None:
     tags = []
     if isinstance(thread.parent, ForumChannel):
         # Find the tags from available tags.
@@ -106,19 +122,24 @@ async def thread_close(tag_rm_names: list[str], tag_add_name: str,
                       applied_tags=tags)
 
     # Message owner that their thread is closed.
-    if thread.guild and thread.owner_id:
-        owner = thread.guild.get_member(thread.owner_id)
-        if not owner:
-            try:
-                owner = await thread.guild.fetch_member(thread.owner_id)
-            except BaseException as err:
-                print(f"Error while closing thread: {err}")
-                return
-        if owner and user_msg:
-            try:
-                await owner.send(user_msg)
-            except BaseException as err:
-                print(f"Error while sending closure message: {err}")
+    if not thread.guild or not thread.owner_id:
+        return
+
+    if user_msg is None or user_msg == "":
+        return
+
+    owner = thread.guild.get_member(thread.owner_id)
+    if not owner:
+        try:
+            owner = await thread.guild.fetch_member(thread.owner_id)
+        except BaseException as err:
+            print(f"Error while closing thread: {err}")
+            return
+    if owner:
+        try:
+            await owner.send(user_msg)
+        except BaseException as err:
+            print(f"Error while sending closure message: {err}")
 
 
 async def react_processor(bot: commands.Bot,

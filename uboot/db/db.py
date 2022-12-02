@@ -1,3 +1,5 @@
+import os
+
 from .role import RoleDb
 from .user import UserDb
 from .guild_setting import GuildSettingDb
@@ -8,6 +10,10 @@ class SqliteDb():
     def __init__(self, suffix: str = "", filetype: str = "sqlite3") -> None:
         if suffix != "" and not suffix.startswith("_"):
             suffix = f"_{suffix}"
+
+        if not os.path.exists("dbs"):
+            os.makedirs("dbs")
+
         self._role_db = RoleDb(f"dbs/uboot{suffix}.{filetype}")
         self._user_db = UserDb(f"dbs/uboot{suffix}.{filetype}")
         self._guild_db = GuildSettingDb(f"dbs/uboot{suffix}.{filetype}")

@@ -8,7 +8,7 @@ from discord.ext.commands import param
 from managers import settings, react_roles
 from dclient import DiscordBot
 from dclient.views.support import GetSupportView
-from dclient.helper import get_channel, get_message, get_member, get_role
+from dclient.helper import get_channel, get_message, get_member, get_role_by_name
 
 
 class Admin(commands.Cog):
@@ -49,7 +49,8 @@ class Admin(commands.Cog):
         if not user:
             return
 
-        bot_role = await get_role(self.bot, ctx.guild.id, self.bot.user.name)
+        bot_role = await get_role_by_name(self.bot, ctx.guild.id,
+                                          self.bot.user.name)
         if not bot_role:
             return
 

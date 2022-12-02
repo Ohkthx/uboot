@@ -4,9 +4,9 @@ from typing import Union
 import discord
 from discord import ui
 
-from managers import tickets
+from managers import tickets, settings
 from dclient import DiscordBot
-from dclient.helper import thread_close
+from dclient.helper import thread_close, get_role
 
 
 class SupportThreadView(ui.View):
@@ -21,37 +21,66 @@ class SupportThreadView(ui.View):
                   description: str) -> discord.Embed:
         title = "New ticket opened!"
         color = discord.Colour.from_str("#00ff08")
+        fix_description = description.replace('\n', '\n> ')
         desc = f"**Created by**: `{creator}`\n"\
             f"**user id**: `{creator.id}`\n"\
             f"**ticket id**: `{name}`\n\n"\
             f"> **Type**: `{issue_type.replace('_', '-')}`\n"\
-            f"> ```{description}```"\
-            "\n\nPlease provide any additional relatable "\
+            f"> ```{fix_description}```\n\n"\
+            "Please provide any additional relatable "\
             "information such as username, location, time, "\
             "what you were doing, etc. down below so that "\
             f"{req_role.mention} can assist you efficiently.\n\n"\
-            "__Note__: Please do not close the ticket until all"\
-            " members have had a chance to acknowledge "\
-            "completion."
+            "> __**Options**:__\n"\
+            f"> ├ **Leave**: [{creator.mention}] Leave thread.\n"\
+            f"> └ **Close**: [{req_role.mention}] Lock thread.\n\n"\
+            "__Note__: Please leave the thread when your ticket is complete. "\
+            "When the thread is closed, you will be removed."
         embed = discord.Embed(title=title, description=desc,
                               color=color, timestamp=datetime.utcnow())
         embed.set_footer(text=f"Ticket created at")
 
         return embed
 
+    @ui.button(label='↵ Leave', style=discord.ButtonStyle.blurple,
+               custom_id='support_thread_view:leave')
+    async def leave(self, interaction: discord.Interaction, button: ui.Button):
+        guild = interaction.guild
+        thread = interaction.channel
+        if not guild or not thread:
+            return
+
+        if not isinstance(thread, discord.Thread):
+            return
+
+        await thread.remove_user(interaction.user)
+
     @ui.button(label='🔒 Close', style=discord.ButtonStyle.grey,
                custom_id='support_thread_view:close')
     async def support(self, interaction: discord.Interaction, button: ui.Button):
         guild = interaction.guild
-        channel = interaction.channel
-        if not guild or not channel:
+        thread = interaction.channel
+        if not guild or not thread:
             return
 
-        if not isinstance(channel, discord.Thread):
+        if not isinstance(thread, discord.Thread):
             return
 
-        ticket_info = channel.name.split('-')
-        ticket = tickets.Manager.by_name(guild.id, channel.name)
+        # Check role for button press.
+        role_id = settings.Manager.get(guild.id).support_role_id
+        role = await get_role(self.bot, guild.id, role_id)
+        if not role:
+            return
+        if not role in interaction.user.roles:
+            embed = discord.Embed(title="Invalid Permissions",
+                                  description=f"You must have the {role.mention} "
+                                  "role to do that.",
+                                  color=discord.Color.red())
+            return await interaction.response.send_message(embed=embed,
+                                                           ephemeral=True)
+
+        ticket_info = thread.name.split('-')
+        ticket = tickets.Manager.by_name(guild.id, thread.name)
         if not ticket:
             ticket_id = tickets.Manager.total(guild.id) + 1
             ticket_type = "unknown"
@@ -68,15 +97,14 @@ class SupportThreadView(ui.View):
         ticket.done = True
         self.bot._db.ticket.update(ticket)
 
-        res = interaction.response
-        await res.send_message("Support thread closed by "
-                               f"**{interaction.user}**.")
+        user_msg = f"Support thread was closed by **{interaction.user}**."
+        embed = discord.Embed(title="Thread Closed",
+                              description=user_msg,
+                              color=discord.Color.light_grey())
+        await interaction.response.send_message(embed=embed)
 
-        user_msg = f"Your thread was closed by **{interaction.user}**."
-        if interaction.user.id == channel.owner_id:
-            user_msg = ""
-        await thread_close(["open", "in-progress"], "closed", channel,
-                           "unlisted closure", user_msg)
+        await thread_close(["open", "in-progress"], "closed", thread,
+                           "unlisted closure")
 
 
 async def setup(bot: DiscordBot) -> None:

@@ -5,11 +5,12 @@ from datetime import datetime, timedelta
 # 2 : int - msg_count
 # 3 : int - gambles
 # 4 : int - gambles_won
-UserRaw = tuple[int, int, int, int, int]
+# 5 : int - button_press
+UserRaw = tuple[int, int, int, int, int, int]
 
 
 def make_raw(user_id: int) -> UserRaw:
-    return (user_id, 0, 0, 0, 0)
+    return (user_id, 0, 0, 0, 0, 0)
 
 
 class User():
@@ -19,6 +20,7 @@ class User():
         self.msg_count = raw[2]
         self.gambles = raw[3]
         self.gambles_won = raw[4]
+        self.button_press = raw[5]
         self.last_message = datetime.now() - timedelta(seconds=20)
 
     def __str__(self) -> str:
@@ -27,7 +29,7 @@ class User():
     @property
     def _raw(self) -> UserRaw:
         return (self.id, self.gold, self.msg_count, self.gambles,
-                self.gambles_won)
+                self.gambles_won, self.button_press)
 
     def add_message(self) -> None:
         self.msg_count += 1

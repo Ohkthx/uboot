@@ -5,7 +5,7 @@ from discord import ui
 from discord.ext import commands
 
 from managers import settings
-from dclient.helper import thread_close, find_tag, get_role, get_guild
+from dclient.helper import thread_close, find_tag, get_guild
 
 
 async def validate_user(interaction: discord.Interaction,
@@ -29,8 +29,7 @@ async def validate_user(interaction: discord.Interaction,
                               description=f"You must have the {role.mention} "
                               "role to do that.",
                               color=discord.Color.red())
-        await res.send_message(embed=embed, ephemeral=True)
-        return
+        return await res.send_message(embed=embed, ephemeral=True)
     return role
 
 
