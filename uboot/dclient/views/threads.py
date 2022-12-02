@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Union
 
 import discord
 from discord import ui
@@ -14,10 +15,11 @@ class SupportThreadView(ui.View):
         super().__init__(timeout=None)
 
     @staticmethod
-    def get_panel(creator: discord.User, req_role: discord.Role,
+    def get_panel(creator: Union[discord.User, discord.Member],
+                  req_role: discord.Role,
                   name: str, issue_type: str,
                   description: str) -> discord.Embed:
-        title = f"New ticket opened!"
+        title = "New ticket opened!"
         color = discord.Colour.from_str("#00ff08")
         desc = f"**Created by**: `{creator}`\n"\
             f"**user id**: `{creator.id}`\n"\
@@ -28,7 +30,7 @@ class SupportThreadView(ui.View):
             "information such as username, location, time, "\
             "what you were doing, etc. down below so that "\
             f"{req_role.mention} can assist you efficiently.\n\n"\
-            "Note: Please do not close the ticket until all"\
+            "__Note__: Please do not close the ticket until all"\
             " members have had a chance to acknowledge "\
             "completion."
         embed = discord.Embed(title=title, description=desc,
@@ -57,7 +59,7 @@ class SupportThreadView(ui.View):
                 ticket_type = str(ticket_info[1])
                 try:
                     ticket_id = int(ticket_info[0])
-                except:
+                except BaseException:
                     pass
 
             ticket = tickets.Manager.get(guild.id, ticket_id)

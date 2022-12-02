@@ -3,6 +3,7 @@ from discord.ext import commands
 
 from dclient import DiscordBot
 from dclient.views.test import PersistentView
+from dclient.views.red_button import RedButtonView
 
 
 class Test(commands.Cog):
@@ -23,6 +24,13 @@ class Test(commands.Cog):
         """Creates a persistent view."""
         await ctx.send("What's your favourite colour?",
                        view=PersistentView(self.bot))
+
+    @test.command(name="red-button")
+    async def red_button(self, ctx: commands.Context):
+        """Creates the red button view."""
+        await ctx.message.delete()
+        embed = RedButtonView.get_panel()
+        await ctx.send(embed=embed, view=RedButtonView())
 
 
 async def setup(bot: DiscordBot) -> None:

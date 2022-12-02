@@ -14,6 +14,7 @@ from managers import settings, users, react_roles
 from db import SqliteDb
 from .helper import thread_close, react_processor, get_channel, find_tag
 from dclient.views.suggestion import SuggestionView, BasicThreadView
+from dclient.views.red_button import RedButtonView
 
 
 intents = discord.Intents.default()
@@ -74,6 +75,7 @@ class DiscordBot(commands.Bot):
             await self.load_extension(ext)
         self.add_view(BasicThreadView())
         self.add_view(SuggestionView())
+        self.add_view(RedButtonView())
         self.archiver.start()  # pylint: disable=no-member
         self.status_update.start()  # pylint: disable=no-member
 

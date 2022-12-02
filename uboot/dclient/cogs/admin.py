@@ -113,7 +113,7 @@ class Admin(commands.Cog):
     @server.command(name="support")
     async def support(self, ctx: commands.Context):
         """Creates the support ticket button."""
-        await ctx.send(embed=GetSupportView.embed,
+        await ctx.send(embed=GetSupportView.get_panel(),
                        view=GetSupportView(self.bot))
 
     @server.group(name="settings")

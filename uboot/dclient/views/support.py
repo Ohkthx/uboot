@@ -10,13 +10,22 @@ class GetSupportView(ui.View):
         self.bot = bot
         super().__init__(timeout=None)
 
-    embed = discord.Embed(title="Found a bug, stuck, or need help in "
-                          "private?",
-                          description="If you have found a bug or need "
-                          "additional assistance that is not publicly "
-                          "displayed, feel free to press the button based on "
-                          "type of issue below and we will be right with you!",
-                          color=discord.Color.green())
+    @staticmethod
+    def get_panel() -> discord.Embed:
+        title = "Found a bug or need help in private?"
+        color = discord.Colour.from_str("#00ff08")
+        desc = f"If you would like to submit a support ticket, feel free to "\
+            "select the type of support you are requesting by pressing the "\
+            "related button below. You will be prompted to type a short "\
+            "description for the ticket.\n\n"\
+            "> __**Options**:__\n"\
+            "> ├ **In-Game**: In-Game ticket.\n"\
+            "> ├ **Discord**: Discord ticket.\n"\
+            "> ├ **Website**: Website ticket.\n"\
+            "> └ **Other**: Unknown/Other ticket.\n\n"\
+            "__Note__: This will provide you a link to a private discord "\
+            "channel only accessible by authorized staff."
+        return discord.Embed(title=title, description=desc, color=color)
 
     @ui.button(label='✉ In-Game', style=ButtonStyle.green,
                custom_id='get_support_view:in_game')
