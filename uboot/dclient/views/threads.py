@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import discord
 from discord import ui
 
@@ -10,6 +12,30 @@ class SupportThreadView(ui.View):
     def __init__(self, bot: DiscordBot) -> None:
         self.bot = bot
         super().__init__(timeout=None)
+
+    @staticmethod
+    def get_panel(creator: discord.User, req_role: discord.Role,
+                  name: str, issue_type: str,
+                  description: str) -> discord.Embed:
+        title = f"New ticket opened!"
+        color = discord.Colour.from_str("#00ff08")
+        desc = f"**Created by**: `{creator}`\n"\
+            f"**user id**: `{creator.id}`\n"\
+            f"**ticket id**: `{name}`\n\n"\
+            f"> **Type**: `{issue_type.replace('_', '-')}`\n"\
+            f"> ```{description}```"\
+            "\n\nPlease provide any additional relatable "\
+            "information such as username, location, time, "\
+            "what you were doing, etc. down below so that "\
+            f"{req_role.mention} can assist you efficiently.\n\n"\
+            "Note: Please do not close the ticket until all"\
+            " members have had a chance to acknowledge "\
+            "completion."
+        embed = discord.Embed(title=title, description=desc,
+                              color=color, timestamp=datetime.utcnow())
+        embed.set_footer(text=f"Ticket created at")
+
+        return embed
 
     @ui.button(label='🔒 Close', style=discord.ButtonStyle.grey,
                custom_id='support_thread_view:close')

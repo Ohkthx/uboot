@@ -170,6 +170,9 @@ class DiscordBot(commands.Bot):
         self._db.user.update(user)
 
     async def on_thread_create(self, thread: discord.Thread) -> None:
+        if not thread.guild:
+            return
+
         if not isinstance(thread.parent, discord.ForumChannel):
             return
 
@@ -178,18 +181,11 @@ class DiscordBot(commands.Bot):
         if c_id != 0 and c_id == thread.parent.id:
             time.sleep(1)
             # Send the view for a suggestion channel.
-            embed = discord.Embed(title="Reviewer Panel",
-                                  description="Only a reviewer can access the"
-                                  " options below.\nAs a reviewer, please "
-                                  "select either 'Approve' or 'Deny'. 'Close'"
-                                  " the thread when complete.")
+            embed = await SuggestionView.get_panel(self, thread.guild.id)
             await thread.send(embed=embed, view=SuggestionView())
         elif find_tag('closed', thread.parent):
             time.sleep(1)
-            embed = discord.Embed(title="Support Panel",
-                                  description="Only support can access the"
-                                  " option below.\nAs support, please mark "
-                                  "'Close' when the thread is complete.")
+            embed = await BasicThreadView.get_panel(self, thread.guild.id)
             await thread.send(embed=embed, view=BasicThreadView())
 
         open_tag = find_tag('open', thread.parent)

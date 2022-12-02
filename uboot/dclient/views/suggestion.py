@@ -2,9 +2,10 @@ from typing import Optional
 
 import discord
 from discord import ui
+from discord.ext import commands
 
 from managers import settings
-from dclient.helper import thread_close, find_tag
+from dclient.helper import thread_close, find_tag, get_role, get_guild
 
 
 async def validate_user(interaction: discord.Interaction,
@@ -36,6 +37,28 @@ async def validate_user(interaction: discord.Interaction,
 class BasicThreadView(ui.View):
     def __init__(self) -> None:
         super().__init__(timeout=None)
+
+    @staticmethod
+    async def get_panel(bot: commands.Bot, guild_id: int) -> discord.Embed:
+        role_name = "support"
+
+        setting = settings.Manager.get(guild_id)
+        role_id = setting.support_role_id
+        guild = await get_guild(bot, guild_id)
+        if guild:
+            role = next((r for r in guild.roles if r.id == role_id), None)
+            if role:
+                role_name = role.mention
+
+        title = "Support Panel"
+        color = discord.Colour.from_str("#00ff08")
+        desc = f"This interactive panel is only for use by {role_name}.\n\n"\
+            "> __**Options**:__\n"\
+            "> ├ **In Progress**: Work in progress.\n"\
+            "> └ **Close**: Close and lock thread.\n\n"\
+            "__Note__: Please allow all parties to view the thread before closure."
+
+        return discord.Embed(title=title, description=desc, color=color)
 
     @ui.button(label='In Progress', style=discord.ButtonStyle.blurple,
                custom_id='basic_thread_view:progress')
@@ -103,6 +126,29 @@ class BasicThreadView(ui.View):
 class SuggestionView(ui.View):
     def __init__(self) -> None:
         super().__init__(timeout=None)
+
+    @staticmethod
+    async def get_panel(bot: commands.Bot, guild_id: int) -> discord.Embed:
+        role_name = "a reviewer"
+
+        setting = settings.Manager.get(guild_id)
+        role_id = setting.suggestion_reviewer_role_id
+        guild = await get_guild(bot, guild_id)
+        if guild:
+            role = next((r for r in guild.roles if r.id == role_id), None)
+            if role:
+                role_name = role.mention
+
+        title = "Suggestion Reviewer Panel"
+        color = discord.Colour.from_str("#00ff08")
+        desc = f"This interactive panel is only for use by {role_name}.\n\n"\
+            "> __**Options**:__\n"\
+            "> ├ **Approve**: Eventual implementation.\n"\
+            "> ├ **Deny**: Not implementing.\n"\
+            "> └ **Close**: Close and lock thread.\n\n"\
+            "__Note__: Please allow all parties to view the thread before closure."
+
+        return discord.Embed(title=title, description=desc, color=color)
 
     @ui.button(label='🗹 Approve', style=discord.ButtonStyle.green,
                custom_id='suggestion_view:approve')

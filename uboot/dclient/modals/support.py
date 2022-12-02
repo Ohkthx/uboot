@@ -51,19 +51,10 @@ class SupportModal(ui.Modal, title='Support Request'):
         thread_name = f"{ticket_id}-{self.issue}"
         thread = await channel.create_thread(name=thread_name,
                                              type=discord.ChannelType.private_thread)
-        embed = discord.Embed(title=f"New ticket opened!  id: {thread_name}",
-                              color=discord.Colour.brand_red(),
-                              description=f"Created by: {user.mention}, id: {user.id}\n\n"
-                              f"Type: **{self.issue.replace('_', '-')}**\n"
-                              f"{self.description.value}\n\n"
-                              "Please provide any additional relatable "
-                              "information such as username, location, time, "
-                              "what you were doing, etc. down below so that "
-                              f"{role.mention} can assist you efficiently."
-                              )
-        ts = datetime.utcnow().replace(microsecond=0).isoformat()
-        embed.set_footer(text=f"UTC Timestamp: {ts}Z")
-        await thread.send(embed=embed,
+        panel_text = SupportThreadView.get_panel(user, role, thread_name,
+                                                 self.issue,
+                                                 self.description.value)
+        await thread.send(embed=panel_text,
                           content="Summoning assistance... Hail, "
                           f"{role.mention}!",
                           view=SupportThreadView(self.bot)

@@ -114,11 +114,10 @@ class Threads(commands.Cog):
         await thread_close(['open', 'in-progress'], 'closed', ctx.channel, reason,
                            f"{user_msg}.")
 
-    @thread.command(name='box')
+    @thread.command(name='panel')
     @commands.has_guild_permissions(manage_messages=True)
-    async def box(self, ctx: commands.Context) -> None:
-        """Creates the close, approve, denied, etc. box in the event it
-        was not created at thread creation."""
+    async def panel(self, ctx: commands.Context) -> None:
+        """Creates a panel for a thread."""
         await ctx.message.delete()
         thread = ctx.channel
         if not thread or not isinstance(thread, discord.Thread):
