@@ -7,8 +7,8 @@ from discord.ext import commands
 from managers import react_roles
 
 
-def find_tag(tag: str, ch: ForumChannel) -> Optional[discord.ForumTag]:
-    for avail_tag in ch.available_tags:
+def find_tag(tag: str, channel: ForumChannel) -> Optional[discord.ForumTag]:
+    for avail_tag in channel.available_tags:
         if avail_tag.name.lower() == tag.lower():
             return avail_tag
     return None

@@ -14,9 +14,9 @@ from dclient.helper import get_channel, get_message, get_member, get_role_by_nam
 class Admin(commands.Cog):
     """Grouped administrative commands for managing a server.
     Additional 'help' information on subgroups:
-        ?help server
-        ?help server settings
-        ?help server react-role
+        (prefix)help server
+        (prefix)help server settings
+        (prefix)help server react-role
     """
 
     def __init__(self, bot: DiscordBot) -> None:
@@ -28,8 +28,8 @@ class Admin(commands.Cog):
     async def server(self, ctx: commands.Context) -> None:
         """Grouped administrative commands for managing a server.
         Additional 'help' information on subgroups:
-            ?help server settings
-            ?help server react-role
+            (prefix)help server settings
+            (prefix)help server react-role
         """
         if not ctx.invoked_subcommand:
             await ctx.send('invalid server command.')
@@ -73,7 +73,7 @@ class Admin(commands.Cog):
                      description="Amount of messages to delete.")) -> None:
         """Removes 'n' amount of messages.
         example:
-            ?server rm 10
+            (prefix)server rm 10
         """
         c = ctx.channel
         if isinstance(c, (discord.Thread, discord.TextChannel)):
@@ -87,7 +87,7 @@ class Admin(commands.Cog):
         """Adds a specified role by Id to all current guild members.
 
         example:
-            ?server add-role-all 1234567890
+            (prefix)server add-role-all 1234567890
         """
         if not ctx.guild:
             return
@@ -121,11 +121,11 @@ class Admin(commands.Cog):
     async def settings(self, ctx: commands.Context) -> None:
         """Set various server specific settings for the discord bot.
         Information on specific settings:
-            ?help server settings [command]
+            (prefix)help server settings [command]
 
         examples:
-            ?server settings market-channel #auction-house
-            ?server settings expiration 10
+            (prefix)server settings market-channel #auction-house
+            (prefix)server settings expiration 10
         """
         if ctx.invoked_subcommand is None:
             await ctx.send('invalid setting command.')
@@ -154,7 +154,7 @@ class Admin(commands.Cog):
         """Sets the channel id for the current market channel.
         Channel must be a Forum Channel.
         example:
-            ?server settings market-channel #market
+            (prefix)server settings market-channel #market
         """
         if not ctx.guild:
             return
@@ -182,7 +182,7 @@ class Admin(commands.Cog):
         """Sets the channel id for the emoji reaction roles.
         Channel must be a Text Channel.
         example:
-            ?server settings react-role-channel #role-selection
+            (prefix)server settings react-role-channel #role-selection
         """
         if not ctx.guild:
             return
@@ -207,7 +207,7 @@ class Admin(commands.Cog):
                                  description="Message Id for Emoji Reaction Roles.")):
         """Sets the message id for emoji reaction roles.
         example:
-            ?server settings react-role-msg 1234567890
+            (prefix)server settings react-role-msg 1234567890
         """
         if not ctx.guild:
             return
@@ -249,7 +249,7 @@ class Admin(commands.Cog):
                                     "market posts expire.")):
         """Sets the amount of days until market posts are set to expire.
         example:
-            ?server settings expiration 15
+            (prefix)server settings expiration 15
         """
         if not ctx.guild:
             return
@@ -274,7 +274,7 @@ class Admin(commands.Cog):
         """Sets the channel id for the current support channel.
         Channel must be a Text Channel.
         example:
-            ?server settings support-channel #support
+            (prefix)server settings support-channel #support
         """
         if not ctx.guild:
             return
@@ -300,7 +300,7 @@ class Admin(commands.Cog):
                                default=None)) -> None:
         """Sets the role id for the current support role.
         example:
-            ?server settings support-role @admins
+            (prefix)server settings support-role @admins
         """
         if not ctx.guild:
             return
@@ -324,7 +324,7 @@ class Admin(commands.Cog):
         """Sets the channel id for the current suggestion channel.
         Channel must be a Forum Channel.
         example:
-            ?server settings suggestion-channel #suggestion-forum
+            (prefix)server settings suggestion-channel #suggestion-forum
         """
         if not ctx.guild:
             return
@@ -350,7 +350,7 @@ class Admin(commands.Cog):
                                            default=None)) -> None:
         """Sets the role id for the current suggestion reviewer role.
         example:
-            ?server settings suggestion-reviewer-role @reviewers
+            (prefix)server settings suggestion-reviewer-role @reviewers
         """
         if not ctx.guild:
             return
@@ -371,9 +371,9 @@ class Admin(commands.Cog):
         """Used to bind or unbind emoji reactions to roles.
 
         examples:
-            ?server react-role bind 😄 1234567890
-            ?server react-role bind 😄 1234567890 True
-            ?server react-role unbind 😄 1234567890
+            (prefix)server react-role bind 😄 1234567890
+            (prefix)server react-role bind 😄 1234567890 True
+            (prefix)server react-role unbind 😄 1234567890
         """
         if not ctx.invoked_subcommand:
             await ctx.send('invalid react-role command.')
@@ -394,8 +394,8 @@ class Admin(commands.Cog):
         'True' then selecting a reaction will REMOVE the bound role.
 
         examples:
-            ?server react-role bind 😄 1234567890
-            ?server react-role bind 😄 1234567890 True
+            (prefix)server react-role bind 😄 1234567890
+            (prefix)server react-role bind 😄 1234567890 True
         """
         if not ctx.guild:
             return
@@ -456,7 +456,7 @@ class Admin(commands.Cog):
         """Unbinds an emoji from role assignment.
 
         example:
-            ?server react-role unbind 😄 1234567890
+            (prefix)server react-role unbind 😄 1234567890
         """
         if not ctx.guild:
             return

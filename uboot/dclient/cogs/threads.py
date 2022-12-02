@@ -8,8 +8,8 @@ from dclient.helper import find_tag, thread_close, get_member
 class Threads(commands.Cog):
     """Thread management for manually assigning thread status.
     Additional 'help' information:
-        ?help thread
-        ?help thread [command]
+        (prefix)help thread
+        (prefix)help thread [command]
     """
 
     def __init__(self, bot: DiscordBot) -> None:
@@ -21,11 +21,11 @@ class Threads(commands.Cog):
     async def thread(self, ctx: commands.Context) -> None:
         """Thread management for manually assigning thread status.
         Additional 'help' information:
-            ?help thread [command]
+            (prefix)help thread [command]
 
         examples:
-            ?thread open
-            ?thread close
+            (prefix)thread open
+            (prefix)thread close
         """
         if not isinstance(ctx.channel, discord.Thread):
             await ctx.message.delete()
@@ -55,7 +55,7 @@ class Threads(commands.Cog):
     async def isdone(self, ctx: commands.Context) -> None:
         """Prompts the members if the thread is complete or not."""
         await ctx.send("Is the thread ready to be permanently closed?\n"
-                       "If so, please type `?thread close`")
+                       f"If so, please type `{self.bot.prefix}thread close`")
         await ctx.message.delete()
 
     @thread.command(name='open')

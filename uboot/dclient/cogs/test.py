@@ -30,7 +30,8 @@ class Test(commands.Cog):
         """Creates the red button view."""
         await ctx.message.delete()
         embed = RedButtonView.get_panel()
-        await ctx.send(embed=embed, view=RedButtonView(self.bot))
+        last = await ctx.send(embed=embed, view=RedButtonView(self.bot))
+        self.bot.last_button = last
 
 
 async def setup(bot: DiscordBot) -> None:

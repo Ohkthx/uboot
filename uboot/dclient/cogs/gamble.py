@@ -1,4 +1,5 @@
 import random
+from datetime import datetime, timezone
 
 import discord
 from discord.ext import commands
@@ -22,7 +23,7 @@ class Gamble(commands.Cog):
         Seven: 7       with a 4:1 payout.
 
     example:
-        ?bet 40 low"""
+        (prefix)bet 40 low"""
 
     def __init__(self, bot: DiscordBot) -> None:
         self.bot = bot
@@ -65,12 +66,15 @@ class Gamble(commands.Cog):
                         displayed_default="self")):
         """Shows statistics for a specified user, defaults to you.
         examples:
-            ?stats
-            ?stats @Gatekeeper
-            ?stats 1044706648964472902"""
+            (prefix)stats
+            (prefix)stats @Gatekeeper
+            (prefix)stats 1044706648964472902"""
         user_l = users.Manager.get(user.id)
+        title = '' if user_l.button_press == 0 else ', the Button Presser'
+
         gold_t = user_l.gold
         if self.bot.user and self.bot.user.id == user.id:
+            title = ', the Scholar'
             # Get all of the gold lost from users.
             total: int = 0
             for u in users.Manager.getall():
@@ -83,17 +87,22 @@ class Gamble(commands.Cog):
             win_rate = (1 + (user_l.gambles_won - user_l.gambles) /
                         user_l.gambles) * 100
 
-        embed = discord.Embed(title=user)
-        embed.add_field(name="Gambling Stats", value='-' * 32, inline=False)
-        embed.add_field(name="Gold", value=gold_t)
-        embed.add_field(name="Messages", value=user_l.msg_count)
-        embed.add_field(name="ㅤ", value="ㅤ")
-        embed.add_field(name="Gambles", value=user_l.gambles)
-        embed.add_field(name="Wins", value=user_l.gambles_won)
-        embed.add_field(name="Win-Rate", value=f"{win_rate:0.2f}%")
-        embed.add_field(name="ㅤ", value='-' * 32, inline=False)
+        age = datetime.now(timezone.utc) - user.created_at
+        year_str = '' if age.days // 365 < 1 else f"{age.days//365} year(s), "
+        day_str = '' if age.days % 365 == 0 else f"{int(age.days%365)} day(s)"
+
+        desc = f"**{user}{title}**\n\n"\
+            f"**user id**: `{user.id}`\n"\
+            f"**age**: `{year_str}{day_str}`\n"\
+            f"**gold**: `{gold_t} gp`\n"\
+            f"**messages**: `{user_l.msg_count}`\n\n"\
+            "> __Gambles__:\n"\
+            f"> ├ **total**: `{user_l.gambles}`\n"\
+            f"> ├ **won**: `{user_l.gambles_won}`\n"\
+            f"> └ **win-rate**: `{win_rate:0.2f}%`\n"
+
+        embed = discord.Embed(description=desc)
         embed.set_thumbnail(url=user.display_avatar.url)
-        embed.set_footer(text=f"Id: {user.id}")
 
         await ctx.send(embed=embed)
 
@@ -104,7 +113,7 @@ class Gamble(commands.Cog):
                     to: discord.Member = param(description="Recipient")):
         """Give or remove gold from a user.
         example:
-            ?spawn 40 @Gatekeeper"""
+            (prefix)spawn 40 @Gatekeeper"""
         user = users.Manager.get(to.id)
         user.gold += amount
         self.bot._db.user.update(user)
@@ -120,7 +129,7 @@ class Gamble(commands.Cog):
                    to: discord.Member = param(description="Recipient")):
         """Give gold from yourself to another user.
         example:
-            ?give 40 @Gatekeeper"""
+            (prefix)give 40 @Gatekeeper"""
         from_user = users.Manager.get(ctx.author.id)
         if amount > from_user.gold:
             amount = from_user.gold
@@ -153,9 +162,9 @@ class Gamble(commands.Cog):
         """Place your bet, requires an amount and position (high, low, seven)
         The amount required is either 20gp OR 10% of your current gold.
 
-        Check your current gold with: ?stats
+        Check your current gold with: (prefix)stats
         example:
-            ?bet 40 low"""
+            (prefix)bet 40 low"""
         if amount <= 0:
             await ctx.send("cannot be 0 or less.")
             return

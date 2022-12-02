@@ -1,8 +1,15 @@
+import random
+from itertools import repeat
+
 import discord
 from discord import ui
 
 from dclient import DiscordBot
 from managers import users
+
+
+red_button_text = ["Nothing appears to have happened."]
+red_button_text.extend(repeat("Nothing happened.", 6))
 
 
 class RedButtonView(ui.View):
@@ -22,8 +29,8 @@ class RedButtonView(ui.View):
         user = users.Manager.get(interaction.user.id)
         user.button_press += 1
         self.bot._db.user.update(user)
-        await interaction.response.send_message("Nothing happened.",
-                                                ephemeral=True)
+        val = red_button_text[random.randrange(0, len(red_button_text))]
+        await interaction.response.send_message(val, ephemeral=True)
 
 
 async def setup(bot: DiscordBot) -> None:

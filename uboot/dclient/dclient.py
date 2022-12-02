@@ -1,5 +1,6 @@
 import logging
 import time
+import random
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -42,6 +43,17 @@ class Sudoer():
         await self.user.remove_roles(self.role)
 
 
+cog_extensions: list[str] = ['dclient.cogs.general',
+                             'dclient.cogs.threads',
+                             'dclient.cogs.gamble',
+                             'dclient.cogs.admin',
+                             'dclient.cogs.test',
+                             'dclient.views.test',
+                             'dclient.views.support',
+                             'dclient.views.threads',
+                             'dclient.views.red_button']
+
+
 class DiscordBot(commands.Bot):
     def __init__(self, prefix: str) -> None:
         super().__init__(command_prefix=commands.when_mentioned_or(prefix),
@@ -49,21 +61,14 @@ class DiscordBot(commands.Bot):
                          member_cache_flags=member_cache,
                          help_command=defaultHelp)
         self.prefix = prefix
-        self._extensions: list[str] = ['dclient.cogs.general',
-                                       'dclient.cogs.threads',
-                                       'dclient.cogs.gamble',
-                                       'dclient.cogs.admin',
-                                       'dclient.cogs.test',
-                                       'dclient.views.test',
-                                       'dclient.views.support',
-                                       'dclient.views.threads',
-                                       'dclient.views.red_button']
+        self._extensions = cog_extensions
         self._db = SqliteDb("test")
         self._db.role.load_many()
         self._db.user.load_many()
         self._db.guild.load_many()
         self._db.ticket.load_many()
         self.sudoer: Optional[Sudoer] = None
+        self.last_button: Optional[discord.Message] = None
 
     def set_sudoer(self, user: discord.Member, role: discord.Role,
                    length: int, timestamp: datetime) -> None:
@@ -108,6 +113,17 @@ class DiscordBot(commands.Bot):
 
     @tasks.loop(minutes=1)
     async def status_update(self) -> None:
+        if self.last_button:
+            print("Checking button...")
+            if random.randint(0, 9) == 0:
+                print("  Deleting.")
+                try:
+                    await self.last_button.delete()
+                except BaseException:
+                    pass
+                finally:
+                    self.last_button = None
+
         if self.sudoer and self.sudoer.isexpired():
             await self.sudoer.unbind()
             await self.sudoer.user.send("Sudo status expired.")
@@ -120,7 +136,9 @@ class DiscordBot(commands.Bot):
         if user.gambles > 0:
             win_rate = (1 + (user.gambles_won - user.gambles) /
                         user.gambles) * 100
-        activity = discord.Game(f"?help | win-rate: {win_rate:0.1f}%")
+        activity = discord.Game(
+            f"{self.prefix}help | win-rate: {win_rate:0.1f}%",
+        )
         await self.change_presence(activity=activity)
 
     @tasks.loop(minutes=15)

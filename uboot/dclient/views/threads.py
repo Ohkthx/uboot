@@ -6,7 +6,7 @@ from discord import ui
 
 from managers import tickets, settings
 from dclient import DiscordBot
-from dclient.helper import thread_close, get_role
+from dclient.helper import thread_close, get_role, get_member
 
 
 class SupportThreadView(ui.View):
@@ -71,7 +71,12 @@ class SupportThreadView(ui.View):
         role = await get_role(self.bot, guild.id, role_id)
         if not role:
             return
-        if not role in interaction.user.roles:
+
+        user = await get_member(self.bot, guild.id, interaction.user.id)
+        if not user:
+            return
+
+        if not role in user.roles:
             embed = discord.Embed(title="Invalid Permissions",
                                   description=f"You must have the {role.mention} "
                                   "role to do that.",
@@ -97,7 +102,7 @@ class SupportThreadView(ui.View):
         ticket.done = True
         self.bot._db.ticket.update(ticket)
 
-        user_msg = f"Support thread was closed by **{interaction.user}**."
+        user_msg = f"Support thread was closed by **{user}**."
         embed = discord.Embed(title="Thread Closed",
                               description=user_msg,
                               color=discord.Color.light_grey())
