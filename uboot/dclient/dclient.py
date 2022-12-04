@@ -27,20 +27,41 @@ member_cache = discord.MemberCacheFlags(joined=True)
 defaultHelp = commands.DefaultHelpCommand(no_category="HELP")
 
 
-class Sudoer():
-    def __init__(self, user: discord.Member, role: discord.Role,
-                 length: int, timestamp: datetime) -> None:
-        self.user = user
-        self.role = role
+class DestructableView():
+    def __init__(self, msg: discord.Message, user_id: int, length: int) -> None:
+        self.msg = msg
+        self.user_id = user_id
         self.length = length
-        self.timestamp = timestamp
+        self.timestamp = datetime.now()
 
     def isexpired(self) -> bool:
         now = datetime.now()
-        return now - self.timestamp > timedelta(minutes=self.length)
+        return now - self.timestamp > timedelta(seconds=self.length)
 
-    async def unbind(self) -> None:
-        await self.user.remove_roles(self.role)
+    async def remove(self) -> None:
+        try:
+            await self.msg.edit(view=None)
+        except:
+            pass
+
+
+class Sudoer():
+    def __init__(self, user: discord.Member, role: discord.Role,
+                 length: int) -> None:
+        self.user = user
+        self.role = role
+        self.length = length
+        self.timestamp = datetime.now()
+
+    def isexpired(self) -> bool:
+        now = datetime.now()
+        return now - self.timestamp > timedelta(seconds=self.length)
+
+    async def remove(self) -> None:
+        try:
+            await self.user.remove_roles(self.role)
+        except:
+            pass
 
 
 cog_extensions: list[str] = ['dclient.cogs.general',
@@ -68,11 +89,21 @@ class DiscordBot(commands.Bot):
         self._db.guild.load_many()
         self._db.ticket.load_many()
         self.sudoer: Optional[Sudoer] = None
+        self.destructables: dict[int, DestructableView] = {}
         self.last_button: Optional[discord.Message] = None
 
     def set_sudoer(self, user: discord.Member, role: discord.Role,
-                   length: int, timestamp: datetime) -> None:
-        self.sudoer = Sudoer(user, role, length, timestamp)
+                   length: int) -> None:
+        self.sudoer = Sudoer(user, role, length)
+
+    async def rm_user_destructable(self, user_id: int) -> None:
+        delete: list[int] = []
+        for id, destruct in self.destructables.items():
+            if destruct.user_id == user_id:
+                await destruct.remove()
+                delete.append(id)
+        for i in delete:
+            del self.destructables[i]
 
     async def setup_hook(self) -> None:
         self.session = aiohttp.ClientSession()
@@ -111,12 +142,10 @@ class DiscordBot(commands.Bot):
         self._db.role.delete_one(react_role)
         return True
 
-    @tasks.loop(minutes=1)
+    @tasks.loop(seconds=15)
     async def status_update(self) -> None:
         if self.last_button:
-            print("Checking button...")
             if random.randint(0, 9) == 0:
-                print("  Deleting.")
                 try:
                     await self.last_button.delete()
                 except BaseException:
@@ -124,20 +153,24 @@ class DiscordBot(commands.Bot):
                 finally:
                     self.last_button = None
 
+        delete: list[int] = []
+        for id, destruct in self.destructables.items():
+            if destruct.isexpired():
+                await destruct.remove()
+                delete.append(id)
+        for i in delete:
+            del self.destructables[i]
+
         if self.sudoer and self.sudoer.isexpired():
-            await self.sudoer.unbind()
+            await self.sudoer.remove()
             await self.sudoer.user.send("Sudo status expired.")
             self.sudoer = None
 
         if not self.user:
             return
         user = users.Manager.get(self.user.id)
-        win_rate = 0
-        if user.gambles > 0:
-            win_rate = (1 + (user.gambles_won - user.gambles) /
-                        user.gambles) * 100
         activity = discord.Game(
-            f"{self.prefix}help | win-rate: {win_rate:0.1f}%",
+            f"{self.prefix}help | win-rate: {user.win_rate():0.1f}%",
         )
         await self.change_presence(activity=activity)
 

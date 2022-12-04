@@ -39,6 +39,16 @@ class User():
             self.gold += 1
             self.last_message = now
 
+    def win_rate(self) -> float:
+        if self.gambles == 0:
+            return 0
+        return (1 + (self.gambles_won - self.gambles) /
+                self.gambles) * 100
+
+    def minimum(self, floor: int) -> float:
+        minimum_offset = int(self.gold * 0.1)
+        return minimum_offset if minimum_offset > floor else floor
+
 
 class Manager():
     _users: dict[int, User] = {}

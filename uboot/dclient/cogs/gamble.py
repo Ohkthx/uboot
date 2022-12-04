@@ -6,12 +6,9 @@ from discord.ext import commands
 from discord.ext.commands import param
 
 from managers import users
-from dclient import DiscordBot
+from dclient import DiscordBot, DestructableView
 from dclient.helper import get_member
-
-
-def roll_dice() -> tuple[int, int]:
-    return (random.randint(1, 6), random.randint(1, 6))
+from dclient.views.gamble import GambleView, gamble
 
 
 class Gamble(commands.Cog):
@@ -48,9 +45,7 @@ class Gamble(commands.Cog):
             if not user:
                 continue
             pos += 1
-            win_rate = (1 + (u.gambles_won - u.gambles) /
-                        u.gambles) * 100
-            wr = f"Win-Rate: {win_rate:0.2f}%"
+            wr = f"Win-Rate: {u.win_rate():0.2f}%"
             user_board.append(f"{pos}: **{user}** - {u.gold}gp - {wr}")
         summary = "\n".join(user_board)
         embed = discord.Embed(title="Top 10 Gamblers",
@@ -75,33 +70,30 @@ class Gamble(commands.Cog):
         gold_t = user_l.gold
         if self.bot.user and self.bot.user.id == user.id:
             title = ', the Scholar'
-            # Get all of the gold lost from users.
+            # Get all of the gold lost from nusers.
             total: int = 0
             for u in users.Manager.getall():
                 if u.gold < u.msg_count:
                     total += (u.msg_count - u.gold)
             gold_t = total
 
-        win_rate = 0
-        if user_l.gambles > 0:
-            win_rate = (1 + (user_l.gambles_won - user_l.gambles) /
-                        user_l.gambles) * 100
-
         age = datetime.now(timezone.utc) - user.created_at
         year_str = '' if age.days // 365 < 1 else f"{age.days//365} year(s), "
         day_str = '' if age.days % 365 == 0 else f"{int(age.days%365)} day(s)"
 
+        color = discord.Colour.from_str("#00ff08")
         desc = f"**{user}{title}**\n\n"\
-            f"**user id**: `{user.id}`\n"\
-            f"**age**: `{year_str}{day_str}`\n"\
-            f"**gold**: `{gold_t} gp`\n"\
-            f"**messages**: `{user_l.msg_count}`\n\n"\
-            "> __Gambles__:\n"\
-            f"> ├ **total**: `{user_l.gambles}`\n"\
-            f"> ├ **won**: `{user_l.gambles_won}`\n"\
-            f"> └ **win-rate**: `{win_rate:0.2f}%`\n"
+            f"**id**: {user.id}\n"\
+            f"**age**: {year_str}{day_str}\n"\
+            f"**gold**: {gold_t} gp\n"\
+            f"**messages**: {user_l.msg_count}\n\n"\
+            "> __Gamble__:\n"\
+            f"> ├ **total**: {user_l.gambles}\n"\
+            f"> ├ **won**: {user_l.gambles_won}\n"\
+            f"> ├ **win-rate**: {user_l.win_rate():0.2f}%\n"\
+            f"> └ **minimum**: {user_l.minimum(20)} gp\n"
 
-        embed = discord.Embed(description=desc)
+        embed = discord.Embed(description=desc, color=color)
         embed.set_thumbnail(url=user.display_avatar.url)
 
         await ctx.send(embed=embed)
@@ -164,69 +156,42 @@ class Gamble(commands.Cog):
 
         Check your current gold with: (prefix)stats
         example:
-            (prefix)bet 40 low"""
-        if amount <= 0:
-            await ctx.send("cannot be 0 or less.")
-            return
+            (prefix)bet 40 low
+        """
 
-        valid_input = ("high", "low", "seven", "7")
-        if side.lower() not in valid_input:
-            await ctx.send("You must choose: high, low, or seven")
-            return
-
+        view = None
+        color_hex = "#ff0f08"  # Loss color.
         user = users.Manager.get(ctx.author.id)
-        if amount > user.gold:
-            amount = user.gold
+        old_gold = user.gold
+        results = gamble(user, str(ctx.author), amount, side)
+        if results.iserror:
+            color = discord.Colour.from_str(color_hex)
+            embed = discord.Embed(description=results.msg, color=color)
+            return await ctx.send(embed=embed)
 
-        minimum_offset = int(user.gold * 0.1)
-        minimum = minimum_offset if minimum_offset > 20 else 20
-        if amount < minimum:
-            res = f"You must reach the minimum bet of {minimum}gp!\n"\
-                f"Current holdings: {user.gold}gp."
-            await ctx.send(res)
-            return
-
-        # Gamble here.
-        dice = roll_dice()
-        total = dice[0] + dice[1]
-
-        winnings: int = 0
-        res_status: str = "high"
-        if total < 7:
-            res_status = "low"
-        elif total == 7:
-            res_status = "seven"
-
-        if side.lower() == "high" and total > 7:
-            winnings = amount
-        if side.lower() == "low" and total < 7:
-            winnings = amount
-        if side.lower() in ("seven", "7") and total == 7:
-            winnings = amount * 4
-
-        change = -1 * amount
-        res = f"You **lost** {amount}gp"
-        if winnings > 0:
-            user.gambles_won += 1
-            change = winnings
-            res = f"You **won** {winnings}gp"
-        user.gold += change
-        user.gambles += 1
         self.bot._db.user.update(user)
+        if results.winnings > 0:
+            view = GambleView(self.bot, user, 300,
+                              results.winnings, side,
+                              old_gold)
+            color_hex = "#00ff08"
 
         if self.bot.user:
             bot_user = users.Manager.get(self.bot.user.id)
             bot_user.gambles += 1
-            if winnings == 0:
+            if results.winnings == 0:
                 bot_user.gambles_won += 1
             self.bot._db.user.update(bot_user)
 
-        msg = f"Current gamble amount: {amount}gp on **{side.lower()}**.\n"\
-            f"❊**{ctx.author}** rolls {dice[0]}, {dice[1]}❊\n"\
-            f"Totaling {total}! Result is **{res_status}**.\n\n"\
-            f"{res}. Current holdings: {user.gold}gp."
-
-        await ctx.send(msg)
+        color = discord.Colour.from_str(color_hex)
+        embed = discord.Embed(description=results.msg, color=color)
+        embed.set_footer(text=f"Next minimum: {user.minimum(20)} gp")
+        msg = await ctx.send(embed=embed, view=view)
+        if view:
+            # Schedule to delete the view.
+            self.bot.destructables[msg.id] = DestructableView(msg,
+                                                              user.id,
+                                                              300)
 
 
 async def setup(bot: DiscordBot) -> None:

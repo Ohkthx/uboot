@@ -62,7 +62,7 @@ class Admin(commands.Cog):
                 if role.permissions.administrator:
                     await user.add_roles(role)
                     await ctx.author.send(f"Given the {role.name} role.")
-                    self.bot.set_sudoer(user, role, length, datetime.now())
+                    self.bot.set_sudoer(user, role, length*60)
                     return
         except BaseException as err:
             print(f"ERROR: {err}")

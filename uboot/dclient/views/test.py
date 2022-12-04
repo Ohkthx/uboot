@@ -58,7 +58,6 @@ class PersistentView(ui.View):
                custom_id='persistent_view:grey')
     async def grey(self, interaction: discord.Interaction, button: ui.Button):
         res = interaction.response
-        res = interaction.response
         await res.send_message(f'This is grey, last: {self.last_dropdown}',
                                ephemeral=True)
 

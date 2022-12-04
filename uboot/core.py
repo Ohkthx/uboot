@@ -13,7 +13,8 @@ def main() -> None:
         return
 
     Log.debug_mode = config.debug
-    Log.debug("DEBUG is set.")
+    Log.debug("DEBUG is set")
+    Log.debug(f"PREFIX: {config.discord.prefix}")
 
     # Start the discord bot.
     DiscordBot.init_run(config.discord)
