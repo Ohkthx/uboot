@@ -1,12 +1,7 @@
 from datetime import datetime, timedelta
+from typing import Optional
 
-# 0 : int - user_id
-# 1 : int - gold
-# 2 : int - msg_count
-# 3 : int - gambles
-# 4 : int - gambles_won
-# 5 : int - button_press
-UserRaw = tuple[int, int, int, int, int, int]
+from db.users import UserDb, UserRaw
 
 
 def make_raw(user_id: int) -> UserRaw:
@@ -31,6 +26,10 @@ class User():
         return (self.id, self.gold, self.msg_count, self.gambles,
                 self.gambles_won, self.button_press)
 
+    def save(self) -> None:
+        if Manager._db:
+            Manager._db.update(self._raw)
+
     def add_message(self) -> None:
         self.msg_count += 1
         now = datetime.now()
@@ -51,7 +50,15 @@ class User():
 
 
 class Manager():
+    _db: Optional[UserDb] = None
     _users: dict[int, User] = {}
+
+    @staticmethod
+    def init(dbname: str) -> None:
+        Manager._db = UserDb(dbname)
+        raw_users = Manager._db.find_all()
+        for raw in raw_users:
+            Manager.add(User(raw))
 
     @staticmethod
     def add(user: User) -> User:

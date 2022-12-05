@@ -64,7 +64,7 @@ class SupportModal(ui.Modal, title='Support Request'):
                                f'{thread.mention}', ephemeral=True)
         ticket = tickets.Manager.get(interaction.guild.id, ticket_id)
         ticket.title = self.issue
-        self.bot._db.ticket.update(ticket)
+        ticket.save()
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         res = interaction.response

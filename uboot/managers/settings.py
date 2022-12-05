@@ -1,13 +1,6 @@
-# 0: int - guild_id
-# 1: int - market_channel_id
-# 2: int - react_role_channel_id
-# 3: int - react_role_msg_id
-# 4: int - expiration_days
-# 5: int - support_channel
-# 6: int - support_role_id
-# 7: int - suggestion_channel_id
-# 8: int - suggestion_reviewer_role_id
-GuildSettingsRaw = tuple[int, int, int, int, int, int, int, int, int]
+from typing import Optional
+
+from db.guild_settings import GuildSettingDb, GuildSettingsRaw
 
 
 def make_raw(guild_id: int) -> GuildSettingsRaw:
@@ -34,9 +27,21 @@ class Settings():
                 self.support_role_id, self.suggestion_channel_id,
                 self.suggestion_reviewer_role_id)
 
+    def save(self) -> None:
+        if Manager._db:
+            Manager._db.update(self._raw)
+
 
 class Manager():
+    _db: Optional[GuildSettingDb] = None
     _guilds: dict[int, Settings] = {}
+
+    @staticmethod
+    def init(dbname: str) -> None:
+        Manager._db = GuildSettingDb(dbname)
+        raw_settings = Manager._db.find_all()
+        for raw in raw_settings:
+            Manager.add(Settings(raw))
 
     @staticmethod
     def add(setting: Settings) -> Settings:

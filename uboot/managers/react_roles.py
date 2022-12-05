@@ -1,10 +1,6 @@
 from typing import Optional
 
-# 0: int  - role_id
-# 1: int  - guild_id
-# 2: str  - reaction
-# 3: bool - reversed
-ReactRoleRaw = tuple[int, int, str, bool]
+from db.react_roles import RoleDb, ReactRoleRaw
 
 
 def make_raw(role_id: int) -> ReactRoleRaw:
@@ -20,11 +16,28 @@ class ReactRole():
 
     @property
     def _raw(self) -> ReactRoleRaw:
-        return (self.role_id, self.guild_id, self.reaction, self.reversed)
+        return (self.role_id, self.guild_id,
+                f"'{self.reaction}'", self.reversed)
+
+    def save(self) -> None:
+        if Manager._db:
+            Manager._db.update(self._raw)
+
+    def delete(self) -> None:
+        if Manager._db:
+            Manager._db.delete_one(self._raw)
 
 
 class Manager():
+    _db: Optional[RoleDb] = None
     _react_roles: dict[int, ReactRole] = {}
+
+    @staticmethod
+    def init(dbname: str) -> None:
+        Manager._db = RoleDb(dbname)
+        raw_roles = Manager._db.find_all()
+        for raw in raw_roles:
+            Manager.add(ReactRole(raw))
 
     @staticmethod
     def add(react_role: ReactRole) -> ReactRole:

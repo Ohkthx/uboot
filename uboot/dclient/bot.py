@@ -11,8 +11,7 @@ from discord.ext import commands, tasks
 
 from utils import Log
 from config import DiscordConfig
-from managers import settings, users, react_roles
-from db import SqliteDb
+from managers import settings, users, react_roles, tickets
 from .helper import thread_close, react_processor, get_channel, find_tag
 from dclient.views.suggestion import SuggestionView, BasicThreadView
 
@@ -28,7 +27,8 @@ defaultHelp = commands.DefaultHelpCommand(no_category="HELP")
 
 
 class DestructableView():
-    def __init__(self, msg: discord.Message, user_id: int, length: int) -> None:
+    def __init__(self, msg: discord.Message,
+                 user_id: int, length: int) -> None:
         self.msg = msg
         self.user_id = user_id
         self.length = length
@@ -41,7 +41,7 @@ class DestructableView():
     async def remove(self) -> None:
         try:
             await self.msg.edit(view=None)
-        except:
+        except BaseException:
             pass
 
 
@@ -60,7 +60,7 @@ class Sudoer():
     async def remove(self) -> None:
         try:
             await self.user.remove_roles(self.role)
-        except:
+        except BaseException:
             pass
 
 
@@ -83,11 +83,12 @@ class DiscordBot(commands.Bot):
                          help_command=defaultHelp)
         self.prefix = prefix
         self._extensions = cog_extensions
-        self._db = SqliteDb("test")
-        self._db.role.load_many()
-        self._db.user.load_many()
-        self._db.guild.load_many()
-        self._db.ticket.load_many()
+
+        tickets.Manager.init("uboot.sqlite3")
+        users.Manager.init("uboot.sqlite3")
+        settings.Manager.init("uboot.sqlite3")
+        react_roles.Manager.init("uboot.sqlite3")
+
         self.sudoer: Optional[Sudoer] = None
         self.destructables: dict[int, DestructableView] = {}
         self.last_button: Optional[discord.Message] = None
@@ -129,7 +130,7 @@ class DiscordBot(commands.Bot):
 
         raw = (role_id, guild_id, react, reverse)
         react_role = react_roles.Manager.add(react_roles.ReactRole(raw))
-        self._db.role.update(react_role)
+        react_role.save()
         return True
 
     def rm_react_role(self, react: str, role_id: int) -> bool:
@@ -139,7 +140,7 @@ class DiscordBot(commands.Bot):
 
         # Remove the role from the tracked.
         react_roles.Manager.remove(react_role)
-        self._db.role.delete_one(react_role)
+        react_role.delete()
         return True
 
     @tasks.loop(seconds=15)
@@ -219,7 +220,7 @@ class DiscordBot(commands.Bot):
         # Add to user gold count.
         user = users.Manager.get(msg.author.id)
         user.add_message()
-        self._db.user.update(user)
+        user.save()
 
     async def on_thread_create(self, thread: discord.Thread) -> None:
         if not thread.guild:

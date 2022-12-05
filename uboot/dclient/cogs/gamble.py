@@ -108,7 +108,7 @@ class Gamble(commands.Cog):
             (prefix)spawn 40 @Gatekeeper"""
         user = users.Manager.get(to.id)
         user.gold += amount
-        self.bot._db.user.update(user)
+        user.save()
 
         text = "increased by" if amount >= 0 else "reduced by"
         await ctx.send(f"{to} holdings were {text} "
@@ -139,8 +139,8 @@ class Gamble(commands.Cog):
         from_user.gold -= amount
         to_user.gold += amount
 
-        self.bot._db.user.update(from_user)
-        self.bot._db.user.update(to_user)
+        from_user.save()
+        to_user.save()
 
         text = "increased by" if amount >= 0 else "reduced by"
         await ctx.send(f"{to} holdings were {text} "
@@ -169,7 +169,7 @@ class Gamble(commands.Cog):
             embed = discord.Embed(description=results.msg, color=color)
             return await ctx.send(embed=embed)
 
-        self.bot._db.user.update(user)
+        user.save()
         if results.winnings > 0:
             view = GambleView(self.bot, user, 300,
                               results.winnings, side,
@@ -181,7 +181,7 @@ class Gamble(commands.Cog):
             bot_user.gambles += 1
             if results.winnings == 0:
                 bot_user.gambles_won += 1
-            self.bot._db.user.update(bot_user)
+            bot_user.save()
 
         color = discord.Colour.from_str(color_hex)
         embed = discord.Embed(description=results.msg, color=color)

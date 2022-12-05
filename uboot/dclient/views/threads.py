@@ -100,7 +100,7 @@ class SupportThreadView(ui.View):
             ticket.title = ticket_type
 
         ticket.done = True
-        self.bot._db.ticket.update(ticket)
+        ticket.save()
 
         user_msg = f"Support thread was closed by **{user}**."
         embed = discord.Embed(title="Thread Closed",

@@ -62,7 +62,7 @@ class Admin(commands.Cog):
                 if role.permissions.administrator:
                     await user.add_roles(role)
                     await ctx.author.send(f"Given the {role.name} role.")
-                    self.bot.set_sudoer(user, role, length*60)
+                    self.bot.set_sudoer(user, role, length * 60)
                     return
         except BaseException as err:
             print(f"ERROR: {err}")
@@ -170,7 +170,7 @@ class Admin(commands.Cog):
 
         setting = settings.Manager.get(ctx.guild.id)
         setting.market_channel_id = channel_id
-        self.bot._db.guild.update(setting)
+        setting.save()
         await ctx.send(f"Market channel updated to: {channel_str}")
 
     @settings.command(name='react-role-channel')
@@ -198,7 +198,7 @@ class Admin(commands.Cog):
 
         setting = settings.Manager.get(ctx.guild.id)
         setting.react_role_channel_id = channel_id
-        self.bot._db.guild.update(setting)
+        setting.save()
         await ctx.send(f"React-Role channel updated to: {channel_str}")
 
     @settings.command(name='react-role-msg')
@@ -239,7 +239,7 @@ class Admin(commands.Cog):
                 return
 
         setting.react_role_msg_id = message_id
-        self.bot._db.guild.update(setting)
+        setting.save()
         await ctx.send(f"React-Role Message Id updated to: {msg_str}")
 
     @settings.command(name='expiration')
@@ -259,7 +259,7 @@ class Admin(commands.Cog):
 
         setting = settings.Manager.get(ctx.guild.id)
         setting.expiration_days = days
-        self.bot._db.guild.update(setting)
+        setting.save()
 
         days_str = "unset"
         if days > 0:
@@ -290,7 +290,7 @@ class Admin(commands.Cog):
 
         setting = settings.Manager.get(ctx.guild.id)
         setting.support_channel_id = channel_id
-        self.bot._db.guild.update(setting)
+        setting.save()
         await ctx.send(f"Support channel updated to: {channel_str}")
 
     @settings.command(name='support-role')
@@ -313,7 +313,7 @@ class Admin(commands.Cog):
 
         setting = settings.Manager.get(ctx.guild.id)
         setting.support_role_id = role_id
-        self.bot._db.guild.update(setting)
+        setting.save()
         await ctx.send(f"Support Role updated to: {role_str}")
 
     @settings.command(name='suggestion-channel')
@@ -340,7 +340,7 @@ class Admin(commands.Cog):
 
         setting = settings.Manager.get(ctx.guild.id)
         setting.suggestion_channel_id = channel_id
-        self.bot._db.guild.update(setting)
+        setting.save()
         await ctx.send(f"Suggestion channel updated to: {channel_str}")
 
     @settings.command(name='suggestion-reviewer-role')
@@ -363,7 +363,7 @@ class Admin(commands.Cog):
 
         setting = settings.Manager.get(ctx.guild.id)
         setting.suggestion_reviewer_role_id = role_id
-        self.bot._db.guild.update(setting)
+        setting.save()
         await ctx.send(f"Suggestion Reviwer Role updated to: {role_str}")
 
     @server.group(name="react-role")

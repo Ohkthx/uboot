@@ -1,1 +1,1 @@
-from .dclient import DiscordBot, DestructableView
+from .bot import DiscordBot, DestructableView

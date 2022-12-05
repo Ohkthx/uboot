@@ -16,13 +16,13 @@ class GambleResult():
         self.winnings = 0
 
 
-def roll_dice() -> GambleResult:
+def roll_dice() -> tuple[int, int]:
     return (random.randint(1, 6), random.randint(1, 6))
 
 
 def gamble(user: users.User, name: str,
            amount: int, side: str, loss_reset: int = 0,
-           min_override: int = -1,  mod: int = 1) -> tuple[bool, str]:
+           min_override: int = -1, mod: int = 1) -> GambleResult:
     if amount <= 0:
         return GambleResult("cannot be 0 or less.", True)
 
@@ -85,14 +85,15 @@ def gamble(user: users.User, name: str,
 class GambleView(ui.View):
     def __init__(self, bot: DiscordBot,
                  user: users.User,
-                 timeout: int, amount: int, side: str, base: int) -> None:
+                 decay: int, amount: int, side: str, base: int) -> None:
         self.bot = bot
         self.user = user
         self.amount = amount
         self.side = side
         self.base = base
+        self.decay = decay
 
-        super().__init__(timeout=timeout*2)
+        super().__init__(timeout=decay * 2)
 
     @ui.button(label='DOUBLE OR NOTHING', style=discord.ButtonStyle.red,
                custom_id='gamble_view:double')
@@ -113,24 +114,24 @@ class GambleView(ui.View):
             return await res.send_message(embed=embed, ephemeral=True)
 
         if results.winnings > 0:
-            view = GambleView(self.bot, self.user, self.timeout,
+            view = GambleView(self.bot, self.user, self.decay,
                               results.winnings, self.side, self.base)
             color_hex = "#00ff08"
 
-        self.bot._db.user.update(self.user)
+        self.user.save()
         if self.bot.user:
             bot_user = users.Manager.get(self.bot.user.id)
             bot_user.gambles += 1
             if results.winnings == 0:
                 bot_user.gambles_won += 1
-            self.bot._db.user.update(bot_user)
+            bot_user.save()
 
         color = discord.Colour.from_str(color_hex)
         text = "`DOUBLE OR NOTHING`"
         embed = discord.Embed(title=text, description=results.msg, color=color)
         embed.set_footer(text=f"Next minimum: {self.user.minimum(20)} gp")
         msg = await res.send_message(embed=embed, view=view)
-        if view:
+        if view and msg:
             # Schedule to delete the view.
             self.bot.destructables[msg.id] = DestructableView(msg,
                                                               self.user.id,

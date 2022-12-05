@@ -1,29 +1,40 @@
+import os
 import sqlite3
 from typing import Any, Optional
 
 
-class DbSocket():
+def clean_name(name: str) -> str:
+    return ''.join(char for char in name if char.isalnum()
+                   or char == '_').lower()
 
-    @staticmethod
-    def _clean_name(name: str) -> str:
-        return ''.join(char for char in name if char.isalnum()).lower()
+
+valid_keys = ('find_one', 'find_many', 'insert_one', 'insert_many', 'update',
+              'delete', 'create_table', 'table_exists')
+
+
+class DbSocket():
 
     def __init__(self, filename: str) -> None:
         if filename == "":
             raise ValueError("database filename cannot be empty.")
+
+        if not os.path.exists("dbs"):
+            os.makedirs("dbs")
+
         self._is_saving: bool = False
         self._db_name = filename.lower()
-        self._session = sqlite3.connect(filename)
+        self._session = sqlite3.connect(f"dbs/{filename}")
         self._cursor = self._session.cursor()
+        self.table_name = 'none'
         self._query = {
-            'create_table': "",
-            'save_one': "",
-            'save_many': "",
-            'delete': "",
-            'insert': "",
-            'update': "",
-            'load_many': "",
-            'load_one': "",
+            'find_one': 'SELECT * FROM {table_name} WHERE {condition}',
+            'find_many': 'SELECT * FROM {table_name}',
+            'insert_one': '',
+            'insert_many': '',
+            'update': 'UPDATE {table_name} SET {set_key} WHERE '
+            '{where_key}',
+            'delete': 'DELETE FROM {table_name} WHERE {condition}',
+            'create_table': '',
             'table_exists': "SELECT name "
             "FROM sqlite_master "
             "WHERE name = '{table_name}'"
@@ -37,94 +48,92 @@ class DbSocket():
     def query(self) -> dict[str, str]:
         return self._query
 
+    @query.setter
+    def query(self, key: str, value: str):
+        if key not in valid_keys:
+            raise ValueError(f"invalid key '{key}' for '{self.table_name}'.")
+        self._query[key] = value
+
     @property
     def is_saving(self) -> bool:
         return self._is_saving
 
-    @query.setter
-    def query(self, key: str, value: str):
-        self._query[key] = value
+    def _find_one(self, where_key: str) -> Optional[Any]:
+        if not self._table_exists(self.table_name):
+            return
+        query = self.query['find_one'].format(table_name=self.table_name,
+                                              condition=where_key)
+        return self._cursor.execute(query).fetchone()
+
+    def _find_many(self, ext: Optional[str] = None) -> list[Any]:
+        if ext is None:
+            ext = ''
+        if not self._table_exists(self.table_name):
+            return []
+
+        query = self.query['find_many'].format(table_name=self.table_name)
+        res = self._cursor.execute(f"{query}{ext}").fetchall()
+        return res if res else []
+
+    def _insert_one(self, data) -> None:
+        self._is_saving = True
+        self._create_table(self.table_name)
+
+        query = self.query['insert_one'].format(table_name=self.table_name)
+        try:
+            self._cursor.execute(query, data)
+            self._session.commit()
+        except BaseException as err:
+            print(f"SQL EXCEPTION:\nQuery:\n{query}\n\n{err}")
+        finally:
+            self._is_saving = False
+
+    def _insert_many(self, data) -> None:
+        self._is_saving = True
+        self._create_table(self.table_name)
+
+        query = self.query['insert_many'].format(table_name=self.table_name)
+        try:
+            self._cursor.executemany(query, data)
+            self._session.commit()
+        except BaseException as err:
+            print(f"SQL EXCEPTION:\nQuery:\n{query}\n\n{err}")
+        finally:
+            self._is_saving = False
+
+    def _update(self, set_key: str, where_key: str) -> None:
+        self._is_saving = True
+        self._create_table(self.table_name)
+
+        query = self.query['update'].format(table_name=self.table_name,
+                                            set_key=set_key,
+                                            where_key=where_key)
+        try:
+            self._cursor.execute(query)
+            self._session.commit()
+        except BaseException as err:
+            print(f"SQL EXCEPTION:\nQuery:\n{query}\n\n{err}")
+        finally:
+            self._is_saving = False
+
+    def _delete(self, where_key: str) -> None:
+        if not self._table_exists(self.table_name):
+            return
+
+        query = self.query['delete'].format(table_name=self.table_name,
+                                            condition=where_key)
+        try:
+            self._cursor.execute(query)
+            self._session.commit()
+        except BaseException as err:
+            print(f"SQL EXCEPTION:\nQuery:\n{query}\n\n{err}")
+
+    def _create_table(self, table_name: str) -> None:
+        query = self.query['create_table'].format(table_name=table_name)
+        self._cursor.execute(query)
 
     def _table_exists(self, table_name: str) -> bool:
         query = self.query['table_exists'].format(table_name=table_name)
         if self._cursor.execute(query).fetchone() is None:
             return False
         return True
-
-    def _create_table(self, table_name: str) -> None:
-        query = self.query['create_table'].format(table_name=table_name)
-        self._cursor.execute(query)
-
-    def _save_one(self, table_name: str, data) -> None:
-        self._is_saving = True
-        table_name = DbSocket._clean_name(table_name)
-        self._create_table(table_name)
-
-        query = self.query['save_one'].format(table_name=table_name,)
-        self._cursor.execute(query, data)
-        self._session.commit()
-        self._is_saving = False
-
-    def _save_many(self, table_name: str, data) -> None:
-        self._is_saving = True
-        table_name = DbSocket._clean_name(table_name)
-        self._create_table(table_name)
-
-        query = self.query['save_many'].format(table_name=table_name)
-        self._cursor.executemany(query, data)
-        self._session.commit()
-        self._is_saving = False
-
-    def _insert(self, table_name: str, value_key: str, set_key: str) -> None:
-        table_name = DbSocket._clean_name(table_name)
-        self._create_table(table_name)
-
-        query = self.query['insert'].format(table_name=table_name,
-                                            value_key=value_key,
-                                            set_key=set_key)
-        try:
-            self._cursor.execute(query)
-        except BaseException as err:
-            print(f"SQL EXCEPTION:\nQuery:\n{query}\n\n{err}")
-        self._session.commit()
-
-    def _update(self, table_name: str, set_key: str, where_key: str) -> None:
-        table_name = DbSocket._clean_name(table_name)
-        self._create_table(table_name)
-
-        query = self.query['update'].format(table_name=table_name,
-                                            set_key=set_key,
-                                            where_key=where_key)
-        self._cursor.execute(query)
-        self._session.commit()
-
-    def _delete(self, table_name: str, where_key: str) -> None:
-        table_name = DbSocket._clean_name(table_name)
-        if not self._table_exists(table_name):
-            return
-
-        query = self.query['delete'].format(table_name=table_name,
-                                            condition=where_key)
-        self._cursor.execute(query)
-        self._session.commit()
-
-    def _load_one(self, table_name: str, where_key: str) -> None:
-        table_name = DbSocket._clean_name(table_name)
-        if not self._table_exists(table_name):
-            return
-
-        query = self.query['load_one'].format(table_name=table_name,
-                                              condition=where_key)
-        return self._cursor.execute(query).fetchone()
-
-    def _load_many(self,
-                   table_name: str,
-                   ext: Optional[str] = None) -> list[Any]:
-        if ext is None:
-            ext = ""
-        table_name = DbSocket._clean_name(table_name)
-        if not self._table_exists(table_name):
-            return []
-
-        query = self.query['load_many'].format(table_name=table_name)
-        return self._cursor.execute(f"{query}{ext}").fetchall()

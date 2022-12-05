@@ -28,7 +28,7 @@ class RedButtonView(ui.View):
     async def do_not(self, interaction: discord.Interaction, button: ui.Button):
         user = users.Manager.get(interaction.user.id)
         user.button_press += 1
-        self.bot._db.user.update(user)
+        user.save()
         val = red_button_text[random.randrange(0, len(red_button_text))]
         await interaction.response.send_message(val, ephemeral=True)
 

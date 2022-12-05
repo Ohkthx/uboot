@@ -1,10 +1,6 @@
 from typing import Optional
 
-# 0: int  - guild_id
-# 1: int  - id
-# 2: str  - title
-# 3: bool - done
-TicketRaw = tuple[int, int, str, bool]
+from db.tickets import TicketDb, TicketRaw
 
 
 def make_raw(guild_id: int, id: int) -> TicketRaw:
@@ -26,9 +22,21 @@ class Ticket():
     def name(self) -> str:
         return f"{self.id}-{self.title}"
 
+    def save(self) -> None:
+        if Manager._db:
+            Manager._db.update(self._raw)
+
 
 class Manager():
+    _db: Optional[TicketDb] = None
     _tickets: dict[int, dict[int, Ticket]] = {}
+
+    @staticmethod
+    def init(dbname: str) -> None:
+        Manager._db = TicketDb(dbname)
+        raw_tickets = Manager._db.find_all(incomplete_only=True)
+        for raw in raw_tickets:
+            Manager.add(Ticket(raw))
 
     @staticmethod
     def total(guild_id: int) -> int:
