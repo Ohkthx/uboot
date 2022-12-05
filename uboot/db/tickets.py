@@ -24,6 +24,10 @@ class TicketDb(DbSocket):
         where_key = f"guild_id = {guild_id} AND id = {id}"
         return self._find_one(where_key)
 
+    def find_last(self, guild_id: int) -> Optional[TicketRaw]:
+        where_key = f"guild_id = {guild_id} ORDER BY id DESC"
+        return self._find_one(where_key)
+
     def find_all(self, incomplete_only: bool = False) -> list[TicketRaw]:
         ext = ''
         if incomplete_only:

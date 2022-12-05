@@ -104,6 +104,7 @@ celerybeat.pid
 
 # Environments
 this.commit_msg
+images/
 *.ini
 .env
 .venv

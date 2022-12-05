@@ -10,6 +10,8 @@ from dclient import DiscordBot, DestructableView
 from dclient.helper import get_member
 from dclient.views.gamble import GambleView, gamble
 
+gold_png = discord.File("images/gold.png", filename="gold.png")
+
 
 class Gamble(commands.Cog):
     """Betting Guideline:
@@ -20,7 +22,8 @@ class Gamble(commands.Cog):
         Seven: 7       with a 4:1 payout.
 
     example:
-        (prefix)bet 40 low"""
+        (prefix)bet 40 low
+    """
 
     def __init__(self, bot: DiscordBot) -> None:
         self.bot = bot
@@ -45,11 +48,12 @@ class Gamble(commands.Cog):
             if not user:
                 continue
             pos += 1
-            wr = f"Win-Rate: {u.win_rate():0.2f}%"
-            user_board.append(f"{pos}: **{user}** - {u.gold}gp - {wr}")
+            winrate = f"Win-Rate: {u.win_rate():0.2f}%"
+            user_board.append(f"{pos}: **{user}** - {u.gold} gp - {winrate}")
         summary = "\n".join(user_board)
+        color = discord.Colour.from_str("#00ff08")
         embed = discord.Embed(title="Top 10 Gamblers",
-                              description=summary)
+                              description=summary, color=color)
         embed.set_footer(text=f"Total gamblers: {len(all_users)}")
         await ctx.send(embed=embed)
 
@@ -63,7 +67,8 @@ class Gamble(commands.Cog):
         examples:
             (prefix)stats
             (prefix)stats @Gatekeeper
-            (prefix)stats 1044706648964472902"""
+            (prefix)stats 1044706648964472902
+        """
         user_l = users.Manager.get(user.id)
         title = '' if user_l.button_press == 0 else ', the Button Presser'
 
@@ -105,14 +110,23 @@ class Gamble(commands.Cog):
                     to: discord.Member = param(description="Recipient")):
         """Give or remove gold from a user.
         example:
-            (prefix)spawn 40 @Gatekeeper"""
+            (prefix)spawn 40 @Gatekeeper
+        """
         user = users.Manager.get(to.id)
         user.gold += amount
         user.save()
 
-        text = "increased by" if amount >= 0 else "reduced by"
-        await ctx.send(f"{to} holdings were {text} "
-                       f"{abs(amount)}gp by {ctx.author}.")
+        color = discord.Color.from_str("#F1C800")
+        title = "Transaction Receipt"
+        status = "Increased by" if amount >= 0 else "Reduced by"
+        desc = f"**To**: {to}\n"\
+            f"**From**: {ctx.author}\n"\
+            f"**Amount**: {amount} gp\n\n"\
+            f"{status} {abs(amount)} gp from {ctx.author}."
+        embed = discord.Embed(title=title, description=desc, color=color)
+        embed.set_footer(text="transaction type: spawn")
+
+        await ctx.send(embed=embed)
 
     @commands.guild_only()
     @commands.command(name="give")
@@ -121,7 +135,8 @@ class Gamble(commands.Cog):
                    to: discord.Member = param(description="Recipient")):
         """Give gold from yourself to another user.
         example:
-            (prefix)give 40 @Gatekeeper"""
+            (prefix)give 40 @Gatekeeper
+        """
         from_user = users.Manager.get(ctx.author.id)
         if amount > from_user.gold:
             amount = from_user.gold
@@ -142,9 +157,17 @@ class Gamble(commands.Cog):
         from_user.save()
         to_user.save()
 
-        text = "increased by" if amount >= 0 else "reduced by"
-        await ctx.send(f"{to} holdings were {text} "
-                       f"{abs(amount)}gp by {ctx.author}.")
+        color = discord.Color.from_str("#F1C800")
+        title = "Transaction Receipt"
+        status = "Increased by" if amount >= 0 else "Reduced by"
+        desc = f"**To**: {to}\n"\
+            f"**From**: {ctx.author}\n"\
+            f"**Amount**: {amount} gp\n\n"\
+            f"{status} {abs(amount)} gp from {ctx.author}."
+        embed = discord.Embed(title=title, description=desc, color=color)
+        embed.set_footer(text="transaction type: give")
+
+        await ctx.send(embed=embed)
 
     @commands.guild_only()
     @commands.command(name="bet")
@@ -162,6 +185,8 @@ class Gamble(commands.Cog):
         view = None
         color_hex = "#ff0f08"  # Loss color.
         user = users.Manager.get(ctx.author.id)
+        await self.bot.rm_user_destructable(user.id)
+
         old_gold = user.gold
         results = gamble(user, str(ctx.author), amount, side)
         if results.iserror:
@@ -189,9 +214,8 @@ class Gamble(commands.Cog):
         msg = await ctx.send(embed=embed, view=view)
         if view:
             # Schedule to delete the view.
-            self.bot.destructables[msg.id] = DestructableView(msg,
-                                                              user.id,
-                                                              300)
+            destructable = DestructableView(msg, user.id, 300)
+            self.bot.add_destructable(destructable)
 
 
 async def setup(bot: DiscordBot) -> None:

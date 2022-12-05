@@ -87,7 +87,7 @@ class SupportThreadView(ui.View):
         ticket_info = thread.name.split('-')
         ticket = tickets.Manager.by_name(guild.id, thread.name)
         if not ticket:
-            ticket_id = tickets.Manager.total(guild.id) + 1
+            ticket_id = tickets.Manager.last_id(guild.id) + 1
             ticket_type = "unknown"
             if len(ticket_info) == 2:
                 ticket_type = str(ticket_info[1])

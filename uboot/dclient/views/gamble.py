@@ -1,4 +1,5 @@
 import random
+from typing import Optional
 
 import discord
 from discord import ui
@@ -66,7 +67,7 @@ def gamble(user: users.User, name: str,
 
     user.gold += change
     if winnings == 0 and loss_reset > 0:
-        res = f"You **lost**, breaking even"
+        res = "You **lost**, breaking even"
         user.gold = loss_reset
     user.gambles += 1
 
@@ -102,6 +103,9 @@ class GambleView(ui.View):
         if interaction.user.id != self.user.id:
             return await res.send_message("You were not the original gambler.",
                                           ephemeral=True)
+        channel = interaction.channel
+        if not channel or not isinstance(channel, discord.TextChannel):
+            return
         await self.bot.rm_user_destructable(self.user.id)
 
         view = None
@@ -126,13 +130,18 @@ class GambleView(ui.View):
                 bot_user.gambles_won += 1
             bot_user.save()
 
+        # Create the embed.
         color = discord.Colour.from_str(color_hex)
         text = "`DOUBLE OR NOTHING`"
         embed = discord.Embed(title=text, description=results.msg, color=color)
         embed.set_footer(text=f"Next minimum: {self.user.minimum(20)} gp")
-        msg = await res.send_message(embed=embed, view=view)
-        if view and msg:
-            # Schedule to delete the view.
-            self.bot.destructables[msg.id] = DestructableView(msg,
-                                                              self.user.id,
-                                                              300)
+
+        # Send the embed and/or view.
+        msg: Optional[discord.Message] = None
+        if not view:
+            return await channel.send(embed=embed)
+        # Schedule to delete the view.
+        msg = await channel.send(embed=embed, view=view)
+        if msg:
+            destructable = DestructableView(msg, self.user.id, 300)
+            self.bot.add_destructable(destructable)

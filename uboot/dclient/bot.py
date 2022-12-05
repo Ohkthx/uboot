@@ -40,7 +40,7 @@ class DestructableView():
 
     async def remove(self) -> None:
         try:
-            await self.msg.edit(view=None)
+            self.msg = await self.msg.edit(view=None)
         except BaseException:
             pass
 
@@ -97,13 +97,20 @@ class DiscordBot(commands.Bot):
                    length: int) -> None:
         self.sudoer = Sudoer(user, role, length)
 
+    def add_destructable(self, destructable: DestructableView) -> None:
+        self.destructables[destructable.msg.id] = destructable
+
     async def rm_user_destructable(self, user_id: int) -> None:
         delete: list[int] = []
-        for id, destruct in self.destructables.items():
+        for msgid, destruct in self.destructables.items():
             if destruct.user_id == user_id:
                 await destruct.remove()
-                delete.append(id)
+                delete.append(msgid)
         for i in delete:
+            destruct = self.destructables[i]
+            if len(destruct.msg.components) > 0:
+                print(f"[{i}] has too many components still.")
+                continue
             del self.destructables[i]
 
     async def setup_hook(self) -> None:

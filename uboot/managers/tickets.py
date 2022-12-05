@@ -39,6 +39,16 @@ class Manager():
             Manager.add(Ticket(raw))
 
     @staticmethod
+    def last_id(guild_id: int) -> int:
+        if not Manager._db:
+            raise ValueError("could not get last ticket id, no db.")
+
+        last = Manager._db.find_last(guild_id)
+        if last:
+            return Ticket(last).id
+        return 0
+
+    @staticmethod
     def total(guild_id: int) -> int:
         guild_tickets = Manager._tickets.get(guild_id)
         if not guild_tickets:

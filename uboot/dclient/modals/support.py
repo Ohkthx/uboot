@@ -47,7 +47,7 @@ class SupportModal(ui.Modal, title='Support Request'):
             return
 
         user = interaction.user
-        ticket_id = tickets.Manager.total(interaction.guild.id) + 1
+        ticket_id = tickets.Manager.last_id(interaction.guild.id) + 1
         thread_name = f"{ticket_id}-{self.issue}"
         thread = await channel.create_thread(name=thread_name,
                                              type=discord.ChannelType.private_thread)
