@@ -6,6 +6,7 @@ from discord.ext import commands
 
 from managers import settings
 from dclient.helper import thread_close, find_tag, get_guild
+from dclient.modals.reason import ReasonModal
 
 
 async def validate_user(interaction: discord.Interaction,
@@ -203,6 +204,19 @@ class SuggestionView(ui.View):
         if not role:
             return
 
+        from_user: Optional[discord.Member] = None
+        if isinstance(interaction.user, discord.Member):
+            from_user = interaction.user
+
+        res = interaction.response
+        reason = ReasonModal(thread.owner, from_user,
+                             "Suggestion Denied.",
+                             f"**Suggestion**: {thread.name}",
+                             discord.Color.red())
+        await res.send_modal(reason)
+        if await reason.wait():
+            return
+
         # Find the tags from available tags.
         rm_names = ['open', 'approved']
         add_tag = find_tag('denied', thread.parent)
@@ -215,13 +229,6 @@ class SuggestionView(ui.View):
 
         # Apply the new tags.
         await thread.edit(applied_tags=tags)
-
-        msg = f"Your suggestion was denied by **{interaction.user}**."
-        embed = discord.Embed(title="Suggestion Denied",
-                              description=msg,
-                              color=discord.Color.red())
-        res = interaction.response
-        await res.send_message(embed=embed)
 
     @ui.button(label='🔒 Close', style=discord.ButtonStyle.grey,
                custom_id='suggestion_view:close')

@@ -2,7 +2,7 @@ import discord
 from discord import ui, ButtonStyle
 
 from dclient import DiscordBot
-from dclient.modals import SupportModal
+from dclient.modals.support import SupportModal
 
 
 class GetSupportView(ui.View):

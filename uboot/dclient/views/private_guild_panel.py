@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 from datetime import datetime
 
 import discord
@@ -7,6 +7,7 @@ from discord import ui
 from dclient import DiscordBot
 from dclient.helper import get_channel, get_member
 from managers import subguilds, settings
+from dclient.modals.reason import ReasonModal
 
 
 def guild_info(bot: DiscordBot,
@@ -237,14 +238,23 @@ class GuildApprovalView(ui.View):
             await res.send_message("Guild Owner could not be found.",
                                    ephemeral=True,
                                    delete_after=60)
-        else:
-            await owner.send(f"Guild denied by {interaction.user}, reach out "
-                             "for additional information.")
+
+        from_user: Optional[discord.Member] = None
+        if isinstance(interaction.user, discord.Member):
+            from_user = interaction.user
+
+        reasoning = ReasonModal(owner, from_user,
+                                "Guild Application Denied",
+                                f"**Guild Name**: {subguild.name}",
+                                # Red color.
+                                discord.Colour.from_str("#ff0f08")
+                                )
+        await res.send_modal(reasoning)
+        if await reasoning.wait():
+            return
 
         # Update the guild status.
         await interaction.message.edit(embed=embed, view=None)
-        await res.send_message('Guild denied.', ephemeral=True,
-                               delete_after=60)
 
 
 async def setup(bot: DiscordBot) -> None:
