@@ -79,8 +79,9 @@ cog_extensions: list[str] = ['dclient.cogs.general',
 
 
 class DiscordBot(commands.Bot):
-    def __init__(self, prefix: str) -> None:
+    def __init__(self, prefix: str, owner_id: Optional[int]) -> None:
         super().__init__(command_prefix=commands.when_mentioned_or(prefix),
+                         owner_id=owner_id,
                          intents=intents,
                          member_cache_flags=member_cache,
                          help_command=defaultHelp)
@@ -228,10 +229,31 @@ class DiscordBot(commands.Bot):
         if self.user in msg.mentions or msg.content.startswith(self.prefix):
             return
 
-        # Add to user gold count.
+        if not self.owner_id:
+            await self.is_owner(msg.author)
+
         user = users.Manager.get(msg.author.id)
-        user.add_message()
-        user.save()
+        if msg.guild:
+            user.add_message()
+            return user.save()
+
+        if not self.owner_id or user.id == self.owner_id:
+            return
+
+        # Add to user gold count.
+        if isinstance(msg.channel, discord.DMChannel):
+            embed = discord.Embed(title="DM Detected",
+                                  description=msg.content)
+            embed.set_footer(text=msg.author)
+            embed.set_thumbnail(url=msg.author.display_avatar.url)
+            owner = self.get_user(self.owner_id)
+            if not owner:
+                try:
+                    owner = await self.fetch_user(self.owner_id)
+                except BaseException:
+                    pass
+            if owner:
+                await owner.send(embed=embed)
 
     async def on_thread_create(self, thread: discord.Thread) -> None:
         if not thread.guild:
@@ -285,7 +307,10 @@ class DiscordBot(commands.Bot):
             handler = logging.FileHandler(filename='discord.log',
                                           encoding='utf-8',
                                           mode='w')
-            dbot: DiscordBot = DiscordBot(config.prefix)
+            owner_id: Optional[int] = None
+            if config.owner_id > 0:
+                owner_id = config.owner_id
+            dbot: DiscordBot = DiscordBot(config.prefix, owner_id)
             dbot.run(config.token, log_handler=handler,
                      log_level=logging.DEBUG)
         except KeyboardInterrupt:

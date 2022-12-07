@@ -112,8 +112,16 @@ class BasicThreadView(ui.View):
         if not role:
             return
 
+        user_id = interaction.user.id
+        from_user = interaction.guild.get_member(user_id)
+        if not from_user:
+            try:
+                from_user = await interaction.guild.fetch_member(user_id)
+            except BaseException:
+                pass
+
         res = interaction.response
-        reason = ReasonModal(thread.owner, interaction.user,
+        reason = ReasonModal(thread.owner, from_user,
                              "Thread Closed",
                              f"**Name**: {thread.name}",
                              discord.Color.light_grey())

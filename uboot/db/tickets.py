@@ -6,7 +6,7 @@ from .db_socket import DbSocket, clean_name
 # 2: str  - title
 # 3: bool - done
 # 4: int  - owner_id
-TicketRaw = tuple[int, int, str, bool]
+TicketRaw = tuple[int, int, str, bool, int]
 
 
 class TicketDb(DbSocket):

@@ -23,6 +23,14 @@ class DiscordConfig():
             return '?'
         return val
 
+    @property
+    def owner_id(self) -> int:
+        val = self._config.get('OwnerId', '0')
+        try:
+            return int(val)
+        except BaseException:
+            return 0
+
 
 class ProjectConfig():
     def __init__(self, config: configparser.ConfigParser) -> None:
@@ -54,6 +62,7 @@ class ProjectConfig():
         config['DISCORD'] = {}
         config['DISCORD']['Token'] = 'unset'
         config['DISCORD']['Prefix'] = '?'
+        config['DISCORD']['OwnerId'] = '0'
         with open(CONFIG_FILENAME, 'w') as configfile:
             config.write(configfile)
         return True
@@ -73,7 +82,8 @@ class ProjectConfig():
             raise ValueError("'DISCORD' is unset in configuration file.")
         try:
             token = str(discord.get('Token', 'unset'))
-            prefix = str(discord.get('Prefix', '?'))
+            str(discord.get('Prefix', '?'))
+            int(discord.get('OwnerID', '0'))
             if token == 'unset':
                 raise ValueError()
         except (ValueError, Exception) as err:
