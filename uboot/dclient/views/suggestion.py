@@ -57,7 +57,7 @@ class BasicThreadView(ui.View):
         desc = f"This interactive panel is only for use by {role_name}.\n\n"\
             "> __**Options**:__\n"\
             "> ├ **In Progress**: Work in progress.\n"\
-            "> └ **Close**: Close and lock thread.\n\n"\
+            "> └ **Close**: Close and lock thread, prompts reason.\n\n"\
             "__Note__: Please allow all parties to view the thread before closure."
 
         return discord.Embed(title=title, description=desc, color=color)
@@ -113,16 +113,16 @@ class BasicThreadView(ui.View):
             return
 
         res = interaction.response
-        user_msg = f"Your thread was closed by **{interaction.user}**."
-        embed = discord.Embed(title="Thread Closed",
-                              description=user_msg,
-                              color=discord.Color.light_grey())
-        await res.send_message(embed=embed)
+        reason = ReasonModal(thread.owner, interaction.user,
+                             "Thread Closed",
+                             f"**Name**: {thread.name}",
+                             discord.Color.light_grey())
+        await res.send_modal(reason)
+        if await reason.wait():
+            return
 
-        if interaction.user.id == thread.owner_id:
-            user_msg = ""
         await thread_close(["open", "in-progress"], "closed", thread,
-                           "unlisted closure", user_msg)
+                           "unlisted closure")
 
 
 class SuggestionView(ui.View):
@@ -210,7 +210,7 @@ class SuggestionView(ui.View):
 
         res = interaction.response
         reason = ReasonModal(thread.owner, from_user,
-                             "Suggestion Denied.",
+                             "Suggestion Denied",
                              f"**Suggestion**: {thread.name}",
                              discord.Color.red())
         await res.send_modal(reason)

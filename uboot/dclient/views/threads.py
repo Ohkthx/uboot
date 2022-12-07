@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Union
+from typing import Union, Optional
 
 import discord
 from discord import ui
@@ -7,6 +7,7 @@ from discord import ui
 from managers import tickets, settings
 from dclient import DiscordBot
 from dclient.helper import thread_close, get_role, get_member
+from dclient.modals.reason import ReasonModal
 
 
 class SupportThreadView(ui.View):
@@ -33,12 +34,13 @@ class SupportThreadView(ui.View):
             f"{req_role.mention} can assist you efficiently.\n\n"\
             "> __**Options**:__\n"\
             f"> ├ **Leave**: [{creator.mention}] Leave thread.\n"\
-            f"> └ **Close**: [{req_role.mention}] Lock thread.\n\n"\
+            f"> └ **Close**: [{req_role.mention}] Lock thread, prompts reason.\n\n"\
             "__Note__: Please leave the thread when your ticket is complete. "\
-            "When the thread is closed, you will be removed."
+            "When the thread is closed, you will be removed and a reason "\
+            "will be provided."
         embed = discord.Embed(title=title, description=desc,
                               color=color, timestamp=datetime.utcnow())
-        embed.set_footer(text=f"Ticket created at")
+        embed.set_footer(text="Ticket created at (UTC)")
 
         return embed
 
@@ -100,14 +102,18 @@ class SupportThreadView(ui.View):
             ticket = tickets.Manager.get(guild.id, ticket_id)
             ticket.title = ticket_type
 
+        owner = await get_member(self.bot, guild.id, ticket.owner_id)
+        res = interaction.response
+        reason = ReasonModal(owner, user,
+                             "Support Thread Closed",
+                             f"**Ticket**: {thread.name}",
+                             discord.Color.light_grey())
+        await res.send_modal(reason)
+        if await reason.wait():
+            return
+
         ticket.done = True
         ticket.save()
-
-        user_msg = f"Support thread was closed by **{user}**."
-        embed = discord.Embed(title="Thread Closed",
-                              description=user_msg,
-                              color=discord.Color.light_grey())
-        await interaction.response.send_message(embed=embed)
 
         await thread_close(["open", "in-progress"], "closed", thread,
                            "unlisted closure")

@@ -4,7 +4,7 @@ from db.tickets import TicketDb, TicketRaw
 
 
 def make_raw(guild_id: int, id: int) -> TicketRaw:
-    return (guild_id, id, "unknown", False)
+    return (guild_id, id, "unknown", False, 0)
 
 
 class Ticket():
@@ -13,10 +13,11 @@ class Ticket():
         self.id = raw[1]
         self.title = raw[2].lower()
         self.done = raw[3]
+        self.owner_id = raw[4]
 
     @property
     def _raw(self) -> TicketRaw:
-        return (self.guild_id, self.id, self.title, self.done)
+        return (self.guild_id, self.id, self.title, self.done, self.owner_id)
 
     @property
     def name(self) -> str:

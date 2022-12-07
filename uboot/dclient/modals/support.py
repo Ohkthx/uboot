@@ -66,6 +66,7 @@ class SupportModal(ui.Modal, title='Support Request'):
                                delete_after=120)
         ticket = tickets.Manager.get(interaction.guild.id, ticket_id)
         ticket.title = self.issue
+        ticket.owner_id = interaction.user.id
         ticket.save()
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:

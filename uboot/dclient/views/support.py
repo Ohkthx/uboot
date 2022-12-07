@@ -14,7 +14,7 @@ class GetSupportView(ui.View):
     def get_panel() -> discord.Embed:
         title = "Found a bug or need help in private?"
         color = discord.Colour.from_str("#00ff08")
-        desc = f"If you would like to submit a support ticket, feel free to "\
+        desc = "If you would like to submit a support ticket, feel free to "\
             "select the type of support you are requesting by pressing the "\
             "related button below. You will be prompted to type a short "\
             "description for the ticket.\n\n"\

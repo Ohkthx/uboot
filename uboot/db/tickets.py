@@ -5,6 +5,7 @@ from .db_socket import DbSocket, clean_name
 # 1: int  - id
 # 2: str  - title
 # 3: bool - done
+# 4: int  - owner_id
 TicketRaw = tuple[int, int, str, bool]
 
 
@@ -14,11 +15,11 @@ class TicketDb(DbSocket):
         self.table_name = clean_name('tickets')
         self.query['create_table'] = "CREATE TABLE IF NOT EXISTS {table_name} "\
             "( guild_id INTEGER DESC, id INTEGER, "\
-            "title TEXT, done INTEGER DEFAULT 0 )"
+            "title TEXT, done INTEGER DEFAULT 0, owner_id INTEGER )"
         self.query['find_one'] = "SELECT * FROM {table_name} WHERE "\
             "{condition}"
         self.query['insert_one'] = "INSERT OR IGNORE INTO {table_name} "\
-            "VALUES(?, ?, ?, ?)"
+            "VALUES(?, ?, ?, ?, ?)"
 
     def find_one(self, guild_id: int, id: int) -> Optional[TicketRaw]:
         where_key = f"guild_id = {guild_id} AND id = {id}"
