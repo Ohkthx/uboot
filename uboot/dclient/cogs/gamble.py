@@ -70,15 +70,8 @@ class Gamble(commands.Cog):
         user_l = users.Manager.get(user.id)
         title = '' if user_l.button_press == 0 else ', the Button Presser'
 
-        gold_t = user_l.gold
         if self.bot.user and self.bot.user.id == user.id:
             title = ', the Scholar'
-            # Get all of the gold lost from nusers.
-            total: int = 0
-            for u in users.Manager.getall():
-                if u.gold < u.msg_count:
-                    total += (u.msg_count - u.gold)
-            gold_t = total
 
         age = datetime.now(timezone.utc) - user.created_at
         year_str = '' if age.days // 365 < 1 else f"{age.days//365} year(s), "
@@ -88,7 +81,7 @@ class Gamble(commands.Cog):
         desc = f"**{user}{title}**\n\n"\
             f"**id**: {user.id}\n"\
             f"**age**: {year_str}{day_str}\n"\
-            f"**gold**: {gold_t} gp\n"\
+            f"**gold**: {user.gold} gp\n"\
             f"**messages**: {user_l.msg_count}\n\n"\
             "> __Gamble__:\n"\
             f"> ├ **total**: {user_l.gambles}\n"\

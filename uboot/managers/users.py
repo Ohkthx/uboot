@@ -11,20 +11,37 @@ def make_raw(user_id: int) -> UserRaw:
 class User():
     def __init__(self, raw: UserRaw) -> None:
         self.id = raw[0]
-        self.gold = raw[1]
+        self._gold = raw[1]
         self.msg_count = raw[2]
         self.gambles = raw[3]
         self.gambles_won = raw[4]
         self.button_press = raw[5]
+        self.isbot = False
         self.last_message = datetime.now() - timedelta(seconds=20)
 
     def __str__(self) -> str:
-        return f"id: {self.id}, gold: {self.gold}, msgs: {self.msg_count}"
+        return f"id: {self.id}, gold: {self._gold}, msgs: {self.msg_count}"
 
     @property
     def _raw(self) -> UserRaw:
-        return (self.id, self.gold, self.msg_count, self.gambles,
+        return (self.id, self._gold, self.msg_count, self.gambles,
                 self.gambles_won, self.button_press)
+
+    @property
+    def gold(self) -> int:
+        if not self.isbot:
+            return self._gold
+
+        total: int = 0
+        for user in Manager.getall():
+            if user.isbot or user._gold >= user.msg_count or user._gold < 0:
+                continue
+            total += (user.msg_count - user._gold)
+        return total
+
+    @gold.setter
+    def gold(self, val) -> int:
+        self._gold = val
 
     def save(self) -> None:
         if Manager._db:
@@ -44,7 +61,7 @@ class User():
         return (1 + (self.gambles_won - self.gambles) /
                 self.gambles) * 100
 
-    def minimum(self, floor: int) -> float:
+    def minimum(self, floor: int) -> int:
         minimum_offset = int(self.gold * 0.1)
         return minimum_offset if minimum_offset > floor else floor
 

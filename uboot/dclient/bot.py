@@ -128,7 +128,10 @@ class DiscordBot(commands.Bot):
         self.status_update.start()  # pylint: disable=no-member
 
     async def on_ready(self) -> None:
+        if not self.user:
+            return
         Log.debug(f"Logged in as {self.user}")
+        users.Manager.get(self.user.id).isbot = True
 
     async def close(self) -> None:
         await super().close()
