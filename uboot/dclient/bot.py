@@ -11,7 +11,7 @@ from discord.ext import commands, tasks
 
 from utils import Log
 from config import DiscordConfig
-from managers import settings, users, react_roles, tickets
+from managers import settings, users, react_roles, tickets, subguilds
 from .helper import thread_close, react_processor, get_channel, find_tag
 from dclient.views.suggestion import SuggestionView, BasicThreadView
 
@@ -68,11 +68,14 @@ cog_extensions: list[str] = ['dclient.cogs.general',
                              'dclient.cogs.threads',
                              'dclient.cogs.gamble',
                              'dclient.cogs.admin',
+                             'dclient.cogs.private_guild',
                              'dclient.cogs.test',
                              'dclient.views.test',
                              'dclient.views.support',
                              'dclient.views.threads',
-                             'dclient.views.red_button']
+                             'dclient.views.red_button',
+                             'dclient.views.private_guild_signup',
+                             'dclient.views.private_guild_panel']
 
 
 class DiscordBot(commands.Bot):
@@ -88,6 +91,7 @@ class DiscordBot(commands.Bot):
         users.Manager.init("uboot.sqlite3")
         settings.Manager.init("uboot.sqlite3")
         react_roles.Manager.init("uboot.sqlite3")
+        subguilds.Manager.init("uboot.sqlite3")
 
         self.sudoer: Optional[Sudoer] = None
         self.destructables: dict[int, DestructableView] = {}

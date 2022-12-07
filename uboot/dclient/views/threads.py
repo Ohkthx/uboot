@@ -82,7 +82,8 @@ class SupportThreadView(ui.View):
                                   "role to do that.",
                                   color=discord.Color.red())
             return await interaction.response.send_message(embed=embed,
-                                                           ephemeral=True)
+                                                           ephemeral=True,
+                                                           delete_after=60)
 
         ticket_info = thread.name.split('-')
         ticket = tickets.Manager.by_name(guild.id, thread.name)

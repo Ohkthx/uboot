@@ -24,7 +24,7 @@ class SupportModal(ui.Modal, title='Support Request'):
         max_length=300,
     )
 
-    async def on_submit(self, interaction: discord.Interaction):
+    async def on_submit(self, interaction: discord.Interaction) -> None:
         res = interaction.response
         if not interaction.guild:
             return
@@ -32,19 +32,19 @@ class SupportModal(ui.Modal, title='Support Request'):
         setting = settings.Manager.get(interaction.guild.id)
         channel = await get_channel(self.bot, setting.support_channel_id)
         if not channel:
-            await res.send_message("Support channel may be unset.",
-                                   ephemeral=True)
-            return
+            return await res.send_message("Support channel may be unset.",
+                                          ephemeral=True,
+                                          delete_after=60)
         if not isinstance(channel, discord.TextChannel):
-            await res.send_message("Support channel not set to a Text Channel.",
-                                   ephemeral=True)
-            return
+            return await res.send_message("Support channel not set to a Text Channel.",
+                                          ephemeral=True,
+                                          delete_after=60)
 
         role = interaction.guild.get_role(setting.support_role_id)
         if not role:
-            await res.send_message("Support role may be unset.",
-                                   ephemeral=True)
-            return
+            return await res.send_message("Support role may be unset.",
+                                          ephemeral=True,
+                                          delete_after=60)
 
         user = interaction.user
         ticket_id = tickets.Manager.last_id(interaction.guild.id) + 1
@@ -61,7 +61,9 @@ class SupportModal(ui.Modal, title='Support Request'):
                           )
         await thread.add_user(interaction.user)
         await res.send_message('Ticket opened! Click the link to access: '
-                               f'{thread.mention}', ephemeral=True)
+                               f'{thread.mention}',
+                               ephemeral=True,
+                               delete_after=120)
         ticket = tickets.Manager.get(interaction.guild.id, ticket_id)
         ticket.title = self.issue
         ticket.save()
@@ -69,5 +71,7 @@ class SupportModal(ui.Modal, title='Support Request'):
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         res = interaction.response
         await res.send_message('Oops! Something went wrong, please notify an '
-                               'admin for additional help.', ephemeral=True)
+                               'admin for additional help.',
+                               ephemeral=True,
+                               delete_after=60)
         traceback.print_tb(error.__traceback__)

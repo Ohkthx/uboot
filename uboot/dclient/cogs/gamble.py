@@ -10,8 +10,6 @@ from dclient import DiscordBot, DestructableView
 from dclient.helper import get_member
 from dclient.views.gamble import GambleView, gamble
 
-gold_png = discord.File("images/gold.png", filename="gold.png")
-
 
 class Gamble(commands.Cog):
     """Betting Guideline:
@@ -192,7 +190,7 @@ class Gamble(commands.Cog):
         if results.iserror:
             color = discord.Colour.from_str(color_hex)
             embed = discord.Embed(description=results.msg, color=color)
-            return await ctx.send(embed=embed)
+            return await ctx.send(embed=embed, delete_after=60)
 
         user.save()
         if results.winnings > 0:

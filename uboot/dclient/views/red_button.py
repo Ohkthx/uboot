@@ -30,7 +30,9 @@ class RedButtonView(ui.View):
         user.button_press += 1
         user.save()
         val = red_button_text[random.randrange(0, len(red_button_text))]
-        await interaction.response.send_message(val, ephemeral=True)
+        await interaction.response.send_message(val,
+                                                ephemeral=True,
+                                                delete_after=5)
 
 
 async def setup(bot: DiscordBot) -> None:

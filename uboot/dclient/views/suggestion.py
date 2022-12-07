@@ -29,7 +29,9 @@ async def validate_user(interaction: discord.Interaction,
                               description=f"You must have the {role.mention} "
                               "role to do that.",
                               color=discord.Color.red())
-        return await res.send_message(embed=embed, ephemeral=True)
+        return await res.send_message(embed=embed,
+                                      ephemeral=True,
+                                      delete_after=60)
     return role
 
 

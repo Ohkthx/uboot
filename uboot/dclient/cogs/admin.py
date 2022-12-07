@@ -366,6 +366,61 @@ class Admin(commands.Cog):
         setting.save()
         await ctx.send(f"Suggestion Reviwer Role updated to: {role_str}")
 
+    @settings.command(name='request-review-channel')
+    async def request_review_channel(self, ctx: commands.Context,
+                                     channel: discord.abc.GuildChannel = param(
+                                         description="Channel Id of the Requests.",
+                                         default=None)) -> None:
+        """Sets the channel id for the request review channel.
+        Channel must be a Text Channel.
+        example:
+            (prefix)server settings request-review-channel #requests
+        """
+        if not ctx.guild:
+            return
+
+        channel_id = 0
+        channel_str = "unset"
+        if channel:
+            if not isinstance(channel, discord.TextChannel):
+                await ctx.send("Channel is not a 'Text Channel'")
+                return
+            channel_id = channel.id
+            channel_str = f"<#{channel.id}>"
+
+        setting = settings.Manager.get(ctx.guild.id)
+        setting.request_review_channel_id = channel_id
+        setting.save()
+        await ctx.send(f"Request Review channel updated to: {channel_str}")
+
+    @settings.command(name='sub-guild-channel')
+    async def sub_guild_channel(self, ctx: commands.Context,
+                                channel: discord.abc.GuildChannel = param(
+                                    description="Channel Id of the "
+                                    "Sub-Guilds.",
+                                    default=None)) -> None:
+        """Sets the channel id for the sub-guild channel.
+        Channel must be a Text Channel.
+        example:
+            (prefix)server settings sub-guild-channel #guild-requests
+        """
+        if not ctx.guild:
+            return
+
+        channel_id = 0
+        channel_str = "unset"
+        if channel:
+            if not isinstance(channel, discord.TextChannel):
+                await ctx.send("Channel is not a 'Text Channel'")
+                return
+            channel_id = channel.id
+            channel_str = f"<#{channel.id}>"
+
+        setting = settings.Manager.get(ctx.guild.id)
+        setting.sub_guild_channel_id = channel_id
+        setting.save()
+        await ctx.send(f"Sub-Guild channel updated to: {channel_str}")
+
     @server.group(name="react-role")
     async def react_role(self, ctx: commands.Context) -> None:
         """Used to bind or unbind emoji reactions to roles.

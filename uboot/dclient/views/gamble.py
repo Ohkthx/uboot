@@ -102,7 +102,8 @@ class GambleView(ui.View):
         res = interaction.response
         if interaction.user.id != self.user.id:
             return await res.send_message("You were not the original gambler.",
-                                          ephemeral=True)
+                                          ephemeral=True,
+                                          delete_after=60)
         channel = interaction.channel
         if not channel or not isinstance(channel, discord.TextChannel):
             return
@@ -115,7 +116,9 @@ class GambleView(ui.View):
         if results.iserror:
             color = discord.Colour.from_str(color_hex)
             embed = discord.Embed(description=results.msg, color=color)
-            return await res.send_message(embed=embed, ephemeral=True)
+            return await res.send_message(embed=embed,
+                                          ephemeral=True,
+                                          delete_after=60)
 
         if results.winnings > 0:
             view = GambleView(self.bot, self.user, self.decay,
