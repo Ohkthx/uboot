@@ -27,7 +27,7 @@ class General(commands.Cog):
         await ctx.send("Sucks to suck.")
 
     @commands.dm_only()
-    @commands.command(name='rm')
+    @commands.command(name='remove', aliases=("rm",))
     async def rm(self, ctx: commands.Context,
                  limit: int = param(
                      description="Amount of messages to delete.")) -> None:

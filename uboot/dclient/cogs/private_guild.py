@@ -58,15 +58,18 @@ class Guild(commands.Cog):
         """
         if not ctx.guild or not ctx.channel:
             return await ctx.send("Must be used in a guild channel.",
+                                  ephemeral=True,
                                   delete_after=60)
         if not isinstance(ctx.channel, discord.Thread):
             return await ctx.send("Must be used in a guild thread.",
+                                  ephemeral=True,
                                   delete_after=60)
 
         subguild = subguilds.Manager.by_thread(ctx.guild.id, ctx.channel.id)
         if not subguild or ctx.author.id != subguild.owner_id:
             return await ctx.send("Must be the owner of guild where the "
                                   "command is being used.",
+                                  ephemeral=True,
                                   delete_after=60)
 
         if ctx.author == user:

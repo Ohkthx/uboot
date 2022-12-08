@@ -40,7 +40,7 @@ class User():
         return total
 
     @gold.setter
-    def gold(self, val) -> int:
+    def gold(self, val) -> None:
         self._gold = val
 
     def save(self) -> None:

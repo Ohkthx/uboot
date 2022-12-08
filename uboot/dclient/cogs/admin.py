@@ -67,13 +67,13 @@ class Admin(commands.Cog):
         except BaseException as err:
             print(f"ERROR: {err}")
 
-    @server.command(name='rm')
+    @server.command(name='remove', aliases=("rm",))
     async def rm(self, ctx: commands.Context,
                  limit: int = param(
                      description="Amount of messages to delete.")) -> None:
         """Removes 'n' amount of messages.
         example:
-            (prefix)server rm 10
+            (prefix)server remove 10
         """
         c = ctx.channel
         if isinstance(c, (discord.Thread, discord.TextChannel)):
@@ -117,7 +117,7 @@ class Admin(commands.Cog):
         await ctx.send(embed=GetSupportView.get_panel(),
                        view=GetSupportView(self.bot))
 
-    @server.group(name="settings")
+    @server.group(name="settings", aliases=("setting",))
     async def settings(self, ctx: commands.Context) -> None:
         """Set various server specific settings for the discord bot.
         Information on specific settings:

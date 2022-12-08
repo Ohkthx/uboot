@@ -55,7 +55,7 @@ class Gamble(commands.Cog):
         embed.set_footer(text=f"Total gamblers: {len(all_users)}")
         await ctx.send(embed=embed)
 
-    @commands.command(name="stats")
+    @commands.command(name="stats", aliases=("balance", "statement"))
     async def stats(self, ctx: commands.Context,
                     user: discord.User = param(
                         description="Optional Id of the user to lookup.",
@@ -81,7 +81,7 @@ class Gamble(commands.Cog):
         desc = f"**{user}{title}**\n\n"\
             f"**id**: {user.id}\n"\
             f"**age**: {year_str}{day_str}\n"\
-            f"**gold**: {user.gold} gp\n"\
+            f"**gold**: {user_l.gold} gp\n"\
             f"**messages**: {user_l.msg_count}\n\n"\
             "> __Gamble__:\n"\
             f"> ├ **total**: {user_l.gambles}\n"\
@@ -120,7 +120,7 @@ class Gamble(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.guild_only()
-    @commands.command(name="give")
+    @commands.command(name="give", aliases=("withdraw",))
     async def give(self, ctx: commands.Context,
                    amount: int = param(description="Amount to give."),
                    to: discord.Member = param(description="Recipient")):
