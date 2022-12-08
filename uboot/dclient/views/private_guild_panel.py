@@ -250,6 +250,7 @@ class GuildInviteView(ui.View):
         embed = discord.Embed(title="Join Request",
                               color=color,
                               description=desc)
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
         embed.set_footer(text=interaction.user.id)
         return embed
 

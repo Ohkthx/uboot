@@ -8,6 +8,7 @@ from managers import settings, subguilds
 from dclient import DiscordBot
 from dclient.helper import get_member, get_channel
 from dclient.views.private_guild_signup import GuildSignupView
+from dclient.views.private_guild_panel import GuildManagerView
 
 
 class Guild(commands.Cog):
@@ -39,11 +40,34 @@ class Guild(commands.Cog):
 
     @commands.is_owner()
     @commands.guild_only()
-    @guild.command(name="panel")
-    async def panel(self, ctx: commands.Context):
+    @guild.command(name="signup-panel")
+    async def signup(self, ctx: commands.Context):
         """The 'Request / Signup' Panel for Guilds."""
         await ctx.send(embed=GuildSignupView.get_panel(),
                        view=GuildSignupView(self.bot))
+
+    @commands.is_owner()
+    @commands.guild_only()
+    @guild.command(name="manage-panel")
+    async def manage(self, ctx: commands.Context,
+                     msg_id: int = param(
+                         description="id of the message to attach to.")):
+        """The 'Management' Panel for Guilds."""
+        channel = ctx.channel
+        guild = ctx.guild
+        if not channel or not guild:
+            return
+
+        msg = await channel.fetch_message(msg_id)
+        if not msg:
+            return await ctx.send("Could not find message by that id.",
+                                  delete_after=60)
+
+        if self.bot.user and msg.author.id != self.bot.user.id:
+            return await ctx.send("Can only attach to the bots messages.",
+                                  delete_after=60)
+
+        await msg.edit(view=GuildManagerView(self.bot))
 
     @commands.guild_only()
     @guild.command(name="kick")
