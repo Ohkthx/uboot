@@ -13,17 +13,17 @@ class GuildSignupView(ui.View):
     @staticmethod
     def get_panel() -> discord.Embed:
         title = "Interested in your own private guild?"
-        desc = "Private Guilds are privatized threads that are strictly\n"\
-            "invite only. Upon Creation, a promotional text is created\n"\
+        desc = "Private Guilds are privatized threads that are strictly "\
+            "invite only. Upon Creation, a promotional text is created "\
             "below that allows non-members to request access.\n\n"\
             "**Join others!**\n"\
-            "> Select any Guild Promotion that feels like a home to you. By \n"\
-            "> pressing the 'Request to Join', the guild will notified of \n"\
-            "> your interests to join them.\n\n"\
+            "> Select any Guild Promotion that feels like a home to you. By "\
+            " pressing the 'Request to Join', the guild will notified of "\
+            " your interests to join them.\n\n"\
             "**Establish your community!**\n"\
-            "> If you wish to create your own community, begin by pressing the\n"\
-            "> 'Request' button below to fill out the form. An admin will \n"\
-            "> review your guilds application for approval.\n"\
+            "> If you wish to create your own community, begin by pressing the "\
+            "'Create Guild Request' button below to fill out the form. An "\
+            "admin will review your guilds application for approval.\n"\
             "> \n"\
             "> __**Required Information**__\n"\
             "> ├ Guild name [ex. Muffin Makers]\n"\
@@ -33,7 +33,7 @@ class GuildSignupView(ui.View):
         color = discord.Colour.from_str("#00ff08")
         return discord.Embed(title=title, description=desc, color=color)
 
-    @ui.button(label='Request', style=discord.ButtonStyle.blurple,
+    @ui.button(label='Create Guild Request', style=discord.ButtonStyle.blurple,
                custom_id='guild_signup_view:request')
     async def request(self, interaction: discord.Interaction, button: ui.Button):
         if not interaction.guild:

@@ -1,10 +1,11 @@
 from typing import Optional
+import json
 
 from db.subguilds import SubGuildDb, SubGuildRaw
 
 
 def make_raw(guild_id: int, id: int) -> SubGuildRaw:
-    return (id, guild_id, "unknown", 0, 0, 0, True)
+    return (id, guild_id, "unknown", 0, 0, 0, True, '[]')
 
 
 class SubGuild():
@@ -16,11 +17,13 @@ class SubGuild():
         self.thread_id = raw[4]
         self.msg_id = raw[5]
         self.disabled = raw[6]
+        self.banned: list[int] = json.loads(raw[7])
 
     @property
     def _raw(self) -> SubGuildRaw:
         return (self.id, self.guild_id, f"'{self.name}'", self.owner_id,
-                self.thread_id, self.msg_id, self.disabled)
+                self.thread_id, self.msg_id, self.disabled,
+                f"'{json.dumps(self.banned)}'")
 
     def save(self) -> None:
         if Manager._db:

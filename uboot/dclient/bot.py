@@ -284,6 +284,15 @@ class DiscordBot(commands.Bot):
         if open_tag not in thread.applied_tags:
             await thread.add_tags(open_tag)
 
+    async def on_thread_member_join(self, member: discord.ThreadMember):
+        thread = member.thread
+        subguild = subguilds.Manager.by_thread(thread.guild.id, thread.id)
+        if not subguild:
+            return
+
+        if member.id in subguild.banned:
+            await thread.remove_user(member)
+
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
         values = await react_processor(self, payload)
         if not values:

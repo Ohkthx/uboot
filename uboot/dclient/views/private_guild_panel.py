@@ -72,7 +72,6 @@ class GuildManagerView(ui.View):
         embed = discord.Embed(title="Guild Closed",
                               color=color,
                               description=desc)
-        embed.set_footer(text=interaction.user.id)
         return embed
 
     @ui.button(label='Close Guild', style=discord.ButtonStyle.red,
@@ -242,11 +241,10 @@ class GuildInviteView(ui.View):
     @staticmethod
     def get_panel(interaction: discord.Interaction) -> discord.Embed:
         color = discord.Color.from_str("#F1C800")  # Yellow color.
-        desc = f"**Requester**: {interaction.user.mention} "\
+        desc = f"**Applicant**: {interaction.user.mention} "\
             f"[{interaction.user}]\n"\
             f"**Date**: {datetime.utcnow().replace(microsecond=0)} UTC\n\n"\
-            "If you wish to accept the request, then please @mention\n"\
-            "the user in the channel."
+            "If you wish to accept the request, then press the button below."
         embed = discord.Embed(title="Join Request",
                               color=color,
                               description=desc)
@@ -346,7 +344,7 @@ class GuildPromotionView(ui.View):
         subguild = subguilds.Manager.get(interaction.guild.id, subguild_id)
         setting = settings.Manager.get(interaction.guild.id)
 
-        # Validate the channels and get the thread..
+        # Validate the channels and get the thread.
         channel = await get_channel(self.bot, setting.sub_guild_channel_id)
         if not channel:
             return await res.send_message("Guild channel may be unset.",
@@ -437,7 +435,8 @@ class GuildApprovalView(ui.View):
             return
 
         # Mark it as approved and remove the buttons.
-        embed.colour = discord.Colour.from_str("#00ff08")  # Green color.
+        color = discord.Colour.from_str("#00ff08")  # Green color.
+        embed.color = color
         embed.set_author(name=f"Approved by {interaction.user}")
         await interaction.message.edit(embed=embed,
                                        view=GuildManagerView(self.bot),
@@ -447,7 +446,7 @@ class GuildApprovalView(ui.View):
         subguild.disabled = False
         subguild.save()
 
-        await owner.send(f"Guild approved by {interaction.user}.")
+        await owner.send(embed=embed)
         await res.send_message('Guild approved.', ephemeral=True,
                                delete_after=60)
 
