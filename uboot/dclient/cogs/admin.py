@@ -130,6 +130,18 @@ class Admin(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send('invalid setting command.')
 
+    @settings.command(name='upload', aliases=("ul",))
+    async def upload(self, ctx: commands.Context) -> None:
+        """Upload a file for the settings for your server.
+        Not implemented yet.
+
+        example:
+            (prefix)settings upload [file]
+        """
+        for attachment in ctx.message.attachments:
+            print(f"{attachment.content_type} {attachment.filename}")
+        await ctx.send("Not implemented yet.")
+
     @settings.command(name='show')
     async def settings_show(self, ctx: commands.Context) -> None:
         """Shows all of the current settings for the server."""
@@ -420,6 +432,52 @@ class Admin(commands.Cog):
         setting.sub_guild_channel_id = channel_id
         setting.save()
         await ctx.send(f"Sub-Guild channel updated to: {channel_str}")
+
+    @settings.command(name='lotto-role')
+    async def lotto_role(self, ctx: commands.Context,
+                         role: discord.Role = param(
+                             description="Role of the Lotto players.",
+                             default=None)) -> None:
+        """Sets the role id for the current lotto role.
+        example:
+            (prefix)server settings lotto-role @lotto
+        """
+        if not ctx.guild:
+            return
+
+        role_id = 0
+        role_str = "unset"
+        if role:
+            role_id = role.id
+            role_str = f"<@&{role.id}>"
+
+        setting = settings.Manager.get(ctx.guild.id)
+        setting.lotto_role_id = role_id
+        setting.save()
+        await ctx.send(f"Lotto Role updated to: {role_str}")
+
+    @settings.command(name='lotto-winner-role')
+    async def lotto_winner_role(self, ctx: commands.Context,
+                                role: discord.Role = param(
+                                    description="Role of the Winning Lotto players.",
+                                    default=None)) -> None:
+        """Sets the role id for the current winning lotto role.
+        example:
+            (prefix)server settings lotto-winner-role @lotto-winner
+        """
+        if not ctx.guild:
+            return
+
+        role_id = 0
+        role_str = "unset"
+        if role:
+            role_id = role.id
+            role_str = f"<@&{role.id}>"
+
+        setting = settings.Manager.get(ctx.guild.id)
+        setting.lotto_winner_role_id = role_id
+        setting.save()
+        await ctx.send(f"Lotto Winner Role updated to: {role_str}")
 
     @server.group(name="react-role")
     async def react_role(self, ctx: commands.Context) -> None:

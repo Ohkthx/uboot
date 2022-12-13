@@ -4,7 +4,7 @@ from db.guild_settings import GuildSettingDb, GuildSettingsRaw
 
 
 def make_raw(guild_id: int) -> GuildSettingsRaw:
-    return (guild_id, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0)
+    return (guild_id, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0)
 
 
 class Settings():
@@ -20,6 +20,8 @@ class Settings():
         self.suggestion_reviewer_role_id = raw[8]
         self.request_review_channel_id = raw[9]
         self.sub_guild_channel_id = raw[10]
+        self.lotto_role_id = raw[11]
+        self.lotto_winner_role_id = raw[12]
 
     @property
     def _raw(self) -> GuildSettingsRaw:
@@ -29,7 +31,8 @@ class Settings():
                 self.support_role_id, self.suggestion_channel_id,
                 self.suggestion_reviewer_role_id,
                 self.request_review_channel_id,
-                self.sub_guild_channel_id)
+                self.sub_guild_channel_id,
+                self.lotto_role_id, self.lotto_winner_role_id)
 
     def save(self) -> None:
         if Manager._db:

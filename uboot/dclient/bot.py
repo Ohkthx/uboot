@@ -40,6 +40,8 @@ class DestructableView():
 
     async def remove(self) -> None:
         try:
+            if len(self.msg.content) == 0:
+                return await self.msg.delete()
             self.msg = await self.msg.edit(view=None)
         except BaseException:
             pass

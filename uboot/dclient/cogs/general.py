@@ -1,10 +1,12 @@
 from datetime import datetime
+from typing import Optional
 
 import discord
 from discord.ext import commands
 from discord.ext.commands import param
 
-from dclient import DiscordBot
+from dclient import DiscordBot, DestructableView
+from dclient.views.embeds import EmbedView
 
 
 class General(commands.Cog):
@@ -26,6 +28,16 @@ class General(commands.Cog):
         await ctx.message.delete()
         await ctx.send("Sucks to suck.")
 
+    @commands.guild_only()
+    @commands.is_owner()
+    @commands.command()
+    async def sync(self, ctx: commands.Context) -> None:
+        """Syncs the current slash commands with the guild."""
+        if not ctx.guild:
+            return
+        synced = await ctx.bot.tree.sync()
+        await ctx.send(f"Synced {len(synced)} commands to the current guild.")
+
     @commands.dm_only()
     @commands.command(name='remove', aliases=("rm",))
     async def rm(self, ctx: commands.Context,
@@ -40,62 +52,43 @@ class General(commands.Cog):
                 await message.delete()
 
     @commands.guild_only()
-    @commands.is_owner()
-    @commands.command()
+    @commands.has_permissions(manage_channels=True)
+    @commands.command(name='embed')
     async def edit(self, ctx: commands.Context,
-                   msg_id: int = param(description="id of the msg."),
-                   author: str = param(description="author of embed."),
-                   title: str = param(description="title of embed."),
-                   footer: str = param(description="footer of embed.")) -> None:
-        """Edits an embed."""
+                   msg_id: int = param(description="id of the msg.",
+                                       default=0),
+                   ) -> None:
+        """Either creates an embed or edits an embed authored by the bot.
+        example:
+            Create:  (prefix)embed
+            Edit:    (prefix)embed 012345679
+        """
         channel = ctx.channel
         guild = ctx.guild
         if not channel or not guild:
             return
 
-        msg = await channel.fetch_message(msg_id)
-        if not msg:
-            await ctx.send("Could not find message by that id.",
-                           delete_after=60)
-            return
+        msg: Optional[discord.Message] = None
+        if msg_id > 0:
+            msg = await channel.fetch_message(msg_id)
+            if not msg:
+                await ctx.send("Could not find message by that id.",
+                               delete_after=30)
+                return
 
-        if self.bot.user and msg.author.id != self.bot.user.id:
-            await ctx.send("Can only attach to the bots messages.",
-                           delete_after=60)
-            return
+            if self.bot.user and msg.author.id != self.bot.user.id:
+                await ctx.send("Can only attach to the bots messages.",
+                               delete_after=30)
+                return
 
-        # Get the embed.
-        if len(msg.embeds) == 0:
-            await ctx.send("Could not locate embeds.", delete_after=60)
-            return
-        embed = msg.embeds[0]
+        view = EmbedView(ctx.author.id, msg)
+        destroy_msg = await ctx.send(view=view)
+        if ctx.message:
+            await ctx.message.delete()
 
-        if author not in ("", "unset"):
-            embed.set_author(name=author)
-        elif author == "unset":
-            embed.remove_author()
-
-        if title not in ("", "unset"):
-            embed.title = title
-        elif title == "unset":
-            embed.title = ""
-
-        if footer not in ("", "unset"):
-            embed.set_footer(text=footer)
-        elif footer == "unset":
-            embed.remove_footer()
-
-        await msg.edit(embed=embed)
-
-    @commands.guild_only()
-    @commands.is_owner()
-    @commands.command()
-    async def sync(self, ctx: commands.Context) -> None:
-        """Syncs the current slash commands with the guild."""
-        if not ctx.guild:
-            return
-        synced = await ctx.bot.tree.sync()
-        await ctx.send(f"Synced {len(synced)} commands to the current guild.")
+        if destroy_msg:
+            destruct = DestructableView(destroy_msg, 0, 60)
+            self.bot.add_destructable(destruct)
 
 
 async def setup(bot: DiscordBot) -> None:

@@ -1,16 +1,21 @@
 from typing import Optional
 from .db_socket import DbSocket, clean_name
 
-# 0: int - guild_id
-# 1: int - market_channel_id
-# 2: int - react_role_channel_id
-# 3: int - react_role_msg_id
-# 4: int - expiration_days
-# 5: int - support_channel
-# 6: int - support_role_id
-# 7: int - suggestion_channel_id
-# 8: int - suggestion_reviewer_role_id
-GuildSettingsRaw = tuple[int, int, int, int, int, int, int, int, int, int, int]
+# 0:  int - guild_id
+# 1:  int - market_channel_id
+# 2:  int - react_role_channel_id
+# 3:  int - react_role_msg_id
+# 4:  int - expiration_days
+# 5:  int - support_channel_id
+# 6:  int - support_role_id
+# 7:  int - suggestion_channel_id
+# 8:  int - suggestion_reviewer_role_id
+# 9:  int - request_review_channel_id
+# 10: int - sub_guild_channel_id
+# 11: int - lotto_role_id
+# 12: int - lotto_winner_role_id
+GuildSettingsRaw = tuple[int, int, int, int, int, int, int, int, int, int, int,
+                         int, int]
 
 
 class GuildSettingDb(DbSocket):
@@ -25,9 +30,10 @@ class GuildSettingDb(DbSocket):
             "suggestion_channel_id INTEGER, "\
             "suggestion_reviewer_role_id INTEGER, "\
             "request_review_channel_id INTEGER, "\
-            "sub_guild_channel_id INTEGER )"
+            "sub_guild_channel_id INTEGER, "\
+            "lotto_role_id INTEGER, lotto_winner_role_id INTEGER )"
         self.query['insert_one'] = "INSERT OR IGNORE INTO {table_name} "\
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
     def find_one(self, guild_id: int) -> Optional[GuildSettingsRaw]:
         where_key = f"guild_id = {guild_id}"
@@ -53,6 +59,8 @@ class GuildSettingDb(DbSocket):
             f"suggestion_channel_id = {raw[7]}, "\
             f"suggestion_reviewer_role_id = {raw[8]}, "\
             f"request_review_channel_id = {raw[9]}, "\
-            f"sub_guild_channel_id = {raw[10]}"
+            f"sub_guild_channel_id = {raw[10]}, "\
+            f"lotto_role_id = {raw[11]}, "\
+            f"lotto_winner_role_id = {raw[12]}"
         where_key = f"guild_id = {raw[0]}"
         self._update(set_key, where_key)

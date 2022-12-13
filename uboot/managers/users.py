@@ -5,7 +5,7 @@ from db.users import UserDb, UserRaw
 
 
 def make_raw(user_id: int) -> UserRaw:
-    return (user_id, 0, 0, 0, 0, 0)
+    return (user_id, 100, 0, 0, 0, 0)
 
 
 class User():

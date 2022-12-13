@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import param
 
-from managers import users
+from managers import users, settings
 from dclient import DiscordBot, DestructableView
 from dclient.helper import get_member
 from dclient.views.gamble import GambleView, gamble
@@ -207,6 +207,92 @@ class Gamble(commands.Cog):
             # Schedule to delete the view.
             destructable = DestructableView(msg, user.id, 300)
             self.bot.add_destructable(destructable)
+
+    @commands.guild_only()
+    @commands.has_guild_permissions(manage_messages=True)
+    @commands.command(name="lotto")
+    async def lotto(self, ctx: commands.Context,
+                    amount: int = param(description="Amount of winners."),
+                    ) -> None:
+        """Performs the lotto assigning all users with the defined lotto role
+        a new winner lotto role.
+
+        example:
+            (prefix)lotto 10
+        """
+        guild = ctx.guild
+        if not guild:
+            return
+
+        if amount <= 0:
+            await ctx.send("Need more than 0 winners picked.")
+            return
+
+        setting = settings.Manager.get(ctx.guild.id)
+
+        # Get lotto role.
+        lotto_role = guild.get_role(setting.lotto_role_id)
+        if not lotto_role:
+            await ctx.send("Lotto role could not be found.")
+            return
+
+        # Get lotto winner role.
+        winner_role = guild.get_role(setting.lotto_winner_role_id)
+        if not winner_role:
+            await ctx.send("Winner role could not be found.")
+            return
+
+        # Perform Lotto.
+        lotto_pool: list[discord.Member] = []
+        for member in lotto_role.members:
+            if member in winner_role.members:
+                continue
+            if winner_role in member.roles:
+                continue
+            lotto_pool.append(member)
+
+        winners: list[discord.Member] = []
+        if amount >= len(lotto_pool):
+            winners = lotto_pool
+        else:
+            while len(winners) < amount:
+                if len(lotto_pool) == 0:
+                    break
+
+                pos = random.randrange(0, len(lotto_pool))
+                user = lotto_pool[pos]
+                if not user:
+                    continue
+
+                if winner_role not in user.roles:
+                    winners.append(user)
+                lotto_pool = (u for u in lotto_pool if u.id != user.id)
+
+        embed = discord.Embed(title="Winners")
+        if len(winners) == 0:
+            embed.description = "No winners."
+            await ctx.send(embed=embed)
+            return
+
+        # Assign the winner.
+        winner_text: list[str] = []
+        for n, winner in enumerate(winners):
+            winner_text.append(f"{n+1}) {str(winner)}")
+            if lotto_role in winner.roles:
+                try:
+                    await winner.remove_roles(lotto_role)
+                except:
+                    pass
+            try:
+                await winner.add_roles(winner_role)
+            except:
+                pass
+
+        full_text = '\n'.join(winner_text)
+        embed.description = f"```{full_text}```"
+
+        # Format and print winners.
+        await ctx.send(embed=embed)
 
 
 async def setup(bot: DiscordBot) -> None:
