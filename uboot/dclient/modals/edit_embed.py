@@ -8,7 +8,7 @@ from managers import settings
 
 
 class EmbedModal(ui.Modal, title='Embed Manager'):
-    def __init__(self, color: discord.Colour,
+    def __init__(self, color: Optional[discord.Colour] = None,
                  message: Optional[discord.Message] = None) -> None:
         self.color = color
         self.message = message
@@ -91,7 +91,8 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
                 value = ""
             embed.set_footer(text=value)
 
-        embed.color = self.color
+        if self.color:
+            embed.color = self.color
 
         if self.message:
             await self.message.edit(embed=embed)

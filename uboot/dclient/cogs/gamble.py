@@ -228,7 +228,7 @@ class Gamble(commands.Cog):
             await ctx.send("Need more than 0 winners picked.")
             return
 
-        setting = settings.Manager.get(ctx.guild.id)
+        setting = settings.Manager.get(guild.id)
 
         # Get lotto role.
         lotto_role = guild.get_role(setting.lotto_role_id)
@@ -266,33 +266,31 @@ class Gamble(commands.Cog):
 
                 if winner_role not in user.roles:
                     winners.append(user)
-                lotto_pool = (u for u in lotto_pool if u.id != user.id)
+                lotto_pool = [u for u in lotto_pool if u.id != user.id]
 
-        embed = discord.Embed(title="Winners")
+        title = "__**Lotto Winners!**__"
         if len(winners) == 0:
-            embed.description = "No winners."
-            await ctx.send(embed=embed)
+            await ctx.send(f"{title}\n\n> No Winners.")
             return
 
         # Assign the winner.
         winner_text: list[str] = []
         for n, winner in enumerate(winners):
-            winner_text.append(f"{n+1}) {str(winner)}")
+            winner_text.append(f"> {n+1}) {winner.mention} (**{winner}**)")
             if lotto_role in winner.roles:
                 try:
                     await winner.remove_roles(lotto_role)
-                except:
+                except BaseException:
                     pass
             try:
                 await winner.add_roles(winner_role)
-            except:
+            except BaseException:
                 pass
 
         full_text = '\n'.join(winner_text)
-        embed.description = f"```{full_text}```"
-
         # Format and print winners.
-        await ctx.send(embed=embed)
+        await ctx.send(f"{title}\n\n{full_text}\n\n"
+                       f"Congratulations on your new role: **{winner_role}**")
 
 
 async def setup(bot: DiscordBot) -> None:

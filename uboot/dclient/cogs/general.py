@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import param
 
-from dclient import DiscordBot, DestructableView
+from dclient import DiscordBot
 from dclient.views.embeds import EmbedView
 
 
@@ -54,10 +54,10 @@ class General(commands.Cog):
     @commands.guild_only()
     @commands.has_permissions(manage_channels=True)
     @commands.command(name='embed')
-    async def edit(self, ctx: commands.Context,
-                   msg_id: int = param(description="id of the msg.",
-                                       default=0),
-                   ) -> None:
+    async def embed(self, ctx: commands.Context,
+                    msg_id: int = param(description="id of the msg.",
+                                        default=0),
+                    ) -> None:
         """Either creates an embed or edits an embed authored by the bot.
         example:
             Create:  (prefix)embed
@@ -82,13 +82,9 @@ class General(commands.Cog):
                 return
 
         view = EmbedView(ctx.author.id, msg)
-        destroy_msg = await ctx.send(view=view)
+        await ctx.send(view=view, delete_after=30)
         if ctx.message:
             await ctx.message.delete()
-
-        if destroy_msg:
-            destruct = DestructableView(destroy_msg, 0, 60)
-            self.bot.add_destructable(destruct)
 
 
 async def setup(bot: DiscordBot) -> None:
