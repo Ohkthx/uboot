@@ -270,13 +270,14 @@ class Gamble(commands.Cog):
 
         title = "__**Lotto Winners!**__"
         if len(winners) == 0:
-            await ctx.send(f"{title}\n\n> No Winners.")
+            await ctx.send(f"{title}\n> └ No Winners.")
             return
 
         # Assign the winner.
         winner_text: list[str] = []
         for n, winner in enumerate(winners):
-            winner_text.append(f"> {n+1}) {winner.mention} (**{winner}**)")
+            lf = '└' if n + 1 == len(winners) else '├'
+            winner_text.append(f"> {lf} {winner.mention} (**{winner}**)")
             if lotto_role in winner.roles:
                 try:
                     await winner.remove_roles(lotto_role)
@@ -289,7 +290,7 @@ class Gamble(commands.Cog):
 
         full_text = '\n'.join(winner_text)
         # Format and print winners.
-        await ctx.send(f"{title}\n\n{full_text}\n\n"
+        await ctx.send(f"{title}\n{full_text}\n\n"
                        f"Congratulations on your new role: **{winner_role}**")
 
 
