@@ -1,4 +1,6 @@
+"""Database manager for Guild Settings."""
 from typing import Optional
+
 from .db_socket import DbSocket, clean_name
 
 # 0:  int - guild_id
@@ -19,6 +21,8 @@ GuildSettingsRaw = tuple[int, int, int, int, int, int, int, int, int, int, int,
 
 
 class GuildSettingDb(DbSocket):
+    """Database manager for Guild Settings."""
+
     def __init__(self, filename: str) -> None:
         super().__init__(filename)
         self.table_name = clean_name('guild_settings')
@@ -36,16 +40,22 @@ class GuildSettingDb(DbSocket):
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
     def find_one(self, guild_id: int) -> Optional[GuildSettingsRaw]:
+        """Gets a single guild setting from database based on its id."""
         where_key = f"guild_id = {guild_id}"
         return self._find_one(where_key)
 
     def find_all(self) -> list[GuildSettingsRaw]:
+        """Pulls all guild settings from databases."""
         return self._find_many()
 
     def insert_one(self, raw: GuildSettingsRaw) -> None:
+        """Adds one guild setting to the database only if it does not exist."""
         self._insert_one(raw)
 
     def update(self, raw: GuildSettingsRaw) -> None:
+        """Updates a setting in the database, if it does not exist it will
+        be created.
+        """
         old = self.find_one(raw[0])
         if not old:
             return self.insert_one(raw)
@@ -64,3 +74,4 @@ class GuildSettingDb(DbSocket):
             f"lotto_winner_role_id = {raw[12]}"
         where_key = f"guild_id = {raw[0]}"
         self._update(set_key, where_key)
+        return None

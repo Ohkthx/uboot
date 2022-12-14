@@ -1,4 +1,6 @@
+"""Database manager for SubGuilds."""
 from typing import Optional
+
 from .db_socket import DbSocket, clean_name
 
 # 0: int  - id
@@ -13,6 +15,8 @@ SubGuildRaw = tuple[int, int, str, int, int, int, bool, str]
 
 
 class SubGuildDb(DbSocket):
+    """Database manager for SubGuilds."""
+
     def __init__(self, filename: str) -> None:
         super().__init__(filename)
         self.table_name = clean_name('sub_guilds')
@@ -25,24 +29,34 @@ class SubGuildDb(DbSocket):
         self.query['insert_one'] = "INSERT OR IGNORE INTO {table_name} "\
             "VALUES(?, ?, ?, ?, ?, ?, ?, ?)"
 
-    def find_one(self, id: int, guild_id: int) -> Optional[SubGuildRaw]:
-        where_key = f"id = {id} AND guild_id = {guild_id}"
+    def find_one(self, subguild_id: int,
+                 guild_id: int) -> Optional[SubGuildRaw]:
+        """Gets a single subguild from database based on its id."""
+        where_key = f"id = {subguild_id} AND guild_id = {guild_id}"
         return self._find_one(where_key)
 
     def find_last(self, guild_id: int) -> Optional[SubGuildRaw]:
+        """Gets the last subguild created for the guild."""
         where_key = f"guild_id = {guild_id} ORDER BY id DESC"
         return self._find_one(where_key)
 
     def find_all(self, incomplete_only: bool = False) -> list[SubGuildRaw]:
+        """Pulls all subguilds from databases. Optional to only pull
+        disabled or enabled.
+        """
         ext = ''
         if incomplete_only:
             ext = ' WHERE disabled = 0'
         return self._find_many(ext)
 
     def insert_one(self, raw: SubGuildRaw) -> None:
+        """Adds one subguild to the database only if it does not exist."""
         self._insert_one(raw)
 
     def update(self, raw: SubGuildRaw) -> None:
+        """Updates a subguild in the database, if it does not exist it will
+        be created.
+        """
         old = self.find_one(raw[0], raw[1])
         if not old:
             return self.insert_one(raw)
@@ -56,3 +70,4 @@ class SubGuildDb(DbSocket):
             f"banned = {raw[7]}"
         where_key = f"id = {raw[0]} AND guild_id = {raw[1]}"
         self._update(set_key, where_key)
+        return None

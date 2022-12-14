@@ -1,3 +1,7 @@
+"""Manages the configuration file for the entire application. By default
+the applications configuration file name is 'config.int'.
+Performs basic error checking on the configuration file as well.
+"""
 import configparser
 import pathlib
 from typing import Optional
@@ -6,56 +10,72 @@ CONFIG_FILENAME = 'config.ini'
 
 
 class DiscordConfig():
-    def __init__(self, config) -> None:
+    """Configuration Settings for Discords API."""
+
+    def __init__(self, config: configparser.SectionProxy) -> None:
         self._config = config
 
     @property
     def token(self) -> str:
-        val = self._config.get('Token', 'unset')
-        if val is None:
-            return ""
+        """Token for access to Discord API.
+        Default: unset
+        """
+        val = self._config.get('Token', fallback='unset')
+        if not val:
+            return "unset"
         return val
 
     @property
     def prefix(self) -> str:
-        val = self._config.get('Prefix', '?')
+        """Command prefix for the bot to register what is a command.
+        Default: ?
+        """
+        val = self._config.get('Prefix', fallback='?')
         if val is None or val == "":
             return '?'
         return val
 
     @property
     def owner_id(self) -> int:
-        val = self._config.get('OwnerId', '0')
-        try:
-            return int(val)
-        except BaseException:
-            return 0
+        """Owner of the bots Discord Id, it is most likely a large integer.
+        Default: 0
+        """
+        return self._config.getint('OwnerId', 0)
 
 
-class ProjectConfig():
+class GeneralConfig():
+    """General configurations, parent to all sub-configurations."""
+
     def __init__(self, config: configparser.ConfigParser) -> None:
         self._config = config
-        discord = self._config['DISCORD']
-        if discord is None:
+
+        # Throw an error since Discord config is essential for running.
+        if not config.has_section('DISCORD'):
             raise ValueError("'DISCORD' is unset in configuration file.")
-        self._discord = DiscordConfig(discord)
+        self._discord = DiscordConfig(config['DISCORD'])
 
     @property
     def discord(self) -> DiscordConfig:
+        """Discord configurations."""
         return self._discord
 
     @property
     def debug(self) -> bool:
-        default = self._config['DEFAULT']
-        if default is None:
-            raise ValueError("'DEFAULT' is unset in configuration file.")
-        val = default.get('Debug', 'False')
-        return val.lower() == "true"
+        """Controls if the who program is running in DEBUG mode.
+        Default: 'False'
+        """
+        return self._config.getboolean('DEFAULT', 'Debug', fallback=False)
 
     @staticmethod
     def make_default_config() -> bool:
+        """Creates a default configuration for the application. The file will
+        be titled CONFIG_FILENAME ('config.ini' by default.)
+        """
+        # If the file exists ignore.
         if pathlib.Path(CONFIG_FILENAME).is_file():
             return False
+
+        # Initialize each category and the default values.
         config = configparser.ConfigParser()
         config['DEFAULT'] = {}
         config['DEFAULT']['Debug'] = 'False'
@@ -63,29 +83,29 @@ class ProjectConfig():
         config['DISCORD']['Token'] = 'unset'
         config['DISCORD']['Prefix'] = '?'
         config['DISCORD']['OwnerId'] = '0'
-        with open(CONFIG_FILENAME, 'w') as configfile:
+
+        # Save it locally.
+        with open(CONFIG_FILENAME, 'w', encoding='utf-8') as configfile:
             config.write(configfile)
         return True
 
     @staticmethod
-    def load_config() -> Optional['ProjectConfig']:
+    def load_config() -> Optional['GeneralConfig']:
+        """Attempts to load the local configuration file into memory."""
+        # Cannot load a non-existing file.
         if not pathlib.Path(CONFIG_FILENAME).is_file():
-            return
+            return None
+
         config = configparser.ConfigParser()
         config.read(CONFIG_FILENAME)
 
-        default = config['DEFAULT']
-        if default is None:
-            raise ValueError("'DEFAULT' is unset in configuration file.")
-        discord = config['DISCORD']
-        if discord is None:
-            raise ValueError("'DISCORD' is unset in configuration file.")
+        if not config.has_section('DISCORD'):
+            raise ValueError("'DISCORD' section missing from configuration.")
+
         try:
-            token = str(discord.get('Token', 'unset'))
-            str(discord.get('Prefix', '?'))
-            int(discord.get('OwnerID', '0'))
+            token = config.get('DISCORD', 'Token', fallback='unset')
             if token == 'unset':
                 raise ValueError()
         except (ValueError, Exception) as err:
-            raise ValueError("invalid values in configuration file.")
-        return ProjectConfig(config)
+            raise ValueError("invalid values in configuration file.") from err
+        return GeneralConfig(config)
