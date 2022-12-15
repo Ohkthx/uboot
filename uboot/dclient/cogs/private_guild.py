@@ -1,3 +1,4 @@
+"""Private / SubGuild commands for managing the private guild mechanic."""
 from datetime import datetime
 
 import discord
@@ -6,7 +7,7 @@ from discord.ext.commands import param
 
 from managers import settings, subguilds
 from dclient import DiscordBot
-from dclient.helper import get_member, get_channel
+from dclient.helper import get_channel
 from dclient.views.private_guild_signup import GuildSignupView
 from dclient.views.private_guild_panel import GuildManagerView
 
@@ -52,21 +53,26 @@ class Guild(commands.Cog):
     async def manage(self, ctx: commands.Context,
                      msg_id: int = param(
                          description="id of the message to attach to.")):
-        """The 'Management' Panel for Guilds."""
+        """Applies the 'Management' Panel' to a Private Guild representation.
+        Only need to do this if it is missing.
+        """
         channel = ctx.channel
         guild = ctx.guild
         if not channel or not guild:
             return
 
+        # Attempt to get the message the panel is to be added to.
         msg = await channel.fetch_message(msg_id)
         if not msg:
             return await ctx.send("Could not find message by that id.",
                                   delete_after=60)
 
+        # Prevent trying to attach to non-bot messages.
         if self.bot.user and msg.author.id != self.bot.user.id:
             return await ctx.send("Can only attach to the bots messages.",
                                   delete_after=60)
 
+        # Add the view.
         await msg.edit(view=GuildManagerView(self.bot))
 
     @commands.guild_only()
@@ -84,11 +90,14 @@ class Guild(commands.Cog):
             return await ctx.send("Must be used in a guild channel.",
                                   ephemeral=True,
                                   delete_after=60)
+
+        # Command not available outside of threads.
         if not isinstance(ctx.channel, discord.Thread):
             return await ctx.send("Must be used in a guild thread.",
                                   ephemeral=True,
                                   delete_after=60)
 
+        # Verify the owner is attempting the command. Prevent others for access
         subguild = subguilds.Manager.by_thread(ctx.guild.id, ctx.channel.id)
         if not subguild or ctx.author.id != subguild.owner_id:
             return await ctx.send("Must be the owner of guild where the "
@@ -101,6 +110,7 @@ class Guild(commands.Cog):
         if self.bot.user and self.bot.user == user:
             return await ctx.send("You cannot kick the bot.", delete_after=60)
 
+        # Remove the user and provide text.
         await ctx.channel.remove_user(user)
         color = discord.Color.from_str("#F1C800")  # Yellow color.
         desc = f"**Removed**: {user.mention}\n"\
@@ -124,10 +134,13 @@ class Guild(commands.Cog):
         if not ctx.guild or not ctx.channel:
             return await ctx.send("Must be used in a guild channel.",
                                   delete_after=60)
+
+        # Command not available outside of threads.
         if not isinstance(ctx.channel, discord.Thread):
             return await ctx.send("Must be used in a guild thread.",
                                   delete_after=60)
 
+        # Verify the owner is attempting the command. Prevent others for access
         subguild = subguilds.Manager.by_thread(ctx.guild.id, ctx.channel.id)
         if not subguild or ctx.author.id != subguild.owner_id:
             return await ctx.send("Must be the owner of guild where the "
@@ -141,6 +154,7 @@ class Guild(commands.Cog):
         if self.bot.user and self.bot.user == user:
             return await ctx.send("You cannot ban the bot.", delete_after=60)
 
+        # Remove the user and add them to the banned list.
         await ctx.channel.remove_user(user)
         if not user.id in subguild.banned:
             subguild.banned.append(user.id)
@@ -168,16 +182,20 @@ class Guild(commands.Cog):
         if not ctx.guild or not ctx.channel:
             return await ctx.send("Must be used in a guild channel.",
                                   delete_after=60)
+
+        # Command not available outside of threads.
         if not isinstance(ctx.channel, discord.Thread):
             return await ctx.send("Must be used in a guild thread.",
                                   delete_after=60)
 
+        # Verify the owner is attempting the command. Prevent others for access
         subguild = subguilds.Manager.by_thread(ctx.guild.id, ctx.channel.id)
         if not subguild or ctx.author.id != subguild.owner_id:
             return await ctx.send("Must be the owner of guild where the "
                                   "command is being used.",
                                   delete_after=60)
 
+        # Remove the user from the banned lsit.
         if user.id in subguild.banned:
             subguild.banned = [b for b in subguild.banned if b != user.id]
             subguild.save()
@@ -201,10 +219,13 @@ class Guild(commands.Cog):
         """
         if not ctx.guild or not ctx.channel:
             return await ctx.send("Must be used in a guild channel.", delete_after=60)
+
+        # Command not available outside of threads.
         if not isinstance(ctx.channel, discord.Thread):
             return await ctx.send("Must be used in a guild thread.",
                                   delete_after=60)
 
+        # Verify the owner is attempting the command. Prevent others for access
         subguild = subguilds.Manager.by_thread(ctx.guild.id, ctx.channel.id)
         if not subguild or ctx.author.id != subguild.owner_id:
             return await ctx.send("Must be the owner of guild where the command is being used.",
@@ -220,25 +241,29 @@ class Guild(commands.Cog):
             return await ctx.send("Guild channel not set to a Text Channel.",
                                   delete_after=60)
 
-        # Get the promo message.
+        # Get the promotional message.
         msg = await channel.fetch_message(subguild.msg_id)
         if not msg:
             return await ctx.send("Could not fetch the promotional message to "
                                   "update.",
                                   delete_after=60)
 
-        # Get the embed.
+        # Get the embed assigned to the promotional message.
         if len(msg.embeds) == 0:
             return await ctx.send("Could not locate embed for guild.", delete_after=60)
 
+        # Update the description.
         embed = msg.embeds[0]
         if not embed.description:
             embed.description = "**Description**:```none```Press the join button!"
         parts = embed.description.split("```")
         description = description.strip("```")
         embed.description = f"{parts[0]}```{description}```{parts[-1]}"
+
+        # Send the update.
         await msg.edit(embed=embed)
 
 
 async def setup(bot: DiscordBot) -> None:
+    """This is called by process that loads extensions."""
     await bot.add_cog(Guild(bot))

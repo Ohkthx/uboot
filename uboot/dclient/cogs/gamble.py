@@ -1,3 +1,4 @@
+"""Various commands that support the gambling mechanic."""
 import random
 from datetime import datetime, timezone
 
@@ -37,18 +38,23 @@ class Gamble(commands.Cog):
         all_users.sort(key=lambda u: u.gold, reverse=True)
 
         pos: int = 0
-        user_board: list[str] = []
-        for u in all_users:
+        board: list[str] = []
+        for user_l in all_users:
             if pos >= 10:
                 break
 
-            user = await get_member(self.bot, ctx.guild.id, u.id)
+            # Get the API version of the user.
+            user = await get_member(self.bot, ctx.guild.id, user_l.id)
             if not user:
                 continue
+
+            # Generate the text for the users position.
             pos += 1
-            winrate = f"Win-Rate: {u.win_rate():0.2f}%"
-            user_board.append(f"{pos}: **{user}** - {u.gold} gp - {winrate}")
-        summary = "\n".join(user_board)
+            winrate = f"Win-Rate: {user_l.win_rate():0.2f}%"
+            board.append(f"{pos}: **{user}** - {user_l.gold} gp - {winrate}")
+
+        # Combine all of the user data into a single message.
+        summary = "\n".join(board)
         color = discord.Colour.from_str("#00ff08")
         embed = discord.Embed(title="Top 10 Gamblers",
                               description=summary, color=color)
@@ -67,12 +73,15 @@ class Gamble(commands.Cog):
             (prefix)stats @Gatekeeper
             (prefix)stats 1044706648964472902
         """
+        # Get the local user.
         user_l = users.Manager.get(user.id)
         title = '' if user_l.button_press == 0 else ', the Button Presser'
 
+        # Add a unique title if it is the bot.
         if self.bot.user and self.bot.user.id == user.id:
             title = ', the Scholar'
 
+        # Calculate the users age based on when they joined Discord.
         age = datetime.now(timezone.utc) - user.created_at
         year_str = '' if age.days // 365 < 1 else f"{age.days//365} year(s), "
         day_str = '' if age.days % 365 == 0 else f"{int(age.days%365)} day(s)"
@@ -103,10 +112,12 @@ class Gamble(commands.Cog):
         example:
             (prefix)spawn 40 @Gatekeeper
         """
+        # Give the gold to the user and save them.
         user = users.Manager.get(to.id)
         user.gold += amount
         user.save()
 
+        # Create the transaction text.
         color = discord.Color.from_str("#F1C800")
         title = "Transaction Receipt"
         status = "Increased by" if amount >= 0 else "Reduced by"
@@ -136,18 +147,22 @@ class Gamble(commands.Cog):
             await ctx.send(f"{amount}gp is not a valid gold amount to send.")
             return
 
+        # Prevent giving gold to self.
         to_user = users.Manager.get(to.id)
         if from_user.id == to_user.id:
             msg = "What would be the purpose in sending gold to yourself?"
             await ctx.send(msg)
             return
 
+        # Remove from the giver and add to the receiver.
         from_user.gold -= amount
         to_user.gold += amount
 
+        # Save both users involved.
         from_user.save()
         to_user.save()
 
+        # Create the transaction text.
         color = discord.Color.from_str("#F1C800")
         title = "Transaction Receipt"
         status = "Increased by" if amount >= 0 else "Reduced by"
@@ -176,8 +191,11 @@ class Gamble(commands.Cog):
         view = None
         color_hex = "#ff0f08"  # Loss color.
         user = users.Manager.get(ctx.author.id)
+
+        # Remove all 'DOUBLE OR NOTHING' buttons assigned to the user.
         await self.bot.rm_user_destructable(user.id)
 
+        # Start the gambling process.
         old_gold = user.gold
         results = gamble(user, str(ctx.author), amount, side)
         if results.iserror:
@@ -185,13 +203,16 @@ class Gamble(commands.Cog):
             embed = discord.Embed(description=results.msg, color=color)
             return await ctx.send(embed=embed, delete_after=60)
 
+        # Update their stats.
         user.save()
         if results.winnings > 0:
+            # Prepare to present them with a 'DOUBLE OR NOTHING' opportunity.
             view = GambleView(self.bot, user, 300,
                               results.winnings, side,
                               old_gold)
             color_hex = "#00ff08"
 
+        # Update the bot statistics.
         if self.bot.user:
             bot_user = users.Manager.get(self.bot.user.id)
             bot_user.gambles += 1
@@ -230,13 +251,13 @@ class Gamble(commands.Cog):
 
         setting = settings.Manager.get(guild.id)
 
-        # Get lotto role.
+        # Get the role that lotto members belong to.
         lotto_role = guild.get_role(setting.lotto_role_id)
         if not lotto_role:
             await ctx.send("Lotto role could not be found.")
             return
 
-        # Get lotto winner role.
+        # Get the role to assign to all winners of the lott.
         winner_role = guild.get_role(setting.lotto_winner_role_id)
         if not winner_role:
             await ctx.send("Winner role could not be found.")
@@ -246,26 +267,33 @@ class Gamble(commands.Cog):
         lotto_pool: list[discord.Member] = []
         for member in lotto_role.members:
             if member in winner_role.members:
+                # Prevent double winners.
                 continue
             if winner_role in member.roles:
+                # Prevent previous winners.
                 continue
             lotto_pool.append(member)
 
         winners: list[discord.Member] = []
         if amount >= len(lotto_pool):
+            # Give all users in lotto pool the role if the request was too many
             winners = lotto_pool
         else:
             while len(winners) < amount:
                 if len(lotto_pool) == 0:
                     break
 
+                # Pick a random position within the list of users.
                 pos = random.randrange(0, len(lotto_pool))
                 user = lotto_pool[pos]
                 if not user:
                     continue
 
-                if winner_role not in user.roles:
+                # Assign them as a winner if they have not already won.
+                if winner_role not in user.roles and user not in winners:
                     winners.append(user)
+
+                # Remove the user from the pool.
                 lotto_pool = [u for u in lotto_pool if u.id != user.id]
 
         title = "__**Lotto Winners!**__"
@@ -273,17 +301,19 @@ class Gamble(commands.Cog):
             await ctx.send(f"{title}\n> └ No Winners.")
             return
 
-        # Assign the winner.
+        # Assign the winner role to all winners..
         winner_text: list[str] = []
         for n, winner in enumerate(winners):
-            lf = '└' if n + 1 == len(winners) else '├'
-            winner_text.append(f"> {lf} {winner.mention} (**{winner}**)")
+            lfeed = '└' if n + 1 == len(winners) else '├'
+            winner_text.append(f"> {lfeed} {winner.mention} (**{winner}**)")
             if lotto_role in winner.roles:
                 try:
+                    # Remove the lotto role to replace with winner role.
                     await winner.remove_roles(lotto_role)
                 except BaseException:
                     pass
             try:
+                # Add the winner role.
                 await winner.add_roles(winner_role)
             except BaseException:
                 pass
@@ -295,4 +325,5 @@ class Gamble(commands.Cog):
 
 
 async def setup(bot: DiscordBot) -> None:
+    """This is called by process that loads extensions."""
     await bot.add_cog(Gamble(bot))

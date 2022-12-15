@@ -1,3 +1,4 @@
+"""General commands that fit no particular category."""
 from datetime import datetime
 from typing import Optional
 
@@ -70,12 +71,14 @@ class General(commands.Cog):
 
         msg: Optional[discord.Message] = None
         if msg_id > 0:
+            # Message Id was passed, try to get the message.
             msg = await channel.fetch_message(msg_id)
             if not msg:
                 await ctx.send("Could not find message by that id.",
                                delete_after=30)
                 return
 
+            # Prevent trying to edit other user messages.
             if self.bot.user and msg.author.id != self.bot.user.id:
                 await ctx.send("Can only attach to the bots messages.",
                                delete_after=30)
@@ -88,4 +91,5 @@ class General(commands.Cog):
 
 
 async def setup(bot: DiscordBot) -> None:
+    """This is called by process that loads extensions."""
     await bot.add_cog(General(bot))

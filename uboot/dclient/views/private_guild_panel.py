@@ -1,3 +1,4 @@
+"""All of the panels used to manage Private Guilds (SubGuilds)."""
 from typing import Union, Optional
 from datetime import datetime
 
@@ -6,13 +7,16 @@ from discord import ui
 
 from dclient import DiscordBot
 from dclient.helper import get_channel, get_member
+from dclient.modals.generic_reason import ReasonModal
 from managers import subguilds, settings
-from dclient.modals.reason import ReasonModal
 
 
 def guild_info(bot: DiscordBot,
                subguild: subguilds.SubGuild,
                owner: Union[discord.User, discord.Member]) -> discord.Embed:
+    """Panel displaying basic guild information. This is sent on guild
+    creation.
+    """
     title = f"Welcome to {subguild.name}!"
     desc = f"**Leader**: {owner.mention}\n"\
         f"**Date Created**: {datetime.utcnow().replace(microsecond=0)} UTC\n"\
@@ -28,13 +32,20 @@ async def create_subguild(bot: DiscordBot,
                           subguild: subguilds.SubGuild,
                           owner: discord.Member,
                           promo_embed: discord.Embed) -> bool:
+    """Creates a Private Guild (SubGuild). Starts the guilds private thread,
+    creates the promotional text.
+    """
     res = interaction.response
+
+    # Validate the sub guild channel exists (used for signups and promotions.)
     channel = await get_channel(bot, setting.sub_guild_channel_id)
     if not channel:
         await res.send_message("Guild channel may be unset.",
                                ephemeral=True,
                                delete_after=60)
         return False
+
+    # Has to be a text channel so a private thread can be created.
     if not isinstance(channel, discord.TextChannel):
         await res.send_message("Guild channel not set to a Text Channel.",
                                ephemeral=True,
@@ -61,12 +72,18 @@ async def create_subguild(bot: DiscordBot,
 
 
 class GuildManagerView(ui.View):
+    """Guild Manager View is used by staff/admins to control the access to the
+    guild. Options are to close or reopen the guild. Closing the guild notifies
+    the guild leader of the closure and reason.
+    """
+
     def __init__(self, bot: DiscordBot) -> None:
         self.bot = bot
         super().__init__(timeout=None)
 
     @staticmethod
     def get_close(interaction: discord.Interaction) -> discord.Embed:
+        """The panel that is sent to the guild and its leader."""
         color = discord.Colour.from_str("#ff0f08")  # Red color.
         desc = f"This guild was closed by {interaction.user}"
         embed = discord.Embed(title="Guild Closed",
@@ -77,13 +94,18 @@ class GuildManagerView(ui.View):
     @ui.button(label='Close Guild', style=discord.ButtonStyle.red,
                custom_id='guild_invite_view: close_guild')
     async def close(self, interaction: discord.Interaction, button: ui.Button):
+        """Closes the guild notifying the guild leader. This just locks and
+        archives the thread preventing additional messages being sent to it.
+        """
         res = interaction.response
+
+        # Has to be performed within a server
         guild = interaction.guild
         if not interaction.message or not guild:
             return await res.send_message("Could not find the guilds panel.",
                                           ephemeral=True,
                                           delete_after=60)
-        # Get the embed.
+        # Get the embed for the guild information.
         if len(interaction.message.embeds) == 0:
             return await res.send_message("Could not locate embed for guild.",
                                           ephemeral=True,
@@ -92,7 +114,7 @@ class GuildManagerView(ui.View):
         embed.set_author(name=f"Closed by {interaction.user}")
         embed.color = discord.Colour.from_str("#ff0f08")
 
-        # Extract the sub guilds id.
+        # Extract the sub guilds id from its panel.
         subguild_id = 0
         try:
             if embed.footer.text:
@@ -108,22 +130,28 @@ class GuildManagerView(ui.View):
         subguild = subguilds.Manager.get(guild.id, subguild_id)
         setting = settings.Manager.get(guild.id)
 
-        # Validate the channels and get the thread..
+        # Validate the channels that all private threads exist in.
         channel = await get_channel(self.bot, setting.sub_guild_channel_id)
         if not channel:
             return await res.send_message("Guild channel may be unset.",
                                           ephemeral=True,
                                           delete_after=60)
+
+        # Verify that the channel is a text channel, which means threads can
+        # exist in it.
         if not isinstance(channel, discord.TextChannel):
             return await res.send_message("Guild channel not set to a Text Channel.",
                                           ephemeral=True,
                                           delete_after=60)
+
+        # Try to get the thread the private guild exists in.
         thread = channel.get_thread(subguild.thread_id)
         if not thread:
             return await res.send_message("Guilds thread channel not found.",
                                           ephemeral=True,
                                           delete_after=60)
 
+        # Prompt the admin for a reason that will be sent to the guild leader.
         owner = await get_member(self.bot, guild.id, subguild.owner_id)
         from_user = await get_member(self.bot, guild.id, interaction.user.id)
         reasoning = ReasonModal(owner, from_user,
@@ -136,6 +164,7 @@ class GuildManagerView(ui.View):
         if await reasoning.wait():
             return
 
+        # Disable the guild.
         subguild.disabled = True
         subguild.save()
 
@@ -153,13 +182,17 @@ class GuildManagerView(ui.View):
     @ui.button(label='Reopen Guild', style=discord.ButtonStyle.green,
                custom_id='guild_invite_view: open_guild')
     async def reopen(self, interaction: discord.Interaction, button: ui.Button):
+        """If the guld had be closed previously, this will reopen it and allow
+        users to interact with each other again inside the guild.
+        """
         res = interaction.response
         guild = interaction.guild
         if not interaction.message or not guild:
             return await res.send_message("Could not find the guilds panel.",
                                           ephemeral=True,
                                           delete_after=60)
-        # Get the embed.
+
+        # Get the embed for the guilds panel.
         if len(interaction.message.embeds) == 0:
             return await res.send_message("Could not locate embed for guild.",
                                           ephemeral=True,
@@ -168,7 +201,7 @@ class GuildManagerView(ui.View):
         embed.colour = discord.Colour.blurple()
         embed.remove_author()
 
-        # Extract the sub guilds id.
+        # Extract the sub guilds id from its panel.
         subguild_id = 0
         try:
             if embed.footer.text:
@@ -190,17 +223,21 @@ class GuildManagerView(ui.View):
 
         setting = settings.Manager.get(guild.id)
 
-        # Validate the channels and get the thread..
+        # Validate the channel that all sub guilds exist in.
         channel = await get_channel(self.bot, setting.sub_guild_channel_id)
         if not channel:
             return await res.send_message("Guild channel may be unset.",
                                           ephemeral=True,
                                           delete_after=60)
+
+        # Verify it is a text channel, only private threads can exist in text
+        # channels.
         if not isinstance(channel, discord.TextChannel):
             return await res.send_message("Guild channel not set to a Text Channel.",
                                           ephemeral=True,
                                           delete_after=60)
 
+        # Attempt to find the thread in the archived threads.
         thread: Optional[discord.Thread] = None
         async for t in channel.archived_threads(private=True, joined=True):
             if t.id == subguild.thread_id:
@@ -214,7 +251,7 @@ class GuildManagerView(ui.View):
         # Send notifications to the guild
         await thread.edit(archived=False, locked=False)
 
-        # Send the promotional embed.
+        # Resend the promotional embed to the sub guilds channel.
         old_desc = embed.description
         embed.description = f"{old_desc}\n\nInterested in joining?\n"\
             "Press the 'Request to Join' button below!"
@@ -223,6 +260,7 @@ class GuildManagerView(ui.View):
         embed.description = old_desc
         subguild.msg_id = promo_msg.id
 
+        # Update the sub guild to be enabled.
         subguild.disabled = False
         subguild.save()
 
@@ -234,12 +272,17 @@ class GuildManagerView(ui.View):
 
 
 class GuildInviteView(ui.View):
+    """The panel used to accept new members into the private guild
+    (SubGuild). Only the guild leader can press it.
+    """
+
     def __init__(self, bot: DiscordBot) -> None:
         self.bot = bot
         super().__init__(timeout=None)
 
     @staticmethod
     def get_panel(interaction: discord.Interaction) -> discord.Embed:
+        """This is the panel that is used to present the new user."""
         color = discord.Color.from_str("#F1C800")  # Yellow color.
         desc = f"**Applicant**: {interaction.user.mention} "\
             f"[{interaction.user}]\n"\
@@ -255,6 +298,9 @@ class GuildInviteView(ui.View):
     @ui.button(label='Accept', style=discord.ButtonStyle.green,
                custom_id='guild_invite_view: accept')
     async def accept(self, interaction: discord.Interaction, button: ui.Button):
+        """Upon being pressed, the user that submitted the request will be
+        added to the private guild.
+        """
         res = interaction.response
         guild = interaction.guild
         thread = interaction.channel
@@ -262,27 +308,32 @@ class GuildInviteView(ui.View):
             return await res.send_message("Must be used in a guild channel.",
                                           ephemeral=True,
                                           delete_after=60)
+
+        # Private Guild has to be a thread.
         if not isinstance(thread, discord.Thread):
             return await res.send_message("Must be used in a guild thread.",
                                           ephemeral=True,
                                           delete_after=60)
+
+        # Resolve the invite message.
         if not interaction.message:
             return await res.send_message("Could not find invite message.",
                                           ephemeral=True,
                                           delete_after=60)
 
+        # Verify that the guild owner is the one who pressed the button.
         subguild = subguilds.Manager.by_thread(guild.id, thread.id)
         if not subguild or interaction.user.id != subguild.owner_id:
             return await res.send_message("Must be the owner of guild to do that.",
                                           ephemeral=True,
                                           delete_after=60)
 
-        # Get the embed.
+        # Get the embed for the invite.
         if len(interaction.message.embeds) == 0:
             return await res.send_message("Could not locate embed for invite.")
         embed = interaction.message.embeds[0]
 
-        # Extract the sub guilds id.
+        # Extract the id of the user being invited to the guild.
         user_id: int = 0
         try:
             if embed.footer.text:
@@ -292,6 +343,7 @@ class GuildInviteView(ui.View):
         if user_id < 1:
             return await res.send_message("Unable to parse user id.")
 
+        # Get the users Member account.
         user = guild.get_member(user_id)
         if not user:
             try:
@@ -300,6 +352,8 @@ class GuildInviteView(ui.View):
                 pass
         if not user:
             return await res.send_message("Unable to find the user.")
+
+        # Add the user to the private guild abd greet them.
         await thread.add_user(user)
         await res.send_message(f"Hail {user}! Welcome to the community.")
 
@@ -310,6 +364,10 @@ class GuildInviteView(ui.View):
 
 
 class GuildPromotionView(ui.View):
+    """Guild Promotion view is the text and buttons used to promote private
+    guilds. Buttons include a 'Request to Join' or a prompt to create your own.
+    """
+
     def __init__(self, bot: DiscordBot) -> None:
         self.bot = bot
         super().__init__(timeout=None)
@@ -317,11 +375,14 @@ class GuildPromotionView(ui.View):
     @ui.button(label='Request to Join', style=discord.ButtonStyle.blurple,
                custom_id='guild_promotion_view: request')
     async def request(self, interaction: discord.Interaction, button: ui.Button):
+        """Upon pressing this button, a request is sent to the guild to
+        join.
+        """
         res = interaction.response
         if not interaction.message or not interaction.guild:
             return
 
-        # Get the embed.
+        # Get the embed for the promotion.
         if len(interaction.message.embeds) == 0:
             return await res.send_message("Could not locate embed for guild.",
                                           ephemeral=True,
@@ -344,22 +405,27 @@ class GuildPromotionView(ui.View):
         subguild = subguilds.Manager.get(interaction.guild.id, subguild_id)
         setting = settings.Manager.get(interaction.guild.id)
 
-        # Validate the channels and get the thread.
+        # Validate the channels.
         channel = await get_channel(self.bot, setting.sub_guild_channel_id)
         if not channel:
             return await res.send_message("Guild channel may be unset.",
                                           ephemeral=True,
                                           delete_after=60)
+
+        # Channel has to be a text channel for private threads to exist.
         if not isinstance(channel, discord.TextChannel):
             return await res.send_message("Guild channel not set to a Text Channel.",
                                           ephemeral=True,
                                           delete_after=60)
+
+        # Get the private guilds thread.
         thread = channel.get_thread(subguild.thread_id)
         if not thread:
             return await res.send_message("Guilds thread channel not found.",
                                           ephemeral=True,
                                           delete_after=60)
 
+        # Create a new guild invite panel that will be sent to be accepted.
         embed = GuildInviteView.get_panel(interaction)
         await thread.send(embed=embed, view=GuildInviteView(self.bot))
 
@@ -369,6 +435,7 @@ class GuildPromotionView(ui.View):
     @ui.button(label='Create Your Own', style=discord.ButtonStyle.grey,
                custom_id='guild_promotion_view: create')
     async def create(self, interaction: discord.Interaction, button: ui.Button):
+        """Placeholder that just tells the user to create their own."""
         res = interaction.response
         await res.send_message('Scroll to the top of the channel, a request '
                                'form can be accessed there.',
@@ -377,6 +444,8 @@ class GuildPromotionView(ui.View):
 
 
 class GuildApprovalView(ui.View):
+    """Panel used to approve or deny new guild creation requests."""
+
     def __init__(self, bot: DiscordBot) -> None:
         self.bot = bot
         super().__init__(timeout=None)
@@ -386,6 +455,7 @@ class GuildApprovalView(ui.View):
                   description: str,
                   user: Union[discord.User, discord.Member],
                   subguild_id: int) -> discord.Embed:
+        """Panel text for admins/staff to see the guild information."""
         now = datetime.utcnow().replace(microsecond=0)
         title = name
         desc = f"**Abbreviation**: {abbrv}\n"\
@@ -400,11 +470,14 @@ class GuildApprovalView(ui.View):
     @ui.button(label='🗹 Approve', style=discord.ButtonStyle.green,
                custom_id='guild_approval_view:approve')
     async def approve(self, interaction: discord.Interaction, button: ui.Button):
+        """Approves the guild creation request. Establishes the guilds thread
+        and sends the promotional panel to the sub guild channel.
+        """
         res = interaction.response
         if not interaction.message or not interaction.guild:
             return
 
-        # Get the embed.
+        # Get the embed to extract the guilds id.
         if len(interaction.message.embeds) == 0:
             return await res.send_message("Could not locate embed for guild.")
         embed = interaction.message.embeds[0]
@@ -453,11 +526,15 @@ class GuildApprovalView(ui.View):
     @ui.button(label='⨯ Deny', style=discord.ButtonStyle.red,
                custom_id='guild_approval_view:deny')
     async def deny(self, interaction: discord.Interaction, button: ui.Button):
+        """Denies a guild creation requestion. Prompts staff for a reason why
+        the guild was denied and sends that reason to the guild leader to
+        potentially makes changes.
+        """
         res = interaction.response
         if not interaction.message or not interaction.guild:
             return
 
-        # Get the embed.
+        # Get the embed to extract the guild id.
         if len(interaction.message.embeds) == 0:
             return await res.send_message("Could not locate embed for guild.")
         embed = interaction.message.embeds[0]
@@ -487,6 +564,7 @@ class GuildApprovalView(ui.View):
         if isinstance(interaction.user, discord.Member):
             from_user = interaction.user
 
+        # Send a reason to the guild leader.
         reasoning = ReasonModal(owner, from_user,
                                 "Guild Application Denied",
                                 f"**Guild Name**: {subguild.name}",
@@ -502,6 +580,7 @@ class GuildApprovalView(ui.View):
 
 
 async def setup(bot: DiscordBot) -> None:
+    """This is called by process that loads extensions."""
     bot.add_view(GuildPromotionView(bot))
     bot.add_view(GuildApprovalView(bot))
     bot.add_view(GuildInviteView(bot))

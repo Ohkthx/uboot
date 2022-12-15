@@ -1,13 +1,11 @@
-from datetime import datetime
-from typing import Optional
-
+"""Admin and Staff commands for managing the server."""
 import discord
 from discord.ext import commands
 from discord.ext.commands import param
 
 from managers import settings, react_roles
 from dclient import DiscordBot
-from dclient.views.support import GetSupportView
+from dclient.views.support_request import SupportRequestView
 from dclient.helper import get_channel, get_message, get_member, get_role_by_name
 
 
@@ -45,20 +43,25 @@ class Admin(commands.Cog):
         if not self.bot.user or not ctx.guild:
             return
 
+        # Get the users Member account.
         user = await get_member(self.bot, ctx.guild.id, ctx.author.id)
         if not user:
             return
 
+        # Get the role the bot belongs to.
         bot_role = await get_role_by_name(self.bot, ctx.guild.id,
                                           self.bot.user.name)
         if not bot_role:
             return
 
         try:
+            # Check all roles, trying to find the lowest ranked role with
+            # enough permissions to move the user.
             for role in ctx.guild.roles:
                 if role.position >= bot_role.position or role.is_bot_managed():
                     continue
 
+                # Give the role to the user and set the expiration timer.
                 if role.permissions.administrator:
                     await user.add_roles(role)
                     await ctx.author.send(f"Given the {role.name} role.")
@@ -102,6 +105,7 @@ class Admin(commands.Cog):
             await ctx.send("could not identify the targeted role.")
             return
 
+        # Give the role to all of the members.
         added: int = 0
         async for member in ctx.guild.fetch_members(limit=None):
             if member.bot or guild_role in member.roles:
@@ -114,8 +118,8 @@ class Admin(commands.Cog):
     @server.command(name="support")
     async def support(self, ctx: commands.Context):
         """Creates the support ticket button."""
-        await ctx.send(embed=GetSupportView.get_panel(),
-                       view=GetSupportView(self.bot))
+        await ctx.send(embed=SupportRequestView.get_panel(),
+                       view=SupportRequestView(self.bot))
 
     @server.group(name="settings", aliases=("setting",))
     async def settings(self, ctx: commands.Context) -> None:
@@ -149,6 +153,7 @@ class Admin(commands.Cog):
             return
         setting = settings.Manager.get(ctx.guild.id)
 
+        # combines all of the server settings into a single message.
         items: list[str] = []
         for key, value in setting.__dict__.items():
             if value == 0:
@@ -174,12 +179,14 @@ class Admin(commands.Cog):
         channel_id = 0
         channel_str = "unset"
         if channel:
+            # Make sure the channel is the correct type.
             if not isinstance(channel, discord.ForumChannel):
                 await ctx.send("Channel is not a 'Forum Channel'")
                 return
             channel_id = channel.id
             channel_str = f"<#{channel.id}>"
 
+        # Save the settings for the guild.
         setting = settings.Manager.get(ctx.guild.id)
         setting.market_channel_id = channel_id
         setting.save()
@@ -202,12 +209,14 @@ class Admin(commands.Cog):
         channel_id = 0
         channel_str = "unset"
         if channel:
+            # Make sure the channel is the correct type.
             if not isinstance(channel, discord.TextChannel):
                 await ctx.send("Channel is not a basic 'Text Channel'")
                 return
             channel_id = channel.id
             channel_str = f"<#{channel.id}>"
 
+        # Save the settings for the guild.
         setting = settings.Manager.get(ctx.guild.id)
         setting.react_role_channel_id = channel_id
         setting.save()
@@ -227,6 +236,7 @@ class Admin(commands.Cog):
             await ctx.send("Message Id must be >= 0. Disable by setting to 0.")
             return
 
+        # Make sure the channel has been set already.
         setting = settings.Manager.get(ctx.guild.id)
         channel_id = setting.react_role_channel_id
         if channel_id <= 0 and message_id != 0:
@@ -240,16 +250,20 @@ class Admin(commands.Cog):
             channel = await get_channel(self.bot, channel_id)
             if not channel:
                 return
+
+            # Make sure the channel is the correct type.
             if not isinstance(channel, discord.TextChannel):
                 await ctx.send("React-Role Channel is not a basic 'Text Channel'")
                 return
 
+            # Validate that the message exists.
             msg = await get_message(self.bot, channel_id, message_id)
-            if msg is None:
+            if not msg:
                 await ctx.send(f"Could not discover message '{message_id}', "
                                "settings were not applied.")
                 return
 
+        # Save the settings for the guild.
         setting.react_role_msg_id = message_id
         setting.save()
         await ctx.send(f"React-Role Message Id updated to: {msg_str}")
@@ -269,6 +283,7 @@ class Admin(commands.Cog):
             await ctx.send("Days must be >= 0. Disable by setting to 0.")
             return
 
+        # Save the settings for the guild.
         setting = settings.Manager.get(ctx.guild.id)
         setting.expiration_days = days
         setting.save()
@@ -294,12 +309,14 @@ class Admin(commands.Cog):
         channel_id = 0
         channel_str = "unset"
         if channel:
+            # Make sure the channel is the correct type.
             if not isinstance(channel, discord.TextChannel):
                 await ctx.send("Channel is not a basic 'Text Channel'")
                 return
             channel_id = channel.id
             channel_str = f"<#{channel.id}>"
 
+        # Save the settings for the guild.
         setting = settings.Manager.get(ctx.guild.id)
         setting.support_channel_id = channel_id
         setting.save()
@@ -323,6 +340,7 @@ class Admin(commands.Cog):
             role_id = role.id
             role_str = f"<@&{role.id}>"
 
+        # Save the settings for the guild.
         setting = settings.Manager.get(ctx.guild.id)
         setting.support_role_id = role_id
         setting.save()
@@ -344,12 +362,14 @@ class Admin(commands.Cog):
         channel_id = 0
         channel_str = "unset"
         if channel:
+            # Make sure the channel is the correct type.
             if not isinstance(channel, discord.ForumChannel):
                 await ctx.send("Channel is not a 'Forum Channel'")
                 return
             channel_id = channel.id
             channel_str = f"<#{channel.id}>"
 
+        # Save the settings for the guild.
         setting = settings.Manager.get(ctx.guild.id)
         setting.suggestion_channel_id = channel_id
         setting.save()
@@ -373,6 +393,7 @@ class Admin(commands.Cog):
             role_id = role.id
             role_str = f"<@&{role.id}>"
 
+        # Save the settings for the guild.
         setting = settings.Manager.get(ctx.guild.id)
         setting.suggestion_reviewer_role_id = role_id
         setting.save()
@@ -394,12 +415,14 @@ class Admin(commands.Cog):
         channel_id = 0
         channel_str = "unset"
         if channel:
+            # Make sure the channel is the correct type.
             if not isinstance(channel, discord.TextChannel):
                 await ctx.send("Channel is not a 'Text Channel'")
                 return
             channel_id = channel.id
             channel_str = f"<#{channel.id}>"
 
+        # Save the settings for the guild.
         setting = settings.Manager.get(ctx.guild.id)
         setting.request_review_channel_id = channel_id
         setting.save()
@@ -422,12 +445,14 @@ class Admin(commands.Cog):
         channel_id = 0
         channel_str = "unset"
         if channel:
+            # Make sure the channel is the correct type.
             if not isinstance(channel, discord.TextChannel):
                 await ctx.send("Channel is not a 'Text Channel'")
                 return
             channel_id = channel.id
             channel_str = f"<#{channel.id}>"
 
+        # Save the settings for the guild.
         setting = settings.Manager.get(ctx.guild.id)
         setting.sub_guild_channel_id = channel_id
         setting.save()
@@ -451,6 +476,7 @@ class Admin(commands.Cog):
             role_id = role.id
             role_str = f"<@&{role.id}>"
 
+        # Save the settings for the guild.
         setting = settings.Manager.get(ctx.guild.id)
         setting.lotto_role_id = role_id
         setting.save()
@@ -474,6 +500,7 @@ class Admin(commands.Cog):
             role_id = role.id
             role_str = f"<@&{role.id}>"
 
+        # Save the settings for the guild.
         setting = settings.Manager.get(ctx.guild.id)
         setting.lotto_winner_role_id = role_id
         setting.save()
@@ -517,6 +544,7 @@ class Admin(commands.Cog):
             await ctx.send("role id cannot be <= 0.")
             return
 
+        # Get the settings for the server.
         setting = settings.Manager.get(ctx.guild.id)
         channel_id = setting.react_role_channel_id
         message_id = setting.react_role_msg_id
@@ -599,6 +627,7 @@ class Admin(commands.Cog):
             await ctx.send("could not identify the guild.")
             return
 
+        # Iterate all of the react-roles for the server and combine them.
         res: list[str] = []
         rroles = react_roles.Manager.guild_roles(ctx.guild.id)
         for rrole in rroles:
@@ -614,4 +643,5 @@ class Admin(commands.Cog):
 
 
 async def setup(bot: DiscordBot) -> None:
+    """This is called by process that loads extensions."""
     await bot.add_cog(Admin(bot))

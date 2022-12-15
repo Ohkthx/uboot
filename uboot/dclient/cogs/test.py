@@ -1,3 +1,4 @@
+"""Commands that are currently being tested."""
 import discord
 from discord.ext import commands
 
@@ -16,6 +17,7 @@ class Test(commands.Cog):
     @commands.guild_only()
     @commands.group(name="test")
     async def test(self, ctx: commands.Context) -> None:
+        """Group of test commands that are not officially implemented yet."""
         if not ctx.invoked_subcommand:
             await ctx.send('invalid button-test command.')
 
@@ -35,4 +37,5 @@ class Test(commands.Cog):
 
 
 async def setup(bot: DiscordBot) -> None:
+    """This is called by process that loads extensions."""
     await bot.add_cog(Test(bot))

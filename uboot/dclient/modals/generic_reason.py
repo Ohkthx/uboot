@@ -1,3 +1,4 @@
+"""Provides a generic reason form to forward information to a user."""
 import traceback
 from typing import Union
 
@@ -6,6 +7,10 @@ from discord import ui
 
 
 class ReasonModal(ui.Modal, title='Reason'):
+    """Generic Reason an action has been taken by staff. Sends to the
+    'to_user' if supplied.
+    """
+
     def __init__(self, to_user: Union[discord.Member, None],
                  from_user: Union[discord.Member, None],
                  title: str,
@@ -18,6 +23,7 @@ class ReasonModal(ui.Modal, title='Reason'):
         self.text_color = color
         super().__init__()
 
+    # Reason for action.
     reason = ui.TextInput(
         label='Reasoning that will be sent to user',
         style=discord.TextStyle.long,
@@ -27,6 +33,9 @@ class ReasonModal(ui.Modal, title='Reason'):
     )
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        """Called when the submit button is pressed. Processes the
+        interaction.
+        """
         res = interaction.response
         embed = discord.Embed(title=self.text_title,
                               color=self.text_color,
@@ -39,6 +48,7 @@ class ReasonModal(ui.Modal, title='Reason'):
         await res.send_message(embed=embed)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        """Clean way of handling errors and notifying the user."""
         res = interaction.response
         await res.send_message('Oops! Something went wrong, please notify an '
                                'admin for additional help.',

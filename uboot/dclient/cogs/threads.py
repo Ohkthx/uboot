@@ -1,3 +1,6 @@
+"""Commands used to manage discord threads or add additional functionality to
+them. Most of these commands are reseved for staff/admins.
+"""
 import discord
 from discord.ext import commands
 
@@ -27,6 +30,7 @@ class Threads(commands.Cog):
             (prefix)thread open
             (prefix)thread close
         """
+        # Check to make sure this is a thread it is being called in.
         if not isinstance(ctx.channel, discord.Thread):
             await ctx.message.delete()
             await ctx.send("cannot be used outside of a thread.",
@@ -39,9 +43,11 @@ class Threads(commands.Cog):
     @thread.command(name='leave')
     async def leave(self, ctx: commands.Context) -> None:
         """Leave a thread. Later losers."""
+        # Check to make sure this is a thread it is being called in.
         if not isinstance(ctx.channel, discord.Thread):
             return
 
+        # Requires the thread to be in a Forum Channel.
         if not isinstance(ctx.channel.parent, discord.ForumChannel):
             await ctx.message.delete()
             await ctx.send('thread is not in a forum channel.',
@@ -62,9 +68,11 @@ class Threads(commands.Cog):
     @commands.has_guild_permissions(manage_messages=True)
     async def open(self, ctx: commands.Context) -> None:
         """Marks a thread with the open tag."""
+        # Check to make sure this is a thread it is being called in.
         if not isinstance(ctx.channel, discord.Thread):
             return
 
+        # Requires the thread to be in a Forum Channel.
         if not isinstance(ctx.channel.parent, discord.ForumChannel):
             await ctx.message.delete()
             await ctx.send('thread is not in a forum channel.',
@@ -89,14 +97,18 @@ class Threads(commands.Cog):
             Closes the thread.
             Locks the thread.
         """
+        # Check to make sure this is a thread it is being called in.
         if not isinstance(ctx.channel, discord.Thread) or not ctx.guild:
             return
 
+        # Get the owner of the thread.
         owner_id = ctx.channel.owner_id
         author = await get_member(self.bot, ctx.guild.id, ctx.author.id)
         if not author:
             return
 
+        # Deny the user if they are not an owner or staff/admins with
+        # permissions.
         if owner_id != author.id and not author.guild_permissions.manage_messages:
             msg = "only the owner of the thread or an admin can close thread."
             await ctx.send(msg)
@@ -109,6 +121,7 @@ class Threads(commands.Cog):
             if owner:
                 user_msg = f"{user_msg} by {author}"
 
+        # Send the closure text and close, lock, and archive the thread.
         await ctx.channel.send(f"Thread closed by {author}.")
         await ctx.message.delete()
         await thread_close(['open', 'in-progress'], 'closed', ctx.channel, reason,
@@ -119,10 +132,13 @@ class Threads(commands.Cog):
     async def panel(self, ctx: commands.Context) -> None:
         """Creates a panel for a thread."""
         await ctx.message.delete()
+
+        # Check to make sure this is a thread it is being called in.
         thread = ctx.channel
         if not thread or not isinstance(thread, discord.Thread):
             return
 
+        # Requires the thread to be in a Forum Channel.
         if not isinstance(thread.parent, discord.ForumChannel):
             return
 
@@ -130,4 +146,5 @@ class Threads(commands.Cog):
 
 
 async def setup(bot: DiscordBot) -> None:
+    """This is called by process that loads extensions."""
     await bot.add_cog(Threads(bot))

@@ -1,5 +1,5 @@
+"""Guild Signup Modal used for registering a new guild."""
 import traceback
-from datetime import datetime
 
 import discord
 from discord import ui
@@ -11,11 +11,16 @@ from dclient.views.private_guild_panel import GuildApprovalView
 
 
 class GuildSignupModal(ui.Modal, title='Guild Request'):
+    """Prompts the user with a form used to register a new guild. This data
+    is passed to an admins channel to accept or decline the application.
+    """
+
     def __init__(self, bot: DiscordBot, channel: discord.TextChannel) -> None:
         self.bot = bot
         self.channel = channel
         super().__init__()
 
+    # Name of the guild.
     guild_name = ui.TextInput(
         label='Guild name',
         style=discord.TextStyle.short,
@@ -23,6 +28,7 @@ class GuildSignupModal(ui.Modal, title='Guild Request'):
         required=True,
     )
 
+    # Abbreviation of the the guild.
     guild_abrv = ui.TextInput(
         label='Guild abbreviation',
         style=discord.TextStyle.short,
@@ -30,6 +36,7 @@ class GuildSignupModal(ui.Modal, title='Guild Request'):
         required=True,
     )
 
+    # Short promotional description.
     description = ui.TextInput(
         label='Description for guild',
         style=discord.TextStyle.long,
@@ -39,6 +46,7 @@ class GuildSignupModal(ui.Modal, title='Guild Request'):
     )
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        """Called when the submit button is pressed."""
         res = interaction.response
         if not interaction.guild:
             return
@@ -82,6 +90,9 @@ class GuildSignupModal(ui.Modal, title='Guild Request'):
         await res.send_message(embed=embed, ephemeral=True, delete_after=300)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        """Called if an unknown error occurs... just a pretty way of handling
+        things.
+        """
         res = interaction.response
         await res.send_message('Oops! Something went wrong, please notify an '
                                'admin for additional help.',

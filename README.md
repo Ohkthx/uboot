@@ -16,7 +16,7 @@ A Discord Bot written in Python3 for UO servers. This is the primary source code
 
 ## General
 No prefix assigned. General commands that have no real category.
-- **embed** - Create or Edit embeds created by the Discord Bot.
+- **embed** - (Admin Only) Create or Edit embeds created by the Discord Bot.
 - **ping** - Responds with "Pong" and the current one-way latency.
 - **s2s** - Sucks to suck.
 

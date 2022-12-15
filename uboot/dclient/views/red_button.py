@@ -1,3 +1,6 @@
+"""Presents all users with a tempting red button to press. This button has a
+temporary lifespan.
+"""
 import random
 from itertools import repeat
 
@@ -8,17 +11,21 @@ from dclient import DiscordBot
 from managers import users
 
 
+# Random texted presented to the user.
 red_button_text = ["Nothing appears to have happened."]
 red_button_text.extend(repeat("Nothing happened.", 6))
 
 
 class RedButtonView(ui.View):
+    """Fun and tempting button for users to NOT press."""
+
     def __init__(self, bot: DiscordBot) -> None:
         self.bot = bot
         super().__init__(timeout=None)
 
     @staticmethod
     def get_panel() -> discord.Embed:
+        """Creates the panel for the button."""
         color = discord.Colour.from_str("#00ff08")
         return discord.Embed(description="A wild red button appeared!",
                              color=color)
@@ -26,9 +33,13 @@ class RedButtonView(ui.View):
     @ui.button(label='Do NOT Press', style=discord.ButtonStyle.red,
                custom_id='red_button_view:red')
     async def do_not(self, interaction: discord.Interaction, button: ui.Button):
+        """The button the users must refrain from pressing."""
+        # Update the user who pressed it.
         user = users.Manager.get(interaction.user.id)
         user.button_press += 1
         user.save()
+
+        # Set the button to be destroyed by the bot.
         val = red_button_text[random.randrange(0, len(red_button_text))]
         await interaction.response.send_message(val,
                                                 ephemeral=True,
@@ -36,4 +47,5 @@ class RedButtonView(ui.View):
 
 
 async def setup(bot: DiscordBot) -> None:
+    """This is called by process that loads extensions."""
     bot.add_view(RedButtonView(bot))
