@@ -65,7 +65,7 @@ class User():
         if Manager._db:
             Manager._db.update(self._raw)
 
-    def add_message(self) -> None:
+    def add_message(self, multiplier: float = 1.0) -> None:
         """Adds a message to the user. Rewards with gold if off cooldown."""
         self.msg_count += 1
 
@@ -74,7 +74,7 @@ class User():
         time_diff = now - self.last_message
         if time_diff >= timedelta(seconds=15):
             # Gold is not on cooldown, add.
-            self.gold += 1
+            self.gold = int(self.gold + (1 * multiplier))
             self.last_message = now
 
     def win_rate(self) -> float:

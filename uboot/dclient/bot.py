@@ -80,6 +80,33 @@ class Sudoer():
             Log.debug("Could not remove the role from the sudoer.")
 
 
+class Powerhour():
+    """Powerhour is a single hour in which gold generation is increased."""
+
+    def __init__(self, guild_id: int, channel_id: int, multiplier: float):
+        self.guild_id = guild_id
+        self.channel_id = channel_id
+        self.multiplier = multiplier
+        self.timestamp = datetime.now()
+
+    def isexpired(self) -> bool:
+        """Checks if the time has elapsed and powerhour should be removed."""
+        now = datetime.now()
+        return now - self.timestamp > timedelta(hours=1)
+
+    async def send_end(self, bot: 'DiscordBot') -> None:
+        """Notifies the channel that the powerhour has ended."""
+        embed = discord.Embed()
+        embed.description = "__**Message POWERHOUR ended!**__\n"\
+            "> └ Gold generation per message returned to normal."
+        embed.color = discord.Colour.from_str("#ff0f08")
+
+        channel = await get_channel(bot, self.channel_id)
+        if not channel or not isinstance(channel, discord.TextChannel):
+            return
+        await channel.send(embed=embed)
+
+
 # All of the cogs and views that should be loaded. Views are Persistent.
 cog_extensions: list[str] = ['dclient.cogs.general',
                              'dclient.cogs.threads',
@@ -118,6 +145,7 @@ class DiscordBot(commands.Bot):
         self.sudoer: Optional[Sudoer] = None
         self.destructables: dict[int, DestructableView] = {}
         self.last_button: Optional[discord.Message] = None
+        self.powerhours: dict[int, Powerhour] = {}
 
     def set_sudoer(self, user: discord.Member, role: discord.Role,
                    length: int) -> None:
@@ -146,6 +174,11 @@ class DiscordBot(commands.Bot):
                 Log.print(f"[{i}] has too many components still.")
                 continue
             del self.destructables[i]
+
+    def start_powerhour(self, guild_id: int, channel_id: int,
+                        multiplier: float) -> None:
+        """Starts a powerhour for the selected guild."""
+        self.powerhours[guild_id] = Powerhour(guild_id, channel_id, multiplier)
 
     async def setup_hook(self) -> None:
         """Overrides the setup hook, loading all extensions (views/cogs) and
@@ -221,6 +254,16 @@ class DiscordBot(commands.Bot):
                     pass
                 finally:
                     self.last_button = None
+
+        # Check powerhours, if they are expired they will be removed.
+        delete: list[int] = []
+        for guild_id, powerhour in self.powerhours.items():
+            if powerhour.isexpired():
+                await powerhour.send_end(self)
+                delete.append(guild_id)
+        # Remove from memory.
+        for i in delete:
+            del self.powerhours[i]
 
         # Check destructable views, if they are expired they will be removed.
         delete: list[int] = []
@@ -315,7 +358,11 @@ class DiscordBot(commands.Bot):
         # Add message and gold to user, saving to database.
         user = users.Manager.get(msg.author.id)
         if msg.guild:
-            user.add_message()
+            powerhour = self.powerhours[msg.guild.id]
+            multiplier: float = 1.0
+            if powerhour:
+                multiplier = powerhour.multiplier
+            user.add_message(multiplier)
             return user.save()
 
         if not self.owner_id or user.id == self.owner_id:

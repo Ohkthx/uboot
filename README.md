@@ -19,6 +19,7 @@ No prefix assigned. General commands that have no real category.
 - **embed** - (Admin Only) Create or Edit embeds created by the Discord Bot.
 - **ping** - Responds with "Pong" and the current one-way latency.
 - **s2s** - Sucks to suck.
+- **8ball** - Shake the magic 8-ball! Results may vary.
 
 ## Admin / Server Commands
 Prefixed with **server** (ie. `?server`). These commands are reserved for only admins to utilize. Help can be viewed with `?help server`

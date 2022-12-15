@@ -1,4 +1,5 @@
 """General commands that fit no particular category."""
+import random
 from datetime import datetime
 from typing import Optional
 
@@ -8,6 +9,18 @@ from discord.ext.commands import param
 
 from dclient import DiscordBot
 from dclient.views.embeds import EmbedView
+
+# All standard magic 8 ball options.
+eight_ball_opts = [["It is certain.", "It is decidely so.", "Without a doubt.",
+                    "Yes definitely.", "You may rely on it.",
+                    "As I see it, yes.", "Most likely.", "Outlook good.", "Yes",
+                    "Signs point to yes."],
+                   ["Reply hazy, try again.",
+                       "Ask again later.", "Better not tell you now.",
+                       "Cannot predict now.", "Concentrate and ask again."],
+                   ["Don't count on it.", "My reply is no.",
+                       "My sources say no.", "Outlook not so good.",
+                       "Very doubtful."]]
 
 
 class General(commands.Cog):
@@ -28,6 +41,64 @@ class General(commands.Cog):
         """Sucks to suck."""
         await ctx.message.delete()
         await ctx.send("Sucks to suck.")
+
+    @commands.command(name="8ball", aliases=("8-ball", "magic-8ball", "shake"))
+    async def eight_ball(self, ctx: commands.Context,
+                         question: Optional[str] = param(
+                             description="Question to ask.",
+                             default='none')) -> None:
+        """Shakes a magic 8-ball. Results are not final."""
+        await ctx.message.delete()
+        if len(ctx.message.mentions) > 0:
+            await ctx.send("Mentioning others is not allowed while asking "
+                           "a question.",
+                           delete_after=15)
+            return
+
+        # Extracts the question from the raw message.
+        lstrip = f"{ctx.prefix}{ctx.invoked_with} "
+        question = ctx.message.content.lstrip(lstrip)
+        asks = ''
+        if len(question) > 0:
+            asks = f' > "{question}"\n\n'
+
+        # Get the text.
+        quality = random.randrange(0, len(eight_ball_opts))
+        pos = random.randrange(0, len(eight_ball_opts[quality]))
+        phrase = eight_ball_opts[quality][pos]
+
+        # Change the color of the embed based on the positivity.
+        color = discord.Colour.from_str("#00ff08")
+        if quality == 1:
+            color = discord.Colour.from_str("#F1C800")
+        if quality == 2:
+            color = discord.Colour.from_str("#ff0f08")
+        elif quality > 2:
+            color = discord.Colour.default()
+
+        embed = discord.Embed()
+        embed.description = f"**{ctx.author}** shakes the magic 8-ball.\n"\
+            f"{asks}"\
+            f"```{phrase}```"
+        embed.color = color
+        embed.set_footer(text="disclaimer: works 50% of the time, every time.")
+        await ctx.send(embed=embed)
+
+    @commands.guild_only()
+    @commands.is_owner()
+    @commands.command(name="powerhour", aliases=("ph",))
+    async def powerhour(self, ctx: commands.Context) -> None:
+        """Starts a powerhour for messages! 3x gold generation per message."""
+        if not ctx.guild or not ctx.channel:
+            return
+
+        self.bot.start_powerhour(ctx.guild.id, ctx.channel.id, 3.0)
+        embed = discord.Embed()
+        embed.description = "__Message **POWERHOUR** started!__\n"\
+            "> └ Gold generation per message is increased by 3x."
+        embed.color = discord.Colour.from_str("#00ff08")
+        embed.set_footer(text=f"Powerhour started by {ctx.author}")
+        await ctx.send(embed=embed)
 
     @commands.guild_only()
     @commands.is_owner()
