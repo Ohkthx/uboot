@@ -1,1 +1,1 @@
-from .bot import DiscordBot, DestructableView
+from .bot import DiscordBot, DestructableView, ViewCategory

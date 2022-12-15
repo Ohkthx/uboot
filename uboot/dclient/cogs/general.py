@@ -48,7 +48,6 @@ class General(commands.Cog):
                              description="Question to ask.",
                              default='none')) -> None:
         """Shakes a magic 8-ball. Results are not final."""
-        await ctx.message.delete()
         if len(ctx.message.mentions) > 0:
             await ctx.send("Mentioning others is not allowed while asking "
                            "a question.",
@@ -92,9 +91,15 @@ class General(commands.Cog):
         if not ctx.guild or not ctx.channel:
             return
 
+        if not isinstance(ctx.channel, discord.TextChannel):
+            await ctx.send("That command must be used in a normal text "
+                           "channel.",
+                           delete_after=15)
+            return
+
         self.bot.start_powerhour(ctx.guild.id, ctx.channel.id, 3.0)
         embed = discord.Embed()
-        embed.description = "__Message **POWERHOUR** started!__\n"\
+        embed.description = "__**Message POWERHOUR started!**__\n"\
             "> └ Gold generation per message is increased by 3x."
         embed.color = discord.Colour.from_str("#00ff08")
         embed.set_footer(text=f"Powerhour started by {ctx.author}")

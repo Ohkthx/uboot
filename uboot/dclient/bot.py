@@ -3,6 +3,7 @@ import logging
 import time
 import random
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 from typing import Optional
 
 import aiohttp
@@ -27,14 +28,21 @@ member_cache = discord.MemberCacheFlags(joined=True)
 defaultHelp = commands.DefaultHelpCommand(no_category="HELP")
 
 
+class ViewCategory(Enum):
+    """Categories for DesctructableViews"""
+    OTHER = 'other'
+    GAMBLE = 'gamble'
+
+
 class DestructableView():
     """A Destructable View that has a temporary life. Upon expiration it is
     destroyed and removed from Discord.
     """
 
-    def __init__(self, msg: discord.Message,
+    def __init__(self, msg: discord.Message, category: ViewCategory,
                  user_id: int, length: int) -> None:
         self.msg = msg
+        self.category = category
         self.user_id = user_id
         self.length = length
         self.timestamp = datetime.now()
@@ -156,14 +164,14 @@ class DiscordBot(commands.Bot):
         """Adds a desctructable view to be managed and eventually destroyed."""
         self.destructables[destructable.msg.id] = destructable
 
-    async def rm_user_destructable(self, user_id: int) -> None:
+    async def rm_user_destructable(self, user_id: int, category: ViewCategory):
         """Removes all destructables tied to a specific user. If they are not
         expired, that will be destroyed and removed anyways.
         """
         # Remove them via the API first.
         delete: list[int] = []
         for msgid, destruct in self.destructables.items():
-            if destruct.user_id == user_id:
+            if destruct.user_id == user_id and destruct.category == category:
                 await destruct.remove()
                 delete.append(msgid)
 

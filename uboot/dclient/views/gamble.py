@@ -7,11 +7,22 @@ from typing import Optional
 import discord
 from discord import ui
 
-from dclient import DiscordBot, DestructableView
+from dclient import DiscordBot, DestructableView, ViewCategory
 from managers import users
 
 # All valid options for the generic betting game.
 valid_input = ("high", "low", "seven", "7")
+
+
+class ExtractedBet():
+    """Results of extracting a users bet parameters."""
+
+    def __init__(self, amount: int, side: str,
+                 is_all: bool, minimum: bool) -> None:
+        self.amount: int = amount
+        self.side: str = side
+        self.is_all: bool = is_all
+        self.minimum: bool = minimum
 
 
 class GambleResult():
@@ -29,24 +40,31 @@ def roll_dice() -> tuple[int, int]:
 
 
 def gamble(user: users.User, name: str,
-           amount: int, side: str, loss_reset: int = 0,
+           bet: ExtractedBet, loss_reset: int = 0,
            min_override: int = -1, mod: int = 1) -> GambleResult:
     """Performs the arithmetic and validation for a gambling session."""
-    if amount <= 0:
+    if bet.is_all:
+        # Set the amount to all of the users gold if passed.
+        bet.amount = user.gold
+    elif bet.minimum:
+        # Set the amount to minimum amount.
+        bet.amount = user.minimum(20)
+
+    if bet.amount <= 0:
         return GambleResult("cannot be 0 or less.", True)
 
-    if side.lower() not in valid_input:
+    if bet.side.lower() not in valid_input:
         return GambleResult("You must choose: high, low, or seven", True)
 
     # Prevent the user betting more than maximum amount they own.
-    if amount > user.gold:
-        amount = user.gold
+    if bet.amount > user.gold:
+        bet.amount = user.gold
 
     # Force a minimum to prevent users step gambling, 1, 2, 4, 8, 16, etc.
     old_min = user.minimum(20)
     if min_override >= 0:
         old_min = min_override
-    if amount < old_min:
+    if bet.amount < old_min:
         return GambleResult(f"You must reach the minimum bet of {old_min} gp!\n"
                             f"Current holdings: {user.gold} gp.", True)
 
@@ -62,17 +80,17 @@ def gamble(user: users.User, name: str,
         res_status = "seven"
 
     # Calculate the winnings if there are some.
-    if side.lower() == "high" and total > 7:
-        winnings = amount * mod
-    if side.lower() == "low" and total < 7:
-        winnings = amount * mod
-    if side.lower() in ("seven", "7") and total == 7:
-        winnings = amount * 4 * mod
+    if bet.side.lower() == "high" and total > 7:
+        winnings = bet.amount * mod
+    if bet.side.lower() == "low" and total < 7:
+        winnings = bet.amount * mod
+    if bet.side.lower() in ("seven", "7") and total == 7:
+        winnings = bet.amount * 4 * mod
 
     # Update user statistics for wins.
-    change = -1 * amount
+    change = -1 * bet.amount
     old_holding = user.gold
-    res = f"You **lost** {amount} gp"
+    res = f"You **lost** {bet.amount} gp"
     if winnings > 0:
         user.gambles_won += 1
         change = winnings
@@ -87,8 +105,8 @@ def gamble(user: users.User, name: str,
 
     res = GambleResult(f"**Holdings**: {old_holding} gp\n"
                        f"**Minimum**: {old_min} gp\n"
-                       f"**Gamble**: {amount} gp\n"
-                       f"**Position**: {side.lower()}\n\n"
+                       f"**Gamble**: {bet.amount} gp\n"
+                       f"**Position**: {bet.side.lower()}\n\n"
                        f" > ❊**{name}** rolls {dice[0]}, {dice[1]}❊\n\n"
                        f"**Result**: {total}, and {res_status}\n"
                        f"{res}. Current holdings: {user.gold} gp.",
@@ -105,11 +123,10 @@ class GambleView(ui.View):
 
     def __init__(self, bot: DiscordBot,
                  user: users.User,
-                 decay: int, amount: int, side: str, base: int) -> None:
+                 decay: int, bet: ExtractedBet, base: int) -> None:
         self.bot = bot
         self.user = user
-        self.amount = amount
-        self.side = side
+        self.bet = bet
         self.base = base
         self.decay = decay
 
@@ -135,14 +152,14 @@ class GambleView(ui.View):
             return
 
         # Destroy all other buttons assigned to the user to prevent exploits.
-        await self.bot.rm_user_destructable(self.user.id)
+        await self.bot.rm_user_destructable(self.user.id, ViewCategory.GAMBLE)
 
         view = None
         color_hex = "#ff0f08"  # Loss color.
 
         # Perform the next gamble.
         results = gamble(self.user, str(interaction.user),
-                         self.amount, self.side, self.base, self.amount, 2)
+                         self.bet, self.base, self.bet.amount, 2)
         if results.iserror:
             color = discord.Colour.from_str(color_hex)
             embed = discord.Embed(description=results.msg, color=color)
@@ -150,10 +167,11 @@ class GambleView(ui.View):
                                           ephemeral=True,
                                           delete_after=60)
 
-        # User won again, create another biew.
+        # User won again, create another view.
         if results.winnings > 0:
+            self.bet.amount = results.winnings
             view = GambleView(self.bot, self.user, self.decay,
-                              results.winnings, self.side, self.base)
+                              self.bet, self.base)
             color_hex = "#00ff08"
 
         # Save and update the user. Update the bots statistics too.
@@ -179,5 +197,6 @@ class GambleView(ui.View):
         # Schedule to delete the view.
         msg = await channel.send(embed=embed, view=view)
         if msg:
-            destructable = DestructableView(msg, self.user.id, 300)
-            self.bot.add_destructable(destructable)
+            destruct = DestructableView(msg, ViewCategory.GAMBLE,
+                                        self.user.id, 300)
+            self.bot.add_destructable(destruct)

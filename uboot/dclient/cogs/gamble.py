@@ -7,9 +7,66 @@ from discord.ext import commands
 from discord.ext.commands import param
 
 from managers import users, settings
-from dclient import DiscordBot, DestructableView
+from dclient import DiscordBot, DestructableView, ViewCategory
 from dclient.helper import get_member
-from dclient.views.gamble import GambleView, gamble
+from dclient.views.gamble import GambleView, gamble, ExtractedBet
+
+
+def parse_amount(amount: str) -> int:
+    """Wrapper for attempting to pull a value from a string."""
+    try:
+        return int(amount)
+    except BaseException:
+        return -1
+
+
+def extract_bet(arg1: str, arg2: str) -> ExtractedBet:
+    """Converts two string values into a bet. This tries to resolve special
+    parameters passed such as, 'all', 'min', and '7' as well.
+    """
+    res: ExtractedBet = ExtractedBet(-1, '', False, False)
+
+    # Checks for an all-in bet.
+    if 'all' in (arg1.lower(), arg2.lower()):
+        res.is_all = True
+        if 'all' == arg1.lower():
+            res.side = arg2
+        else:
+            res.side = arg1
+        return res
+
+    # Checks for the minimum being bet.
+    if 'min' in (arg1.lower(), arg2.lower()):
+        res.minimum = True
+        if 'min' == arg1.lower():
+            res.side = arg2
+        else:
+            res.side = arg1
+        return res
+
+    # Check for the '7' override / shortcut.
+    if '7' in (arg1.lower(), arg2.lower()):
+        res.side = "seven"
+        if '7' in arg1.lower():
+            res.amount = parse_amount(arg2)
+        else:
+            res.amount = parse_amount(arg1)
+        return res
+
+    # Attempt to parse a normal bet.
+    amount = parse_amount(arg1)
+    if amount >= 0:
+        res.amount = amount
+        res.side = arg2
+        return res
+
+    amount = parse_amount(arg2)
+    if amount >= 0:
+        res.amount = amount
+        res.side = arg1
+        return res
+
+    return res
 
 
 class Gamble(commands.Cog):
@@ -112,6 +169,9 @@ class Gamble(commands.Cog):
         example:
             (prefix)spawn 40 @Gatekeeper
         """
+        # Remove all 'DOUBLE OR NOTHING' buttons. Prevents gold duping.
+        await self.bot.rm_user_destructable(to.id, ViewCategory.GAMBLE)
+
         # Give the gold to the user and save them.
         user = users.Manager.get(to.id)
         user.gold += amount
@@ -154,6 +214,10 @@ class Gamble(commands.Cog):
             await ctx.send(msg)
             return
 
+        # Remove all 'DOUBLE OR NOTHING' buttons. Prevents gold duping.
+        await self.bot.rm_user_destructable(from_user.id, ViewCategory.GAMBLE)
+        await self.bot.rm_user_destructable(to_user.id, ViewCategory.GAMBLE)
+
         # Remove from the giver and add to the receiver.
         from_user.gold -= amount
         to_user.gold += amount
@@ -178,7 +242,7 @@ class Gamble(commands.Cog):
     @commands.guild_only()
     @commands.command(name="bet")
     async def bet(self, ctx: commands.Context,
-                  amount: int = param(description="Amount to bet. 20gp min."),
+                  amount: str = param(description="Amount to bet. 20gp min."),
                   side: str = param(description="High, low, or seven")):
         """Place your bet, requires an amount and position (high, low, seven)
         The amount required is either 20gp OR 10% of your current gold.
@@ -188,16 +252,19 @@ class Gamble(commands.Cog):
             (prefix)bet 40 low
         """
 
+        # Attempt to convert the passed parameters to real values.
+        user_bet = extract_bet(amount, side)
+
         view = None
         color_hex = "#ff0f08"  # Loss color.
         user = users.Manager.get(ctx.author.id)
 
         # Remove all 'DOUBLE OR NOTHING' buttons assigned to the user.
-        await self.bot.rm_user_destructable(user.id)
+        await self.bot.rm_user_destructable(user.id, ViewCategory.GAMBLE)
 
         # Start the gambling process.
         old_gold = user.gold
-        results = gamble(user, str(ctx.author), amount, side)
+        results = gamble(user, str(ctx.author), user_bet)
         if results.iserror:
             color = discord.Colour.from_str(color_hex)
             embed = discord.Embed(description=results.msg, color=color)
@@ -206,10 +273,9 @@ class Gamble(commands.Cog):
         # Update their stats.
         user.save()
         if results.winnings > 0:
+            user_bet.amount = results.winnings
             # Prepare to present them with a 'DOUBLE OR NOTHING' opportunity.
-            view = GambleView(self.bot, user, 300,
-                              results.winnings, side,
-                              old_gold)
+            view = GambleView(self.bot, user, 300, user_bet, old_gold)
             color_hex = "#00ff08"
 
         # Update the bot statistics.
@@ -226,8 +292,8 @@ class Gamble(commands.Cog):
         msg = await ctx.send(embed=embed, view=view)
         if view:
             # Schedule to delete the view.
-            destructable = DestructableView(msg, user.id, 300)
-            self.bot.add_destructable(destructable)
+            destruct = DestructableView(msg, ViewCategory.GAMBLE, user.id, 300)
+            self.bot.add_destructable(destruct)
 
     @commands.guild_only()
     @commands.has_guild_permissions(manage_messages=True)

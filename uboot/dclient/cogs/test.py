@@ -1,5 +1,5 @@
 """Commands that are currently being tested."""
-import discord
+
 from discord.ext import commands
 
 from dclient import DiscordBot
