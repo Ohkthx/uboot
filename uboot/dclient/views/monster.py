@@ -16,7 +16,8 @@ def attack(user: discord.Member, monster: monsters.Monster) -> str:
     """Attempts to attack the monster."""
     user_l = users.Manager.get(user.id)
     if user_l.gold < monster.health:
-        return f"You do not have enough gold to fight **{monster.name}**!"
+        return f"**{user}** does not have enough gold to fight "\
+            f"**{monster.name}**!\nThey are forced to flee like a coward."
 
     exp = user_l.expected_exp(monster.health)
     user_l.gold -= monster.health
@@ -55,8 +56,10 @@ class Dropdown(ui.Select):
                                    delete_after=30)
             return
 
-        if not msg:
+        if not msg and not msg.reference and not msg.reference.cached_message:
             return
+
+        cached = msg.reference.cached_message
 
         embed = discord.Embed()
         embed.color = discord.Colour.from_str("#ff0f08")
@@ -75,7 +78,8 @@ class Dropdown(ui.Select):
             embed.color = discord.Colour.from_str("#F1C800")
             embed.description = "You perform some unknown action?! What a feat."
 
-        await msg.edit(embed=embed, view=None)
+        await msg.delete()
+        await cached.reply(embed=embed)
 
 
 class MonsterView(ui.View):

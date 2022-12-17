@@ -174,7 +174,19 @@ class DiscordBot(commands.Bot):
         """Adds a desctructable view to be managed and eventually destroyed."""
         self.destructables[destructable.msg.id] = destructable
 
-    async def rm_user_destructable(self, user_id: int, category: ViewCategory):
+    def clear_destructables(self, user_id: int, category: ViewCategory):
+        """Cancels the removal of destructables for a user."""
+        # Build the list to remove.
+        delete: list[int] = []
+        for msgid, destruct in self.destructables.items():
+            if destruct.user_id == user_id and destruct.category == category:
+                delete.append(msgid)
+
+        # Remove them from memory.
+        for i in delete:
+            del self.destructables[i]
+
+    async def rm_destructable(self, user_id: int, category: ViewCategory):
         """Removes all destructables tied to a specific user. If they are not
         expired, that will be destroyed and removed anyways.
         """
@@ -407,16 +419,12 @@ class DiscordBot(commands.Bot):
         monster = monsters.Manager.check_spawn(user.difficulty())
         if monster:
             # Remove all old monsters for the user.
-            await self.rm_user_destructable(user.id, ViewCategory.MONSTER)
+            await self.rm_destructable(user.id, ViewCategory.MONSTER)
 
             monster_view = MonsterView(msg.author, monster)
             new_msg = await msg.reply(embed=monster_view.get_panel(),
-                                      view=monster_view)
-
-            # Create a destructable view for the monster.
-            destruct = DestructableView(new_msg, ViewCategory.MONSTER,
-                                        user.id, 30, True)
-            self.add_destructable(destruct)
+                                      view=monster_view,
+                                      delete_after=30)
             user.monsters += 1
 
         user.save()

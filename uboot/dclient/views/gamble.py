@@ -152,7 +152,7 @@ class GambleView(ui.View):
             return
 
         # Destroy all other buttons assigned to the user to prevent exploits.
-        await self.bot.rm_user_destructable(self.user.id, ViewCategory.GAMBLE)
+        await self.bot.rm_destructable(self.user.id, ViewCategory.GAMBLE)
 
         view = None
         color_hex = "#ff0f08"  # Loss color.

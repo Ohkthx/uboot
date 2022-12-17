@@ -176,7 +176,7 @@ class Gamble(commands.Cog):
             (prefix)spawn @Gatekeeper 40
         """
         # Remove all 'DOUBLE OR NOTHING' buttons. Prevents gold duping.
-        await self.bot.rm_user_destructable(to.id, ViewCategory.GAMBLE)
+        await self.bot.rm_destructable(to.id, ViewCategory.GAMBLE)
 
         # Give the gold to the user and save them.
         user = users.Manager.get(to.id)
@@ -221,8 +221,8 @@ class Gamble(commands.Cog):
             return
 
         # Remove all 'DOUBLE OR NOTHING' buttons. Prevents gold duping.
-        await self.bot.rm_user_destructable(from_user.id, ViewCategory.GAMBLE)
-        await self.bot.rm_user_destructable(to_user.id, ViewCategory.GAMBLE)
+        await self.bot.rm_destructable(from_user.id, ViewCategory.GAMBLE)
+        await self.bot.rm_destructable(to_user.id, ViewCategory.GAMBLE)
 
         # Remove from the giver and add to the receiver.
         from_user.gold -= amount
@@ -266,7 +266,7 @@ class Gamble(commands.Cog):
         user = users.Manager.get(ctx.author.id)
 
         # Remove all 'DOUBLE OR NOTHING' buttons assigned to the user.
-        await self.bot.rm_user_destructable(user.id, ViewCategory.GAMBLE)
+        await self.bot.rm_destructable(user.id, ViewCategory.GAMBLE)
 
         # Start the gambling process.
         old_gold = user.gold
