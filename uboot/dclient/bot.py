@@ -60,8 +60,8 @@ class DestructableView():
         try:
             # Remove the message entirely if marked.
             if self.remove_msg:
-                await self.msg.delete()
                 self.msg.components = []
+                await self.msg.delete()
                 return
 
             # If it is an empty message without the view, just remove it.
@@ -127,7 +127,7 @@ class Powerhour():
 # All of the cogs and views that should be loaded. Views are Persistent.
 cog_extensions: list[str] = ['dclient.cogs.general',
                              'dclient.cogs.threads',
-                             'dclient.cogs.gamble',
+                             'dclient.cogs.user',
                              'dclient.cogs.admin',
                              'dclient.cogs.private_guild',
                              'dclient.cogs.test',
@@ -209,6 +209,28 @@ class DiscordBot(commands.Bot):
                         multiplier: float) -> None:
         """Starts a powerhour for the selected guild."""
         self.powerhours[guild_id] = Powerhour(guild_id, channel_id, multiplier)
+
+    async def add_monster(self, msg: discord.Message, user: discord.Member,
+                          mob: monsters.Monster) -> None:
+        """Adds a monster that will be tracked by a destructable view."""
+        if not isinstance(user, discord.Member):
+            return
+
+        user_l = users.Manager.get(user.id)
+
+        # Remove all old monsters for the user.
+        await self.rm_destructable(user.id, ViewCategory.MONSTER)
+
+        monster_view = MonsterView(user, mob)
+        new_msg = await msg.reply(embed=monster_view.get_panel(),
+                                  view=monster_view)
+        # Create a destructable view for the monster.
+        destruct = DestructableView(new_msg, ViewCategory.MONSTER,
+                                    user.id, 30, True)
+        self.add_destructable(destruct)
+
+        user_l.monsters += 1
+        user_l.save()
 
     async def setup_hook(self) -> None:
         """Overrides the setup hook, loading all extensions (views/cogs) and
@@ -414,20 +436,12 @@ class DiscordBot(commands.Bot):
         if powerhour:
             multiplier = powerhour.multiplier
         user.add_message(multiplier)
+        user.save()
 
         # Try to spawn a monster to attack the player.
         monster = monsters.Manager.check_spawn(user.difficulty())
         if monster:
-            # Remove all old monsters for the user.
-            await self.rm_destructable(user.id, ViewCategory.MONSTER)
-
-            monster_view = MonsterView(msg.author, monster)
-            new_msg = await msg.reply(embed=monster_view.get_panel(),
-                                      view=monster_view,
-                                      delete_after=30)
-            user.monsters += 1
-
-        user.save()
+            await self.add_monster(msg, msg.author, monster)
 
     async def on_thread_create(self, thread: discord.Thread) -> None:
         """Triggered on the 'on_thread_create' event. Used to appropriately

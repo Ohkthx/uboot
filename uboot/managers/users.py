@@ -38,7 +38,10 @@ class User():
     @property
     def _raw(self) -> UserRaw:
         """Convers the User back into a UserRaw."""
-        return (self.id, self._gold, self.msg_count, self.gambles,
+        gold = self.gold
+        if self.isbot:
+            gold = self._gold
+        return (self.id, gold, self.msg_count, self.gambles,
                 self.gambles_won, self.button_press,
                 self.monsters, self.kills, self.exp)
 
@@ -49,7 +52,7 @@ class User():
         """
         if not self.isbot:
             # Non-bot defaults to its gold amount.
-            return self._gold
+            return int(self._gold)
 
         total: int = 0
         # Get the amount of "lost" gold for each user and add it up.
@@ -58,7 +61,7 @@ class User():
                 # Ignore bot or negative amounts.
                 continue
             total += (user.msg_count - user._gold)
-        return total
+        return int(total)
 
     @gold.setter
     def gold(self, val) -> None:
@@ -82,7 +85,7 @@ class User():
 
     def level(self) -> int:
         """Calculates the level of the user based on their exp."""
-        raw = math.sqrt((self.exp) / 50) - 1
+        raw = math.pow(self.exp / 50, 1/2.75) - 1
         if raw < 1:
             return 1
         if raw > 20:
@@ -96,7 +99,13 @@ class User():
 
     def difficulty(self) -> float:
         """Calculates the difficulty of the user."""
-        return 1.0
+        level_offset = self.level() / 100
+        gold_offset = self.gold / (self.msg_count * 3)
+        return (level_offset + gold_offset + 1)
+
+    def gold_multiplier(self) -> float:
+        """Generates a gold multiplier based on the players level."""
+        return math.log(self.level()/6, 400)
 
     def add_message(self, multiplier: float = 1.0) -> None:
         """Adds a message to the user. Rewards with gold if off cooldown."""
@@ -107,7 +116,8 @@ class User():
         time_diff = now - self.last_message
         if time_diff >= timedelta(seconds=15):
             # Gold is not on cooldown, add.
-            self.gold = int(self.gold + (1 * multiplier))
+            total_multiplier = self.gold_multiplier() + multiplier
+            self.gold = self._gold + (1 * total_multiplier)
             self.last_message = now
 
     def win_rate(self) -> float:

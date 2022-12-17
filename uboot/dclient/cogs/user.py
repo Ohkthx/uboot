@@ -69,8 +69,10 @@ def extract_bet(arg1: str, arg2: str) -> ExtractedBet:
     return res
 
 
-class Gamble(commands.Cog):
-    """Betting Guideline:
+class User(commands.Cog):
+    """Basic user commands.
+
+    Betting Guideline:
     You have three options, 'high', 'low', or 'seven'.
     The result is the total from 2 dice rolls.
         High:  8-12    with a 1:1 payout.
@@ -87,18 +89,20 @@ class Gamble(commands.Cog):
     @commands.guild_only()
     @commands.command(name="leaderboard")
     async def leaderboard(self, ctx: commands.Context) -> None:
-        """Shows the current gambling leaderboard."""
+        """Shows the current leaderboard."""
         if not ctx.guild:
             return
         all_users = users.Manager.getall()
-        all_users = list(filter(lambda u: u.gambles > 0, all_users))
-        all_users.sort(key=lambda u: u.gold, reverse=True)
+        all_users = list(filter(lambda u: u.exp > 0, all_users))
+        all_users.sort(key=lambda u: u.exp, reverse=True)
 
         pos: int = 0
         board: list[str] = []
+        kills: int = 0
         for user_l in all_users:
+            kills += user_l.kills
             if pos >= 10:
-                break
+                continue
 
             # Get the API version of the user.
             user = await get_member(self.bot, ctx.guild.id, user_l.id)
@@ -108,14 +112,16 @@ class Gamble(commands.Cog):
             # Generate the text for the users position.
             pos += 1
             winrate = f"Win-Rate: {user_l.win_rate():0.2f}%"
-            board.append(f"{pos}: **{user}** - {user_l.gold} gp - {winrate}")
+            board.append(f"{pos}: **{user}** - "
+                         f"[ lvl {user_l.level()}: {user_l.exp} ] "
+                         f"- [ {user_l.gold} gp: {winrate} ]")
 
         # Combine all of the user data into a single message.
         summary = "\n".join(board)
         color = discord.Colour.from_str("#00ff08")
-        embed = discord.Embed(title="Top 10 Gamblers",
+        embed = discord.Embed(title="Top 10 Levelers",
                               description=summary, color=color)
-        embed.set_footer(text=f"Total gamblers: {len(all_users)}")
+        embed.set_footer(text=f"Total kills: {kills}")
         await ctx.send(embed=embed)
 
     @commands.command(name="stats", aliases=("balance", "statement"))
@@ -149,7 +155,8 @@ class Gamble(commands.Cog):
             f"**age**: {year_str}{day_str}\n"\
             f"**level**: {user_l.level()}\n"\
             f"**gold**: {user_l.gold} gp\n"\
-            f"**messages**: {user_l.msg_count}\n\n"\
+            f"**messages**: {user_l.msg_count}\n"\
+            f"**gold multiplier**: {(user_l.gold_multiplier()+1):0.2f}\n\n"\
             "> __Gamble__:\n"\
             f"> ├ **total**: {user_l.gambles}\n"\
             f"> ├ **won**: {user_l.gambles_won}\n"\
@@ -398,4 +405,4 @@ class Gamble(commands.Cog):
 
 async def setup(bot: DiscordBot) -> None:
     """This is called by process that loads extensions."""
-    await bot.add_cog(Gamble(bot))
+    await bot.add_cog(User(bot))

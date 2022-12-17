@@ -49,11 +49,16 @@ class Manager():
         return
 
     @staticmethod
+    def spawn(difficulty: float) -> Monster:
+        """Spawns a random monster."""
+        pos = random.randrange(0, len(spawns))
+        spawn = spawns[pos]
+        return Monster(spawn[0], spawn[1], spawn[2], difficulty)
+
+    @staticmethod
     def check_spawn(difficulty: float) -> Optional[Monster]:
         """Check if a monster should be spawned, if so- does."""
-        val = random.randrange(0, 200)
+        val = random.randrange(0, 100)
         if val == 0:
-            pos = random.randrange(0, len(spawns))
-            spawn = spawns[pos]
-            return Monster(spawn[0], spawn[1], spawn[2], difficulty)
+            return Manager.spawn(difficulty)
         return None

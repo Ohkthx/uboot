@@ -1,5 +1,5 @@
 from .general import General
 from .threads import Threads
-from .gamble import Gamble
+from .user import User
 from .test import Test
 from .admin import Admin

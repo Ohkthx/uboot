@@ -56,7 +56,8 @@ class Dropdown(ui.Select):
                                    delete_after=30)
             return
 
-        if not msg and not msg.reference and not msg.reference.cached_message:
+        if not msg or not msg.reference or not msg.reference.cached_message:
+            print("Message cache failed on monster spawning.")
             return
 
         cached = msg.reference.cached_message

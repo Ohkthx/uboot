@@ -8,7 +8,7 @@ import discord
 from discord import ui
 
 from dclient import DiscordBot
-from managers import users
+from managers import users, monsters
 
 
 # Random texted presented to the user.
@@ -34,16 +34,26 @@ class RedButtonView(ui.View):
                custom_id='red_button_view:red')
     async def do_not(self, interaction: discord.Interaction, button: ui.Button):
         """The button the users must refrain from pressing."""
+        res = interaction.response
+        user = interaction.user
+        if not interaction.message or not isinstance(user, discord.Member):
+            return
+
         # Update the user who pressed it.
-        user = users.Manager.get(interaction.user.id)
-        user.button_press += 1
-        user.save()
+        user_l = users.Manager.get(user.id)
+        user_l.button_press += 1
+        user_l.save()
+
+        rand = random.randrange(0, 200)
+        if 0 <= rand < 5:
+            # Spawn a monster.
+            monster = monsters.Manager.spawn(user_l.difficulty())
+            await self.bot.add_monster(interaction.message, user, monster)
+            return
 
         # Set the button to be destroyed by the bot.
         val = red_button_text[random.randrange(0, len(red_button_text))]
-        await interaction.response.send_message(val,
-                                                ephemeral=True,
-                                                delete_after=5)
+        await res.send_message(val, ephemeral=True, delete_after=5)
 
 
 async def setup(bot: DiscordBot) -> None:
