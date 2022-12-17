@@ -9,7 +9,10 @@ from .db_socket import DbSocket, clean_name
 # 3 : int - gambles
 # 4 : int - gambles_won
 # 5 : int - button_press
-UserRaw = tuple[int, int, int, int, int, int]
+# 6 : int - monsters
+# 7 : int - kills
+# 8 : int - exp
+UserRaw = tuple[int, int, int, int, int, int, int, int, int]
 
 
 class UserDb(DbSocket):
@@ -22,9 +25,10 @@ class UserDb(DbSocket):
             "( id INTEGER PRIMARY KEY DESC, "\
             "gold INTEGER, msg_count INTEGER, "\
             "gambles INTEGER, gambles_won INTEGER, "\
-            "button_press INTEGER )"
+            "button_press INTEGER, "\
+            "monsters INTEGER, kills INTEGER, exp INTEGER )"
         self.query['insert_one'] = "INSERT OR IGNORE INTO {table_name} "\
-            "VALUES(?, ?, ?, ?, ?, ?)"
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
     def find_one(self, user_id: int) -> Optional[UserRaw]:
         """Gets a single user based on its id."""
@@ -50,7 +54,8 @@ class UserDb(DbSocket):
         # Update it here.
         set_key = f"gold = {raw[1]}, msg_count = {raw[2]}, "\
             f"gambles = {raw[3]}, gambles_won = {raw[4]}, "\
-            f"button_press = {raw[5]}"
+            f"button_press = {raw[5]}, "\
+            f"monsters = {raw[6]}, kills = {raw[7]}, exp = {raw[8]}"
         where_key = f"id = {raw[0]}"
         self._update(set_key, where_key)
         return None

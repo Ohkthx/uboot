@@ -1,6 +1,7 @@
 """Representation of a user. Keeps track of several settings and manages the
 connection between database and memory.
 """
+import math
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -11,7 +12,7 @@ def make_raw(user_id: int) -> UserRaw:
     """Creates a raw user (tuple) fit for storing into a database with
     pre-defined defaults.
     """
-    return (user_id, 100, 0, 0, 0, 0)
+    return (user_id, 100, 0, 0, 0, 0, 0, 0, 0)
 
 
 class User():
@@ -24,6 +25,9 @@ class User():
         self.gambles = raw[3]
         self.gambles_won = raw[4]
         self.button_press = raw[5]
+        self.monsters = raw[6]
+        self.kills = raw[7]
+        self._exp = raw[8]
         self.isbot = False
         self.last_message = datetime.now() - timedelta(seconds=20)
 
@@ -35,7 +39,8 @@ class User():
     def _raw(self) -> UserRaw:
         """Convers the User back into a UserRaw."""
         return (self.id, self._gold, self.msg_count, self.gambles,
-                self.gambles_won, self.button_press)
+                self.gambles_won, self.button_press,
+                self.monsters, self.kills, self.exp)
 
     @property
     def gold(self) -> int:
@@ -60,10 +65,38 @@ class User():
         """Setter for accessing protected gold property."""
         self._gold = val
 
+    @property
+    def exp(self) -> int:
+        """Ensures EXP is rendered as an int."""
+        return int(self._exp)
+
+    @exp.setter
+    def exp(self, val) -> None:
+        """Setter for accessing protected exp property."""
+        self._exp = val
+
     def save(self) -> None:
         """Saves the user in memory to database."""
         if Manager._db:
             Manager._db.update(self._raw)
+
+    def level(self) -> int:
+        """Calculates the level of the user based on their exp."""
+        raw = math.sqrt((self.exp) / 50) - 1
+        if raw < 1:
+            return 1
+        if raw > 20:
+            return 20 * 6
+
+        return int(raw * 6)
+
+    def expected_exp(self, base: int) -> int:
+        """Calculates expected exp based on what is provided."""
+        return int(math.log(self.level(), 10) * base)
+
+    def difficulty(self) -> float:
+        """Calculates the difficulty of the user."""
+        return 1.0
 
     def add_message(self, multiplier: float = 1.0) -> None:
         """Adds a message to the user. Rewards with gold if off cooldown."""

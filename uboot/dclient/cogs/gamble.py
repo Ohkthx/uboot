@@ -147,13 +147,19 @@ class Gamble(commands.Cog):
         desc = f"**{user}{title}**\n\n"\
             f"**id**: {user.id}\n"\
             f"**age**: {year_str}{day_str}\n"\
+            f"**level**: {user_l.level()}\n"\
             f"**gold**: {user_l.gold} gp\n"\
             f"**messages**: {user_l.msg_count}\n\n"\
             "> __Gamble__:\n"\
             f"> ├ **total**: {user_l.gambles}\n"\
             f"> ├ **won**: {user_l.gambles_won}\n"\
             f"> ├ **win-rate**: {user_l.win_rate():0.2f}%\n"\
-            f"> └ **minimum**: {user_l.minimum(20)} gp\n"
+            f"> └ **minimum**: {user_l.minimum(20)} gp\n\n"\
+            "> __Slaying__:\n"\
+            f"> ├ **exp**: {user_l.exp}\n"\
+            f"> ├ **total**: {user_l.monsters}\n"\
+            f"> ├ **killed**: {user_l.kills}\n"\
+            f"> └ **fled**: {user_l.monsters - user_l.kills}\n"
 
         embed = discord.Embed(description=desc, color=color)
         embed.set_thumbnail(url=user.display_avatar.url)
@@ -163,11 +169,11 @@ class Gamble(commands.Cog):
     @commands.is_owner()
     @commands.command(name="spawn")
     async def spawn(self, ctx: commands.Context,
-                    amount: int = param(description="Amount to spawn."),
-                    to: discord.Member = param(description="Recipient")):
+                    to: discord.Member = param(description="Recipient"),
+                    amount: int = param(description="Amount to spawn.")) -> None:
         """Give or remove gold from a user.
         example:
-            (prefix)spawn 40 @Gatekeeper
+            (prefix)spawn @Gatekeeper 40
         """
         # Remove all 'DOUBLE OR NOTHING' buttons. Prevents gold duping.
         await self.bot.rm_user_destructable(to.id, ViewCategory.GAMBLE)
@@ -193,11 +199,11 @@ class Gamble(commands.Cog):
     @commands.guild_only()
     @commands.command(name="give", aliases=("withdraw",))
     async def give(self, ctx: commands.Context,
-                   amount: int = param(description="Amount to give."),
-                   to: discord.Member = param(description="Recipient")):
+                   to: discord.Member = param(description="Recipient"),
+                   amount: int = param(description="Amount to give.")) -> None:
         """Give gold from yourself to another user.
         example:
-            (prefix)give 40 @Gatekeeper
+            (prefix)give @Gatekeeper 40
         """
         from_user = users.Manager.get(ctx.author.id)
         if amount > from_user.gold:
@@ -297,7 +303,7 @@ class Gamble(commands.Cog):
 
     @commands.guild_only()
     @commands.has_guild_permissions(manage_messages=True)
-    @commands.command(name="lotto")
+    @commands.command(name="lotto", aliases=("raffle",))
     async def lotto(self, ctx: commands.Context,
                     amount: int = param(description="Amount of winners."),
                     ) -> None:

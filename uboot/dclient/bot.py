@@ -13,9 +13,10 @@ from discord.ext import commands, tasks
 
 from utils import Log
 from config import DiscordConfig
-from managers import settings, users, react_roles, tickets, subguilds
+from managers import settings, users, react_roles, tickets, subguilds, monsters
 from .helper import thread_close, react_processor, get_channel, find_tag
 from .views.generic_panels import SuggestionView, BasicThreadView
+from .views.monster import MonsterView
 
 
 intents = discord.Intents.default()
@@ -32,6 +33,7 @@ class ViewCategory(Enum):
     """Categories for DesctructableViews"""
     OTHER = 'other'
     GAMBLE = 'gamble'
+    MONSTER = 'monster'
 
 
 class DestructableView():
@@ -40,11 +42,12 @@ class DestructableView():
     """
 
     def __init__(self, msg: discord.Message, category: ViewCategory,
-                 user_id: int, length: int) -> None:
+                 user_id: int, length: int, remove: bool = False) -> None:
         self.msg = msg
         self.category = category
         self.user_id = user_id
         self.length = length
+        self.remove_msg = remove
         self.timestamp = datetime.now()
 
     def isexpired(self) -> bool:
@@ -55,6 +58,12 @@ class DestructableView():
     async def remove(self) -> None:
         """Removes the view, deleting if the message has no content."""
         try:
+            # Remove the message entirely if marked.
+            if self.remove_msg:
+                await self.msg.delete()
+                self.msg.components = []
+                return
+
             # If it is an empty message without the view, just remove it.
             if len(self.msg.content) == 0 and len(self.msg.embeds) == 0:
                 return await self.msg.delete()
@@ -149,6 +158,7 @@ class DiscordBot(commands.Bot):
         settings.Manager.init("uboot.sqlite3")
         react_roles.Manager.init("uboot.sqlite3")
         subguilds.Manager.init("uboot.sqlite3")
+        monsters.Manager.init()
 
         self.sudoer: Optional[Sudoer] = None
         self.destructables: dict[int, DestructableView] = {}
@@ -349,13 +359,14 @@ class DiscordBot(commands.Bot):
         """Triggered on 'on_message' event. Used to process commands and
         add message and gold to users. Also logs DMs sent to the bot.
         """
-        # Process the commands if not from a bot.
-        if not msg.author.bot:
-            await self.process_commands(msg)
+        # Process the commands if it is a command message.
+        await self.process_commands(msg)
 
         # Do not add messages or gold if the user is the bot.
         if not self.user or msg.author == self.user or msg.author.bot:
             return
+
+        # Do not process if it is a command.
         if self.user in msg.mentions or msg.content.startswith(self.prefix):
             return
 
@@ -363,21 +374,12 @@ class DiscordBot(commands.Bot):
         if not self.owner_id:
             await self.is_owner(msg.author)
 
-        # Add message and gold to user, saving to database.
         user = users.Manager.get(msg.author.id)
-        if msg.guild:
-            powerhour = self.powerhours[msg.guild.id]
-            multiplier: float = 1.0
-            if powerhour:
-                multiplier = powerhour.multiplier
-            user.add_message(multiplier)
-            return user.save()
-
-        if not self.owner_id or user.id == self.owner_id:
-            return
 
         # Log all DMs sent to the bot.
         if isinstance(msg.channel, discord.DMChannel):
+            if not self.owner_id or user.id == self.owner_id:
+                return
             embed = discord.Embed(title="DM Detected",
                                   description=msg.content)
             embed.set_footer(text=msg.author)
@@ -390,6 +392,34 @@ class DiscordBot(commands.Bot):
                     pass
             if owner:
                 await owner.send(embed=embed)
+
+        # Add message and gold to user, saving to database.
+        if not msg.guild or not isinstance(msg.author, discord.Member):
+            return
+
+        powerhour = self.powerhours.get(msg.guild.id)
+        multiplier: float = 1.0
+        if powerhour:
+            multiplier = powerhour.multiplier
+        user.add_message(multiplier)
+
+        # Try to spawn a monster to attack the player.
+        monster = monsters.Manager.check_spawn(user.difficulty())
+        if monster:
+            # Remove all old monsters for the user.
+            await self.rm_user_destructable(user.id, ViewCategory.MONSTER)
+
+            monster_view = MonsterView(msg.author, monster)
+            new_msg = await msg.reply(embed=monster_view.get_panel(),
+                                      view=monster_view)
+
+            # Create a destructable view for the monster.
+            destruct = DestructableView(new_msg, ViewCategory.MONSTER,
+                                        user.id, 30, True)
+            self.add_destructable(destruct)
+            user.monsters += 1
+
+        user.save()
 
     async def on_thread_create(self, thread: discord.Thread) -> None:
         """Triggered on the 'on_thread_create' event. Used to appropriately
