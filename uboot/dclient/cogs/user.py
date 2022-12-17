@@ -156,7 +156,7 @@ class User(commands.Cog):
             f"**level**: {user_l.level()}\n"\
             f"**gold**: {user_l.gold} gp\n"\
             f"**messages**: {user_l.msg_count}\n"\
-            f"**gold multiplier**: {(user_l.gold_multiplier()+1):0.2f}\n\n"\
+            f"**gold multiplier**: {(user_l.gold_multiplier()):0.2f}\n\n"\
             "> __Gamble__:\n"\
             f"> ├ **total**: {user_l.gambles}\n"\
             f"> ├ **won**: {user_l.gambles_won}\n"\

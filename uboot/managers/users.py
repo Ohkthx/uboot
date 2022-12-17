@@ -85,7 +85,7 @@ class User():
 
     def level(self) -> int:
         """Calculates the level of the user based on their exp."""
-        raw = math.pow(self.exp / 50, 1/2.75) - 1
+        raw = math.pow(self.exp / 50, 1 / 2.75) - 1
         if raw < 1:
             return 1
         if raw > 20:
@@ -93,19 +93,20 @@ class User():
 
         return int(raw * 6)
 
-    def expected_exp(self, base: int) -> int:
+    def expected_exp(self, base: int) -> float:
         """Calculates expected exp based on what is provided."""
-        return int(math.log(self.level(), 10) * base)
+        mod = max(math.log(self.level()+10, 10), 1)
+        return mod * base
 
     def difficulty(self) -> float:
         """Calculates the difficulty of the user."""
         level_offset = self.level() / 100
         gold_offset = self.gold / (self.msg_count * 3)
-        return (level_offset + gold_offset + 1)
+        return level_offset + gold_offset + 1
 
     def gold_multiplier(self) -> float:
         """Generates a gold multiplier based on the players level."""
-        return math.log(self.level()/6, 400)
+        return max(math.log(self.level() / 6, 400) + 1, 1.0)
 
     def add_message(self, multiplier: float = 1.0) -> None:
         """Adds a message to the user. Rewards with gold if off cooldown."""
@@ -114,11 +115,15 @@ class User():
         # Check if it adding gold is off of cooldown.
         now = datetime.now()
         time_diff = now - self.last_message
-        if time_diff >= timedelta(seconds=15):
-            # Gold is not on cooldown, add.
-            total_multiplier = self.gold_multiplier() + multiplier
-            self.gold = self._gold + (1 * total_multiplier)
-            self.last_message = now
+        if time_diff < timedelta(seconds=15):
+            return
+
+        # Gold is not on cooldown, add.
+        total_multiplier = self.gold_multiplier()
+        if multiplier > 0:
+            total_multiplier += (multiplier-1)
+        self.gold = self._gold + (1 * total_multiplier)
+        self.last_message = now
 
     def win_rate(self) -> float:
         """Calculate the win-rate percentage for gambling."""

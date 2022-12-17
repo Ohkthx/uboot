@@ -51,8 +51,7 @@ class Manager():
     @staticmethod
     def spawn(difficulty: float) -> Monster:
         """Spawns a random monster."""
-        pos = random.randrange(0, len(spawns))
-        spawn = spawns[pos]
+        spawn = spawns[random.randrange(0, len(spawns))]
         return Monster(spawn[0], spawn[1], spawn[2], difficulty)
 
     @staticmethod

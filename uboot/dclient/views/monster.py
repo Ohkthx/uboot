@@ -27,7 +27,7 @@ def attack(user: discord.Member, monster: monsters.Monster) -> str:
 
     win = win_text[random.randrange(0, len(win_text))]
     return f"**{user}** {win} **{monster.name}**!\n"\
-        f"**Reward**: {exp} exp\n"
+        f"**Reward**: {exp:0.2f} exp\n"
 
 
 class Dropdown(ui.Select):
@@ -99,7 +99,7 @@ class MonsterView(ui.View):
         embed.description = f"**{self.user}** {action} by **{self.monster.name}**!\n"\
             f"**Health**: {cost}\n\n"\
             "> __**Options**:__\n"\
-            f"> ├ **Attack**: Costing {cost} gp but gaining {gained_exp} exp.\n"\
+            f"> ├ **Attack**: Costing {cost} gp, gaining {gained_exp:0.2f} exp.\n"\
             "> └ **Flee**: Flee, keeping your gold.\n\n"\
             "Only the user who spawned the creature can take action."
         embed.set_footer(text=f"Current gold: {user_l.gold} gp")
