@@ -7,7 +7,8 @@ from typing import Optional
 import discord
 from discord import ui
 
-from dclient import DiscordBot, DestructableView, ViewCategory
+from dclient import DiscordBot
+from dclient.destructable import DestructableManager, Destructable
 from managers import users
 
 # All valid options for the generic betting game.
@@ -43,10 +44,10 @@ def gamble(user: users.User, name: str,
            bet: ExtractedBet, loss_reset: int = 0,
            min_override: int = -1, mod: int = 1) -> GambleResult:
     """Performs the arithmetic and validation for a gambling session."""
-    if bet.is_all:
+    if bet.is_all and min_override < 0:
         # Set the amount to all of the users gold if passed.
         bet.amount = user.gold
-    elif bet.minimum:
+    elif bet.minimum and min_override < 0:
         # Set the amount to minimum amount.
         bet.amount = user.minimum(20)
 
@@ -66,7 +67,8 @@ def gamble(user: users.User, name: str,
         old_min = min_override
     if bet.amount < old_min:
         return GambleResult(f"You must reach the minimum bet of {old_min} gp!\n"
-                            f"Current holdings: {user.gold} gp.", True)
+                            f"Current holdings: {user.gold} gp."
+                            f" Bet amount: {bet.amount}", True)
 
     dice = roll_dice()
     total = dice[0] + dice[1]
@@ -123,11 +125,11 @@ class GambleView(ui.View):
 
     def __init__(self, bot: DiscordBot,
                  user: users.User,
-                 decay: int, bet: ExtractedBet, base: int) -> None:
+                 decay: int, bet: ExtractedBet, loss_reset: int) -> None:
         self.bot = bot
         self.user = user
         self.bet = bet
-        self.base = base
+        self.loss_reset = loss_reset
         self.decay = decay
 
         super().__init__(timeout=decay * 2)
@@ -152,14 +154,15 @@ class GambleView(ui.View):
             return
 
         # Destroy all other buttons assigned to the user to prevent exploits.
-        await self.bot.rm_destructable(self.user.id, ViewCategory.GAMBLE)
+        category = Destructable.Category.GAMBLE
+        await DestructableManager.remove_many(self.user.id, True, category)
 
         view = None
         color_hex = "#ff0f08"  # Loss color.
 
         # Perform the next gamble.
         results = gamble(self.user, str(interaction.user),
-                         self.bet, self.base, self.bet.amount, 2)
+                         self.bet, self.loss_reset, self.bet.amount, 2)
         if results.iserror:
             color = discord.Colour.from_str(color_hex)
             embed = discord.Embed(description=results.msg, color=color)
@@ -171,7 +174,7 @@ class GambleView(ui.View):
         if results.winnings > 0:
             self.bet.amount = results.winnings
             view = GambleView(self.bot, self.user, self.decay,
-                              self.bet, self.base)
+                              self.bet, self.loss_reset)
             color_hex = "#00ff08"
 
         # Save and update the user. Update the bots statistics too.
@@ -196,7 +199,7 @@ class GambleView(ui.View):
 
         # Schedule to delete the view.
         msg = await channel.send(embed=embed, view=view)
-        if msg:
-            destruct = DestructableView(msg, ViewCategory.GAMBLE,
-                                        self.user.id, 300)
-            self.bot.add_destructable(destruct)
+        if view and msg:
+            category = Destructable.Category.GAMBLE
+            destruct = Destructable(category, self.user.id, 300)
+            destruct.set_message(message=msg)

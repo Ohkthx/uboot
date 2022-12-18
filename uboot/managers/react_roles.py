@@ -89,5 +89,6 @@ class Manager():
         that is used to trigger it.
         """
         for value in Manager._react_roles.values():
-            if value.guild_id == guild_id and value.reaction == reaction:
-                return value
+            if value.guild_id == guild_id:
+                if value.reaction.strip("'") == reaction.strip("'"):
+                    return value

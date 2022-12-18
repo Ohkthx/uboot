@@ -4,6 +4,7 @@ import random
 import discord
 from discord import ui
 
+from dclient.destructable import DestructableManager
 from managers import users, monsters
 
 # Flavour winning text.
@@ -79,7 +80,8 @@ class Dropdown(ui.Select):
             embed.color = discord.Colour.from_str("#F1C800")
             embed.description = "You perform some unknown action?! What a feat."
 
-        await msg.delete()
+        # Delete the old destructable.
+        await DestructableManager.remove_one(msg.id, True)
         await cached.reply(embed=embed)
 
 

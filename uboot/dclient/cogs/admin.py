@@ -78,9 +78,9 @@ class Admin(commands.Cog):
         example:
             (prefix)server remove 10
         """
-        c = ctx.channel
-        if isinstance(c, (discord.Thread, discord.TextChannel)):
-            await c.purge(limit=limit + 1)
+        channel = ctx.channel
+        if isinstance(channel, (discord.Thread, discord.TextChannel)):
+            await channel.purge(limit=limit + 1)
 
     @server.command(name='add-role-all')
     async def add_role_all(self, ctx: commands.Context,
@@ -537,12 +537,8 @@ class Admin(commands.Cog):
             (prefix)server react-role bind 😄 1234567890
             (prefix)server react-role bind 😄 1234567890 True
         """
-        if not ctx.guild:
-            return
-
-        if role_id <= 0:
-            await ctx.send("role id cannot be <= 0.")
-            return
+        if not ctx.guild or role_id <= 0:
+            return await ctx.send("role id cannot be <= 0.")
 
         # Get the settings for the server.
         setting = settings.Manager.get(ctx.guild.id)
@@ -573,8 +569,7 @@ class Admin(commands.Cog):
         # Check if the role exists.
         guild_role = ctx.guild.get_role(role_id)
         if not guild_role:
-            await ctx.send("could not identify the targeted role.")
-            return
+            return await ctx.send("could not identify the targeted role.")
 
         # Add the base reaction to the message to represent the role.
         try:
@@ -614,7 +609,7 @@ class Admin(commands.Cog):
 
         # Remove the role locally.
         msg = "role may already be unbound."
-        added = self.bot.rm_react_role(emoji, role_id)
+        added = self.bot.rm_react_role(role_id)
         if added:
             msg = "reaction unbound from role."
         await ctx.send(msg)

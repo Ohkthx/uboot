@@ -17,6 +17,7 @@ from managers import settings, users, react_roles, tickets, subguilds, monsters
 from .helper import thread_close, react_processor, get_channel, find_tag
 from .views.generic_panels import SuggestionView, BasicThreadView
 from .views.monster import MonsterView
+from .destructable import DestructableManager, Destructable
 
 
 intents = discord.Intents.default()
@@ -27,49 +28,6 @@ intents.members = True  # pylint: disable=assigning-non-slot
 member_cache = discord.MemberCacheFlags(joined=True)
 
 defaultHelp = commands.DefaultHelpCommand(no_category="HELP")
-
-
-class ViewCategory(Enum):
-    """Categories for DesctructableViews"""
-    OTHER = 'other'
-    GAMBLE = 'gamble'
-    MONSTER = 'monster'
-
-
-class DestructableView():
-    """A Destructable View that has a temporary life. Upon expiration it is
-    destroyed and removed from Discord.
-    """
-
-    def __init__(self, msg: discord.Message, category: ViewCategory,
-                 user_id: int, length: int, remove: bool = False) -> None:
-        self.msg = msg
-        self.category = category
-        self.user_id = user_id
-        self.length = length
-        self.remove_msg = remove
-        self.timestamp = datetime.now()
-
-    def isexpired(self) -> bool:
-        """Checks if the view has expired and should be removed."""
-        now = datetime.now()
-        return now - self.timestamp > timedelta(seconds=self.length)
-
-    async def remove(self) -> None:
-        """Removes the view, deleting if the message has no content."""
-        try:
-            # Remove the message entirely if marked.
-            if self.remove_msg:
-                self.msg.components = []
-                await self.msg.delete()
-                return
-
-            # If it is an empty message without the view, just remove it.
-            if len(self.msg.content) == 0 and len(self.msg.embeds) == 0:
-                return await self.msg.delete()
-            self.msg = await self.msg.edit(view=None)
-        except BaseException:
-            Log.debug("Could not remove the destructable view.")
 
 
 class Sudoer():
@@ -161,7 +119,6 @@ class DiscordBot(commands.Bot):
         monsters.Manager.init()
 
         self.sudoer: Optional[Sudoer] = None
-        self.destructables: dict[int, DestructableView] = {}
         self.last_button: Optional[discord.Message] = None
         self.powerhours: dict[int, Powerhour] = {}
 
@@ -169,41 +126,6 @@ class DiscordBot(commands.Bot):
                    length: int) -> None:
         """Sets the sudoer temporarily."""
         self.sudoer = Sudoer(user, role, length)
-
-    def add_destructable(self, destructable: DestructableView) -> None:
-        """Adds a desctructable view to be managed and eventually destroyed."""
-        self.destructables[destructable.msg.id] = destructable
-
-    def clear_destructables(self, user_id: int, category: ViewCategory):
-        """Cancels the removal of destructables for a user."""
-        # Build the list to remove.
-        delete: list[int] = []
-        for msgid, destruct in self.destructables.items():
-            if destruct.user_id == user_id and destruct.category == category:
-                delete.append(msgid)
-
-        # Remove them from memory.
-        for i in delete:
-            del self.destructables[i]
-
-    async def rm_destructable(self, user_id: int, category: ViewCategory):
-        """Removes all destructables tied to a specific user. If they are not
-        expired, that will be destroyed and removed anyways.
-        """
-        # Remove them via the API first.
-        delete: list[int] = []
-        for msgid, destruct in self.destructables.items():
-            if destruct.user_id == user_id and destruct.category == category:
-                await destruct.remove()
-                delete.append(msgid)
-
-        # Remove them from memory.
-        for i in delete:
-            destruct = self.destructables[i]
-            if len(destruct.msg.components) > 0:
-                Log.print(f"[{i}] has too many components still.")
-                continue
-            del self.destructables[i]
 
     def start_powerhour(self, guild_id: int, channel_id: int,
                         multiplier: float) -> None:
@@ -219,15 +141,16 @@ class DiscordBot(commands.Bot):
         user_l = users.Manager.get(user.id)
 
         # Remove all old monsters for the user.
-        await self.rm_destructable(user.id, ViewCategory.MONSTER)
+        category = Destructable.Category.MONSTER
+        await DestructableManager.remove_many(user.id, True, category)
 
         monster_view = MonsterView(user, mob)
         new_msg = await msg.reply(embed=monster_view.get_panel(),
                                   view=monster_view)
+
         # Create a destructable view for the monster.
-        destruct = DestructableView(new_msg, ViewCategory.MONSTER,
-                                    user.id, 30, True)
-        self.add_destructable(destruct)
+        destruct = Destructable(category, user.id, 30, True)
+        destruct.set_message(message=new_msg)
 
         user_l.monsters += 1
         user_l.save()
@@ -278,7 +201,7 @@ class DiscordBot(commands.Bot):
         react_role.save()
         return True
 
-    def rm_react_role(self, react: str, role_id: int) -> bool:
+    def rm_react_role(self, role_id: int) -> bool:
         """Removes a Reaction and Role pair if it does exist
         Removes it memory and database.
         """
@@ -307,6 +230,9 @@ class DiscordBot(commands.Bot):
                 finally:
                     self.last_button = None
 
+        # Purge all expired destructables.
+        await DestructableManager.purge()
+
         # Check powerhours, if they are expired they will be removed.
         delete: list[int] = []
         for guild_id, powerhour in self.powerhours.items():
@@ -316,16 +242,6 @@ class DiscordBot(commands.Bot):
         # Remove from memory.
         for i in delete:
             del self.powerhours[i]
-
-        # Check destructable views, if they are expired they will be removed.
-        delete: list[int] = []
-        for view_id, destruct in self.destructables.items():
-            if destruct.isexpired():
-                await destruct.remove()
-                delete.append(view_id)
-        # Remove from memory.
-        for i in delete:
-            del self.destructables[i]
 
         # Check if sudoer needs to have their role removed.
         if self.sudoer and self.sudoer.isexpired():

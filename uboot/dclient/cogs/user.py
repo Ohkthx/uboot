@@ -7,7 +7,8 @@ from discord.ext import commands
 from discord.ext.commands import param
 
 from managers import users, settings
-from dclient import DiscordBot, DestructableView, ViewCategory
+from dclient import DiscordBot
+from dclient.destructable import DestructableManager, Destructable
 from dclient.helper import get_member
 from dclient.views.gamble import GambleView, gamble, ExtractedBet
 
@@ -124,6 +125,63 @@ class User(commands.Cog):
         embed.set_footer(text=f"Total kills: {kills}")
         await ctx.send(embed=embed)
 
+    @commands.command(name="locations", aliases=("location", "loc"))
+    async def locations(self, ctx: commands.Context,
+                        location: str = param(
+                            description="Optional location to move to",
+                            default='none')):
+        """Shows locations for a specified user, defaults to you.
+        examples:
+            (prefix)locations
+            (prefix)locations Wilderness
+        """
+        user = ctx.author
+
+        # Get the local user.
+        user_l = users.Manager.get(user.id)
+        c_location: str = 'Unknown'
+        if user_l.c_location.name:
+            c_location = user_l.c_location.name.title()
+        new_loc_text: str = ""
+
+        if location != 'none':
+            # Change location.
+            if not user_l.change_location(location):
+                embed = discord.Embed()
+                embed.color = discord.Colour.from_str("#ff0f08")
+                embed.description = "Sorry, you have not discovered that "\
+                    "location yet."
+                embed.set_footer(text=f"Current Location: {c_location}")
+                return await ctx.send(embed=embed)
+            new_loc_text = "`Location updated!`\n\n"
+            if user_l.c_location.name:
+                c_location = user_l.c_location.name.title()
+            user_l.save()
+
+        # Build list of discovered locations.
+        loc_text: list[str] = []
+        locations = user_l.locations.get_unlocks()
+        for n, loc in enumerate(locations):
+            lfeed = '└' if n + 1 == len(locations) else '├'
+            current = ""
+            if loc == c_location.lower():
+                current = " (Current)"
+            loc_text.append(f"> {lfeed} {loc.title()}{current}")
+        full_text = '\n'.join(loc_text)
+
+        color = discord.Colour.from_str("#00ff08")
+        desc = f"**{user}**\n\n{new_loc_text}"\
+            f"**id**: {user.id}\n"\
+            f"**level**: {user_l.level()}\n"\
+            f"**messages**: {user_l.msg_count}\n\n"\
+            "> __**Locations Unlocked**__:\n"\
+            f"**{full_text}**\n"
+
+        embed = discord.Embed(description=desc, color=color)
+        embed.set_footer(text=f"Current Location: {c_location}")
+        embed.set_thumbnail(url=user.display_avatar.url)
+        await ctx.send(embed=embed)
+
     @commands.command(name="stats", aliases=("balance", "statement"))
     async def stats(self, ctx: commands.Context,
                     user: discord.User = param(
@@ -168,7 +226,11 @@ class User(commands.Cog):
             f"> ├ **killed**: {user_l.kills}\n"\
             f"> └ **fled**: {user_l.monsters - user_l.kills}\n"
 
+        c_location: str = 'Unknown'
+        if user_l.c_location.name:
+            c_location = user_l.c_location.name.title()
         embed = discord.Embed(description=desc, color=color)
+        embed.set_footer(text=f"Current Location: {c_location}")
         embed.set_thumbnail(url=user.display_avatar.url)
 
         await ctx.send(embed=embed)
@@ -183,7 +245,8 @@ class User(commands.Cog):
             (prefix)spawn @Gatekeeper 40
         """
         # Remove all 'DOUBLE OR NOTHING' buttons. Prevents gold duping.
-        await self.bot.rm_destructable(to.id, ViewCategory.GAMBLE)
+        category = Destructable.Category.GAMBLE
+        await DestructableManager.remove_many(to.id, True, category)
 
         # Give the gold to the user and save them.
         user = users.Manager.get(to.id)
@@ -228,8 +291,9 @@ class User(commands.Cog):
             return
 
         # Remove all 'DOUBLE OR NOTHING' buttons. Prevents gold duping.
-        await self.bot.rm_destructable(from_user.id, ViewCategory.GAMBLE)
-        await self.bot.rm_destructable(to_user.id, ViewCategory.GAMBLE)
+        category = Destructable.Category.GAMBLE
+        await DestructableManager.remove_many(to_user.id, True, category)
+        await DestructableManager.remove_many(from_user.id, True, category)
 
         # Remove from the giver and add to the receiver.
         from_user.gold -= amount
@@ -273,7 +337,8 @@ class User(commands.Cog):
         user = users.Manager.get(ctx.author.id)
 
         # Remove all 'DOUBLE OR NOTHING' buttons assigned to the user.
-        await self.bot.rm_destructable(user.id, ViewCategory.GAMBLE)
+        category = Destructable.Category.GAMBLE
+        await DestructableManager.remove_many(user.id, True, category)
 
         # Start the gambling process.
         old_gold = user.gold
@@ -302,11 +367,13 @@ class User(commands.Cog):
         color = discord.Colour.from_str(color_hex)
         embed = discord.Embed(description=results.msg, color=color)
         embed.set_footer(text=f"Next minimum: {user.minimum(20)} gp")
+
+        # Spawn the message and create a destructable for it.
         msg = await ctx.send(embed=embed, view=view)
-        if view:
-            # Schedule to delete the view.
-            destruct = DestructableView(msg, ViewCategory.GAMBLE, user.id, 300)
-            self.bot.add_destructable(destruct)
+        if view and msg:
+            category = Destructable.Category.GAMBLE
+            destruct = Destructable(category, user.id, 300)
+            destruct.set_message(message=msg)
 
     @commands.guild_only()
     @commands.has_guild_permissions(manage_messages=True)
