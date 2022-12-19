@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from db.users import UserDb, UserRaw
-from .locations import Locations, Unlocks
+from .locations import Locations, Area
 
 
 def make_raw(user_id: int) -> UserRaw:
@@ -14,7 +14,7 @@ def make_raw(user_id: int) -> UserRaw:
     pre-defined defaults.
     """
     return (user_id, 100, 0, 0, 0, 0, 0, 0, 0,
-            Unlocks.WILDERNESS.value, Unlocks.WILDERNESS.value)
+            Area.WILDERNESS.value, Area.WILDERNESS.value)
 
 
 class User():
@@ -31,9 +31,9 @@ class User():
         self.kills = raw[7]
         self._exp = raw[8]
         self.locations: Locations = Locations(raw[9])
-        self.c_location: Unlocks = Unlocks(raw[10])
+        self.c_location: Area = Area(raw[10])
         if not self.locations.is_unlocked(self.c_location):
-            self.c_location = Unlocks.WILDERNESS
+            self.c_location = Area.WILDERNESS
 
         self.isbot = False
         self.last_message = datetime.now() - timedelta(seconds=20)
@@ -93,8 +93,8 @@ class User():
 
     def change_location(self, destination: str) -> bool:
         """Attempts to change the users location."""
-        new_loc: Optional[Unlocks] = None
-        for area in Unlocks:
+        new_loc: Optional[Area] = None
+        for area in Area:
             if not self.locations.is_unlocked(area) or not area.name:
                 continue
             if area.name.lower() == destination.lower():

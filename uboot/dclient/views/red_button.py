@@ -8,7 +8,7 @@ import discord
 from discord import ui
 
 from dclient import DiscordBot
-from managers import users, monsters
+from managers import users, entities
 
 
 # Random texted presented to the user.
@@ -46,10 +46,12 @@ class RedButtonView(ui.View):
 
         rand = random.randrange(0, 200)
         if 0 <= rand < 5:
-            # Spawn a monster.
-            monster = monsters.Manager.spawn(user_l.difficulty())
-            await self.bot.add_monster(interaction.message, user, monster)
-            return
+            # Spawn an entity.
+            loc = user_l.c_location
+            entity = entities.Manager.spawn(loc, user_l.difficulty())
+            if entity:
+                await self.bot.add_entity(interaction.message, user, entity)
+                return
 
         # Set the button to be destroyed by the bot.
         val = red_button_text[random.randrange(0, len(red_button_text))]

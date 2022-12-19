@@ -13,10 +13,10 @@ from discord.ext import commands, tasks
 
 from utils import Log
 from config import DiscordConfig
-from managers import settings, users, react_roles, tickets, subguilds, monsters
+from managers import settings, users, react_roles, tickets, subguilds, entities
 from .helper import thread_close, react_processor, get_channel, find_tag
 from .views.generic_panels import SuggestionView, BasicThreadView
-from .views.monster import MonsterView
+from .views.entity import EntityView
 from .destructable import DestructableManager, Destructable
 
 
@@ -116,7 +116,7 @@ class DiscordBot(commands.Bot):
         settings.Manager.init("uboot.sqlite3")
         react_roles.Manager.init("uboot.sqlite3")
         subguilds.Manager.init("uboot.sqlite3")
-        monsters.Manager.init()
+        entities.Manager.init()
 
         self.sudoer: Optional[Sudoer] = None
         self.last_button: Optional[discord.Message] = None
@@ -132,23 +132,23 @@ class DiscordBot(commands.Bot):
         """Starts a powerhour for the selected guild."""
         self.powerhours[guild_id] = Powerhour(guild_id, channel_id, multiplier)
 
-    async def add_monster(self, msg: discord.Message, user: discord.Member,
-                          mob: monsters.Monster) -> None:
-        """Adds a monster that will be tracked by a destructable view."""
+    async def add_entity(self, msg: discord.Message, user: discord.Member,
+                         mob: entities.Entity) -> None:
+        """Adds an entity that will be tracked by a destructable view."""
         if not isinstance(user, discord.Member):
             return
 
         user_l = users.Manager.get(user.id)
 
-        # Remove all old monsters for the user.
+        # Remove all old entities for the user.
         category = Destructable.Category.MONSTER
         await DestructableManager.remove_many(user.id, True, category)
 
-        monster_view = MonsterView(user, mob)
-        new_msg = await msg.reply(embed=monster_view.get_panel(),
-                                  view=monster_view)
+        entity_view = EntityView(user, mob)
+        new_msg = await msg.reply(embed=entity_view.get_panel(),
+                                  view=entity_view)
 
-        # Create a destructable view for the monster.
+        # Create a destructable view for the entity.
         destruct = Destructable(category, user.id, 30, True)
         destruct.set_message(message=new_msg)
 
@@ -354,10 +354,12 @@ class DiscordBot(commands.Bot):
         user.add_message(multiplier)
         user.save()
 
-        # Try to spawn a monster to attack the player.
-        monster = monsters.Manager.check_spawn(user.difficulty())
-        if monster:
-            await self.add_monster(msg, msg.author, monster)
+        # Try to spawn an entity to attack the player.
+        loc = user.c_location
+        difficulty = user.difficulty()
+        entity = entities.Manager.check_spawn(loc, difficulty)
+        if entity:
+            await self.add_entity(msg, msg.author, entity)
 
     async def on_thread_create(self, thread: discord.Thread) -> None:
         """Triggered on the 'on_thread_create' event. Used to appropriately
