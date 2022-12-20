@@ -3,6 +3,7 @@ aspects for various creatures.
 """
 from managers import entities
 from managers.locations import Area
+from managers.loot_tables import LootTable, LootPacks
 
 
 class Zombie(entities.Entity):
@@ -12,6 +13,9 @@ class Zombie(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("a Zombie")
         self.set_health(28, 42)
+
+        # Add the lootpack.
+        self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)
 
 
 def setup(manager: entities.Manager):

@@ -2,8 +2,10 @@
 from enum import Flag, auto
 
 
+# Be sure to add to connections.
 class Area(Flag):
     """Possible unlockable locations."""
+    SEWERS = auto()
     WILDERNESS = auto()
     GRAVEYARD = auto()
     DESPISE = auto()
@@ -43,3 +45,17 @@ class Locations():
             if self.is_unlocked(area) and area.name:
                 areas.append(area.name.lower())
         return areas
+
+    def connections(self, location: Area) -> list[Area]:
+        """Gets all possible unlockable locations from the location that is
+        provided. This is for discovery.
+        """
+        if location == Area.SEWERS:
+            return [Area.WILDERNESS]
+        if location == Area.WILDERNESS:
+            return [Area.GRAVEYARD, Area.DESPISE]
+        if location == Area.GRAVEYARD:
+            return [Area.WILDERNESS, Area.DESPISE]
+        if location == Area.DESPISE:
+            return [Area.WILDERNESS, Area.GRAVEYARD]
+        return [Area.WILDERNESS]

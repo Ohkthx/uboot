@@ -5,6 +5,7 @@ import random
 
 from managers import entities
 from managers.locations import Area
+from managers.loot_tables import LootTable, LootPacks
 
 
 class Slime(entities.Entity):
@@ -20,8 +21,11 @@ class Slime(entities.Entity):
         self.set_name(name)
         self.set_health(15, 19)
 
+        # Add the lootpack.
+        self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)
+
 
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
-    areas = [(Area.DESPISE, 5)]
+    areas = [(Area.SEWERS, 1), (Area.DESPISE, 5)]
     manager.register(areas, Slime)

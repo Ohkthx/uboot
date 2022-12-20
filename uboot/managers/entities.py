@@ -8,6 +8,7 @@ import importlib.util
 from typing import Optional, Type
 
 from .locations import Area
+from .loot_tables import LootTable, Item, LootPacks
 
 actions = ["was ambushed", "was attacked", "was approached",
            "is being stalked"]
@@ -39,6 +40,12 @@ class Entity():
         self.isparagon = _is_paragon(difficulty)
         self.location = location
 
+        # Create a base loot table.
+        self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)
+
+    def __str__(self) -> str:
+        return f"{self.name} [{self.difficulty}]: {self.location}"
+
     def set_name(self, name: str) -> None:
         """Sets the name of the entity."""
         mod: str = " (Paragon)" if self.isparagon else ""
@@ -57,6 +64,10 @@ class Entity():
     def get_action(self) -> str:
         """Gets flavored text for the entitys action."""
         return actions[random.randrange(0, len(actions))]
+
+    def get_loot(self) -> list[Item]:
+        """Gets loot from the loot table."""
+        return self.lootpack.get_loot()
 
 
 def _resolve_name(name: str) -> str:
@@ -150,9 +161,14 @@ class Manager():
         return spawns[0](area, difficulty)
 
     @staticmethod
-    def check_spawn(area: Area, difficulty: float) -> Optional[Entity]:
+    def check_spawn(area: Area, difficulty: float,
+                    double_chance: bool) -> Optional[Entity]:
         """Check if an entity should be spawned, if so- does."""
-        val = random.randrange(0, 100)
-        if val == 0:
+        zone = 0.01
+        if double_chance:
+            zone *= 2
+
+        val = _rand_decimal()
+        if val <= zone:
             return Manager.spawn(area, difficulty)
         return None

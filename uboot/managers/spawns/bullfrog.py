@@ -6,13 +6,14 @@ from managers.locations import Area
 from managers.loot_tables import LootTable, LootPacks
 
 
-class Skeleton(entities.Entity):
+class Bullfrog(entities.Entity):
     """Represents a type of entity."""
 
     def __init__(self, location: Area, difficulty: float) -> None:
         super().__init__(location, min(difficulty, 1.0))
-        self.set_name("a Skeleton")
-        self.set_health(34, 48)
+
+        self.set_name("a Bullfrog")
+        self.set_health(28, 42)
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)
@@ -20,5 +21,5 @@ class Skeleton(entities.Entity):
 
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
-    areas = [(Area.WILDERNESS, 3), (Area.GRAVEYARD, 7)]
-    manager.register(areas, Skeleton)
+    areas = [(Area.SEWERS, 3)]
+    manager.register(areas, Bullfrog)

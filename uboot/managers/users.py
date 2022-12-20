@@ -2,11 +2,13 @@
 connection between database and memory.
 """
 import math
+import random
 from datetime import datetime, timedelta
 from typing import Optional
 
 from db.users import UserDb, UserRaw
 from .locations import Locations, Area
+from .loot_tables import Item, Items
 
 
 def make_raw(user_id: int) -> UserRaw:
@@ -14,7 +16,7 @@ def make_raw(user_id: int) -> UserRaw:
     pre-defined defaults.
     """
     return (user_id, 100, 0, 0, 0, 0, 0, 0, 0,
-            Area.WILDERNESS.value, Area.WILDERNESS.value)
+            Area.SEWERS.value, Area.SEWERS.value)
 
 
 class User():
@@ -33,9 +35,10 @@ class User():
         self.locations: Locations = Locations(raw[9])
         self.c_location: Area = Area(raw[10])
         if not self.locations.is_unlocked(self.c_location):
-            self.c_location = Area.WILDERNESS
+            self.c_location = Area.SEWERS
 
         self.isbot = False
+        self.powerhour: Optional[datetime] = None
         self.last_message = datetime.now() - timedelta(seconds=20)
 
     def __str__(self) -> str:
@@ -106,6 +109,27 @@ class User():
         self.c_location = new_loc
         return True
 
+    def apply_loot(self, loot: list[Item]) -> Optional[Area]:
+        """Applys various items to the user. If a new area is unlocked, it will
+        return the new area.
+        """
+        new_area: Optional[Area] = None
+        for item in loot:
+            if item.type == Items.GOLD:
+                self.gold += item.amount
+            elif item.type == Items.POWERHOUR:
+                self.powerhour = datetime.now()
+            elif item.type == Items.LOCATION:
+                # Get all connections, removing the ones already discovered.
+                conn = self.locations.connections(self.c_location)
+                conn = [l for l in conn if not self.locations.is_unlocked(l)]
+                if len(conn) == 0:
+                    continue
+
+                new_area = conn[random.randrange(0, len(conn))]
+                self.locations.unlock(new_area)
+        return new_area
+
     def level(self) -> int:
         """Calculates the level of the user based on their exp."""
         raw = math.pow(self.exp / 50, 1 / 2.75) - 1
@@ -135,8 +159,15 @@ class User():
         """Adds a message to the user. Rewards with gold if off cooldown."""
         self.msg_count += 1
 
-        # Check if it adding gold is off of cooldown.
         now = datetime.now()
+        if self.powerhour:
+            time_diff = now - self.powerhour
+            if time_diff < timedelta(hours=1):
+                multiplier = 3.0
+            else:
+                self.powerhour = None
+
+        # Check if it adding gold is off of cooldown.
         time_diff = now - self.last_message
         if time_diff < timedelta(seconds=15):
             return

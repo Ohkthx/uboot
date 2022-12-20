@@ -3,6 +3,7 @@ aspects for various creatures.
 """
 from managers import entities
 from managers.locations import Area
+from managers.loot_tables import LootTable, LootPacks
 
 
 class Imp(entities.Entity):
@@ -12,6 +13,9 @@ class Imp(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("an Imp")
         self.set_health(55, 70)
+
+        # Add the lootpack.
+        self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)
 
 
 def setup(manager: entities.Manager):

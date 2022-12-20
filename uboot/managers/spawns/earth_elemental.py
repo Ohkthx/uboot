@@ -3,6 +3,7 @@ aspects for various creatures.
 """
 from managers import entities
 from managers.locations import Area
+from managers.loot_tables import LootTable, LootPacks
 
 
 class EarthElemental(entities.Entity):
@@ -12,6 +13,9 @@ class EarthElemental(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("an Earth Elemental")
         self.set_health(76, 93)
+
+        # Add the lootpack.
+        self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)
 
 
 def setup(manager: entities.Manager):

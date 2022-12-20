@@ -3,6 +3,7 @@ aspects for various creatures.
 """
 from managers import entities
 from managers.locations import Area
+from managers.loot_tables import LootTable, LootPacks
 
 
 class OgreLord(entities.Entity):
@@ -12,6 +13,9 @@ class OgreLord(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("an Ogre Lord")
         self.set_health(476, 552)
+
+        # Add the lootpack.
+        self.lootpack = LootTable.lootpack(LootPacks.EPIC, self.isparagon)
 
 
 def setup(manager: entities.Manager):

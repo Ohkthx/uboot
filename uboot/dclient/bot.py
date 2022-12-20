@@ -357,7 +357,8 @@ class DiscordBot(commands.Bot):
         # Try to spawn an entity to attack the player.
         loc = user.c_location
         difficulty = user.difficulty()
-        entity = entities.Manager.check_spawn(loc, difficulty)
+        is_powerhour = user.powerhour is not None or powerhour is not None
+        entity = entities.Manager.check_spawn(loc, difficulty, is_powerhour)
         if entity:
             await self.add_entity(msg, msg.author, entity)
 

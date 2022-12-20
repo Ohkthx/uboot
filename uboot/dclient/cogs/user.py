@@ -125,15 +125,17 @@ class User(commands.Cog):
         embed.set_footer(text=f"Total kills: {kills}")
         await ctx.send(embed=embed)
 
-    @commands.command(name="locations", aliases=("location", "loc"))
+    @commands.command(name="locations", aliases=("location", "loc", "recall"))
     async def locations(self, ctx: commands.Context,
                         location: str = param(
                             description="Optional location to move to",
                             default='none')):
-        """Shows locations for a specified user, defaults to you.
+        """Shows your current location, by typing a location it will teleport
+        you there.
+
         examples:
             (prefix)locations
-            (prefix)locations Wilderness
+            (prefix)locations Sewers
         """
         user = ctx.author
 
@@ -207,6 +209,10 @@ class User(commands.Cog):
         year_str = '' if age.days // 365 < 1 else f"{age.days//365} year(s), "
         day_str = '' if age.days % 365 == 0 else f"{int(age.days%365)} day(s)"
 
+        powerhour_text = ""
+        if user_l.powerhour:
+            powerhour_text = f"**powerhour**: enabled\n"
+
         color = discord.Colour.from_str("#00ff08")
         desc = f"**{user}{title}**\n\n"\
             f"**id**: {user.id}\n"\
@@ -214,6 +220,7 @@ class User(commands.Cog):
             f"**level**: {user_l.level()}\n"\
             f"**gold**: {user_l.gold} gp\n"\
             f"**messages**: {user_l.msg_count}\n"\
+            f"{powerhour_text}"\
             f"**gold multiplier**: {(user_l.gold_multiplier()):0.2f}\n\n"\
             "> __Gamble__:\n"\
             f"> ├ **total**: {user_l.gambles}\n"\

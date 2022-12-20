@@ -6,6 +6,7 @@ from discord import ui
 
 from dclient.destructable import DestructableManager
 from managers import users, entities
+from managers.loot_tables import Items
 
 # Flavour winning text.
 win_text: list[str] = ["slays", "defeats", "conquers", "strikes down", "kills",
@@ -24,11 +25,49 @@ def attack(user: discord.Member, entity: entities.Entity) -> str:
     user_l.gold -= entity.health
     user_l.kills += 1
     user_l.exp += exp
+
+    # Apply the loot from the monster.
+    loot = entity.get_loot()
+    loot = [l for l in loot if l.type != Items.NONE]
+    new_area = user_l.apply_loot(loot)
+    if not new_area:
+        loot = [l for l in loot if l.type != Items.LOCATION]
     user_l.save()
+
+    loot_text: list[str] = []
+
+    # Creates the text for loot.
+    for n, item in enumerate(loot):
+        lfeed = '└' if n + 1 == len(loot) else '├'
+        amt_text: str = ''
+        if item.amount > 1:
+            amt_text = f" [{item.amount}]"
+
+        name = item.name
+        if new_area and item.type == Items.LOCATION:
+            # Have special text for new location discoveries.
+            area_name = "Unknown"
+            if new_area.name:
+                area_name = new_area.name.title()
+            name = f"NEW LOCATION: {area_name}"
+
+        loot_text.append(f"> {lfeed} **{name}**{amt_text}")
+
+    # Combine the text.
+    full_loot = '\n'.join(loot_text)
+    if len(loot_text) == 0:
+        full_loot = "> └ **none**"
+
+    change_loc = ""
+    if new_area:
+        # Notify the user of how to change locations.
+        change_loc = "To recall to a new area, use the `recall [area]` command"
 
     win = win_text[random.randrange(0, len(win_text))]
     return f"**{user}** {win} **{entity.name}**!\n"\
-        f"**Reward**: {exp:0.2f} exp\n"
+        f"**Reward**: {exp:0.2f} exp\n"\
+        f"> __**Loot**__:\n  {full_loot}\n\n"\
+        f"{change_loc}"
 
 
 class Dropdown(ui.Select):

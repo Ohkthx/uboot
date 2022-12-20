@@ -5,6 +5,7 @@ import random
 
 from managers import entities
 from managers.locations import Area
+from managers.loot_tables import LootTable, LootPacks
 
 
 class Wraith(entities.Entity):
@@ -19,6 +20,9 @@ class Wraith(entities.Entity):
 
         self.set_name(name)
         self.set_health(46, 60)
+
+        # Add the lootpack.
+        self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)
 
 
 def setup(manager: entities.Manager):
