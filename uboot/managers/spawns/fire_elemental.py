@@ -6,19 +6,20 @@ from managers.locations import Area
 from managers.loot_tables import LootTable, LootPacks
 
 
-class Lich(entities.Entity):
+class FireElemental(entities.Entity):
     """Represents a type of entity."""
 
     def __init__(self, location: Area, difficulty: float) -> None:
         super().__init__(location, min(difficulty, 1.0))
-        self.set_name("a Lich")
-        self.set_health(103, 120)
+
+        self.set_name("a Fire Elemental")
+        self.set_health(76, 93)
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(LootPacks.RARE, self.isparagon)
+        self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)
 
 
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
-    areas = [(Area.WILDERNESS, 1), (Area.GRAVEYARD, 1), (Area.FIRE, 5)]
-    manager.register(areas, Lich)
+    areas = [(Area.FIRE, 4)]
+    manager.register(areas, FireElemental)

@@ -1,5 +1,5 @@
 """Destructables temporarily exist and will be queued for deletion."""
-from typing import Optional
+from typing import Optional, Callable, Awaitable, Any
 from datetime import datetime, timedelta
 from enum import Enum
 
@@ -27,13 +27,18 @@ class Destructable():
         self.delete_msg = delete_msg
 
         self._msg: Optional[discord.Message] = None
+        self._callback: Optional[Callable] = None
         self._isdone: bool = False
-        self._timestamp = datetime.now()
+        self._timestamp: datetime = datetime.now()
 
     @property
     def message(self) -> Optional[discord.Message]:
         """Obtains the protected message property."""
         return self._msg
+
+    def add_time(self, seconds: int) -> None:
+        """Adds seconds to the destructable."""
+        self._timestamp += timedelta(seconds=seconds)
 
     def set_message(self, message: Optional[discord.Message] = None) -> None:
         """Sets the message for the destructable, automatically adding it to
@@ -52,6 +57,11 @@ class Destructable():
         self._msg = message
         DestructableManager.add(self)
 
+    def set_callback(
+            self, func: Callable[[Optional[discord.Message]], Awaitable[Any]]) -> None:
+        """Sets a function to be called upon removing."""
+        self._callback = func
+
     def isexpired(self) -> bool:
         """Checks if the view has expired and should be removed."""
         now = datetime.now()
@@ -64,6 +74,8 @@ class Destructable():
             self._isdone = True
             return
 
+        if self._callback:
+            await self._callback(self._msg)
         self._isdone = True
 
         try:
@@ -81,6 +93,16 @@ class DestructableManager():
     """Manages all of the destructables."""
     # Message Id: Destructable
     _destructables: dict[int, Destructable] = {}
+
+    @staticmethod
+    def extend(msg_id: int, seconds: int) -> None:
+        """Extends the time for a destructables by the amount of seconds passed
+        to it.
+        """
+        destructable = DestructableManager.get(msg_id)
+        if not destructable:
+            return
+        destructable.add_time(seconds)
 
     @staticmethod
     def get(msg_id: int) -> Optional[Destructable]:

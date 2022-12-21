@@ -9,6 +9,7 @@ class Area(Flag):
     WILDERNESS = auto()
     GRAVEYARD = auto()
     DESPISE = auto()
+    FIRE = auto()
 
 
 class Locations():
@@ -53,9 +54,11 @@ class Locations():
         if location == Area.SEWERS:
             return [Area.WILDERNESS]
         if location == Area.WILDERNESS:
-            return [Area.GRAVEYARD, Area.DESPISE]
+            return [Area.SEWERS, Area.GRAVEYARD, Area.DESPISE]
         if location == Area.GRAVEYARD:
             return [Area.WILDERNESS, Area.DESPISE]
         if location == Area.DESPISE:
-            return [Area.WILDERNESS, Area.GRAVEYARD]
+            return [Area.WILDERNESS, Area.GRAVEYARD, Area.FIRE]
+        if location == Area.FIRE:
+            return [Area.DESPISE]
         return [Area.WILDERNESS]

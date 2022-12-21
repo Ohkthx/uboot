@@ -16,7 +16,7 @@ def make_raw(user_id: int) -> UserRaw:
     pre-defined defaults.
     """
     return (user_id, 100, 0, 0, 0, 0, 0, 0, 0,
-            Area.SEWERS.value, Area.SEWERS.value)
+            Area.SEWERS.value, Area.SEWERS.value, 0)
 
 
 class User():
@@ -36,6 +36,7 @@ class User():
         self.c_location: Area = Area(raw[10])
         if not self.locations.is_unlocked(self.c_location):
             self.c_location = Area.SEWERS
+        self.deaths = raw[11]
 
         self.isbot = False
         self.powerhour: Optional[datetime] = None
@@ -54,7 +55,8 @@ class User():
         return (self.id, gold, self.msg_count, self.gambles,
                 self.gambles_won, self.button_press,
                 self.monsters, self.kills, self.exp,
-                self.locations.raw, self.c_location.value)
+                self.locations.raw, self.c_location.value,
+                self.deaths)
 
     @property
     def gold(self) -> int:
@@ -78,6 +80,11 @@ class User():
     def gold(self, val) -> None:
         """Setter for accessing protected gold property."""
         self._gold = val
+        self._gold = max(self._gold, 0)
+
+        # Player has died.
+        if self.msg_count > 0 and self._gold == 0:
+            self.deaths += 1
 
     @property
     def exp(self) -> int:
@@ -109,7 +116,7 @@ class User():
         self.c_location = new_loc
         return True
 
-    def apply_loot(self, loot: list[Item]) -> Optional[Area]:
+    def apply_loot(self, loot: list[Item], allow_area: bool) -> Optional[Area]:
         """Applys various items to the user. If a new area is unlocked, it will
         return the new area.
         """
@@ -119,7 +126,7 @@ class User():
                 self.gold += item.amount
             elif item.type == Items.POWERHOUR:
                 self.powerhour = datetime.now()
-            elif item.type == Items.LOCATION:
+            elif item.type == Items.LOCATION and allow_area:
                 # Get all connections, removing the ones already discovered.
                 conn = self.locations.connections(self.c_location)
                 conn = [l for l in conn if not self.locations.is_unlocked(l)]

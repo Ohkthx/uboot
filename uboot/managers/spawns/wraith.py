@@ -15,8 +15,11 @@ class Wraith(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
 
         name = "a Wraith"
-        if 0.5 >= random.randint(0, 100) / 100:
+        roll = random.randint(0, 100) / 100
+        if roll <= 0.33:
             name = "a Spectre"
+        elif roll <= 0.66:
+            name = "a Shade"
 
         self.set_name(name)
         self.set_health(46, 60)

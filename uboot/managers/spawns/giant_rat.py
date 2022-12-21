@@ -20,5 +20,5 @@ class GiantRat(entities.Entity):
 
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
-    areas = [(Area.SEWERS, 5), (Area.WILDERNESS, 4)]
+    areas = [(Area.SEWERS, 5), (Area.WILDERNESS, 2), (Area.FIRE, 4)]
     manager.register(areas, GiantRat)

@@ -34,11 +34,12 @@ class Entity():
 
     def __init__(self, location: Area, difficulty: float) -> None:
         self.name = 'an Unknown'
-        self._health = 0
+        self._health: int = -1
         self.difficulty = difficulty
 
         self.isparagon = _is_paragon(difficulty)
         self.location = location
+        self._max_health: int = -1
 
         # Create a base loot table.
         self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)
@@ -54,12 +55,25 @@ class Entity():
     def set_health(self, min_hp: int, max_hp: int) -> None:
         """Sets the health of the entity."""
         mod: int = 2 if self.isparagon else 1
-        self._health = random.randint(min_hp, max_hp) * mod
+        total_mod = mod * self.difficulty
+        self._health = int(random.randint(min_hp, max_hp) * total_mod)
+        self._max_health = self._health
+
+    @property
+    def max_health(self) -> int:
+        """Used to scale health based on the difficulty."""
+        return self._max_health
 
     @property
     def health(self) -> int:
         """Used to scale health based on the difficulty."""
-        return int(self._health * self.difficulty)
+        return int(self._health)
+
+    @health.setter
+    def health(self, val) -> None:
+        """Setter for accessing protected health property."""
+        self._health = val
+        self._health = max(self._health, 0)
 
     def get_action(self) -> str:
         """Gets flavored text for the entitys action."""

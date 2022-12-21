@@ -13,7 +13,9 @@ from .db_socket import DbSocket, clean_name
 # 7 : int - kills
 # 8 : int - exp
 # 9 : int - locations
-UserRaw = tuple[int, int, int, int, int, int, int, int, int, int, int]
+# 10: int - c_location
+# 11: int - deaths
+UserRaw = tuple[int, int, int, int, int, int, int, int, int, int, int, int]
 
 
 class UserDb(DbSocket):
@@ -28,7 +30,8 @@ class UserDb(DbSocket):
             "gambles INTEGER, gambles_won INTEGER, "\
             "button_press INTEGER, "\
             "monsters INTEGER, kills INTEGER, exp INTEGER, "\
-            "locations INTEGER, c_location INTEGER )"
+            "locations INTEGER, c_location INTEGER, "\
+            "deaths INTEGER )"
         self.query['insert_one'] = "INSERT OR IGNORE INTO {table_name} "\
             "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
@@ -58,7 +61,8 @@ class UserDb(DbSocket):
             f"gambles = {raw[3]}, gambles_won = {raw[4]}, "\
             f"button_press = {raw[5]}, "\
             f"monsters = {raw[6]}, kills = {raw[7]}, exp = {raw[8]}, "\
-            f"locations = {raw[9]}, c_location = {raw[10]}"
+            f"locations = {raw[9]}, c_location = {raw[10]}, "\
+            f"deaths = {raw[11]}"
         where_key = f"id = {raw[0]}"
         self._update(set_key, where_key)
         return None

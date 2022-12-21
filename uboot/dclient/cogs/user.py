@@ -89,13 +89,27 @@ class User(commands.Cog):
 
     @commands.guild_only()
     @commands.command(name="leaderboard")
-    async def leaderboard(self, ctx: commands.Context) -> None:
-        """Shows the current leaderboard."""
+    async def leaderboard(self, ctx: commands.Context,
+                          category: str = param(description="Board to display.",
+                                                default='exp')) -> None:
+        """Shows the current leaderboard. Optional type of board.
+        Valid optional boards are: gold, exp, deaths, kills
+
+        examples:
+            (prefix)leaderboard
+            (prefix)leaderboard gold
+        """
         if not ctx.guild:
             return
+
+        category = category.lower()
+        if category not in ('gold', 'exp', 'deaths', 'kills'):
+            await ctx.send("That is not a valid leaderboard.", delete_after=30)
+            return
+
         all_users = users.Manager.getall()
-        all_users = list(filter(lambda u: u.exp > 0, all_users))
-        all_users.sort(key=lambda u: u.exp, reverse=True)
+        all_users = list(filter(lambda u: getattr(u, category) > 0, all_users))
+        all_users.sort(key=lambda u: getattr(u, category), reverse=True)
 
         pos: int = 0
         board: list[str] = []
@@ -112,15 +126,22 @@ class User(commands.Cog):
 
             # Generate the text for the users position.
             pos += 1
-            winrate = f"Win-Rate: {user_l.win_rate():0.2f}%"
+            suffix: str = ""
+            if category == 'gold':
+                suffix = f"[ Win-Rate: {user_l.win_rate():0.2f}% ]"
+            elif category == 'exp':
+                suffix = f"[ lvl {user_l.level()}, kills: {user_l.kills} ]"
+            elif category == 'kills':
+                suffix = f"[ lvl {user_l.level()}, exp: {user_l.exp} ]"
+
             board.append(f"{pos}: **{user}** - "
-                         f"[ lvl {user_l.level()}: {user_l.exp} ] "
-                         f"- [ {user_l.gold} gp: {winrate} ]")
+                         f"{category.title()}: {getattr(user_l, category)} "
+                         f"{suffix}")
 
         # Combine all of the user data into a single message.
         summary = "\n".join(board)
         color = discord.Colour.from_str("#00ff08")
-        embed = discord.Embed(title="Top 10 Levelers",
+        embed = discord.Embed(title=f"Top 10 {category.title()}",
                               description=summary, color=color)
         embed.set_footer(text=f"Total kills: {kills}")
         await ctx.send(embed=embed)
@@ -171,13 +192,26 @@ class User(commands.Cog):
             loc_text.append(f"> {lfeed} {loc.title()}{current}")
         full_text = '\n'.join(loc_text)
 
+        # Get the list of connections.
+        conn_text: list[str] = []
+        conns = user_l.locations.connections(user_l.c_location)
+        for n, loc in enumerate(conns):
+            lfeed = '└' if n + 1 == len(conns) else '├'
+            name = "Unknown"
+            if loc.name:
+                name = loc.name.title()
+            conn_text.append(f"> {lfeed} {name}")
+        conn_full = '\n'.join(conn_text)
+
         color = discord.Colour.from_str("#00ff08")
         desc = f"**{user}**\n\n{new_loc_text}"\
             f"**id**: {user.id}\n"\
             f"**level**: {user_l.level()}\n"\
             f"**messages**: {user_l.msg_count}\n\n"\
-            "> __**Locations Unlocked**__:\n"\
-            f"**{full_text}**\n"
+            "> __**Areas Unlocked**__:\n"\
+            f"**{full_text}**\n\n"\
+            "> __**Area Connections**__:\n"\
+            f"**{conn_full}**\n"
 
         embed = discord.Embed(description=desc, color=color)
         embed.set_footer(text=f"Current Location: {c_location}")
@@ -211,12 +245,13 @@ class User(commands.Cog):
 
         powerhour_text = ""
         if user_l.powerhour:
-            powerhour_text = f"**powerhour**: enabled\n"
+            powerhour_text = "**powerhour**: enabled\n"
 
         color = discord.Colour.from_str("#00ff08")
         desc = f"**{user}{title}**\n\n"\
             f"**id**: {user.id}\n"\
             f"**age**: {year_str}{day_str}\n"\
+            f"**deaths**: {user_l.deaths}\n"\
             f"**level**: {user_l.level()}\n"\
             f"**gold**: {user_l.gold} gp\n"\
             f"**messages**: {user_l.msg_count}\n"\
