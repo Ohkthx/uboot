@@ -88,12 +88,14 @@ class User(commands.Cog):
         self.bot = bot
 
     @commands.guild_only()
-    @commands.command(name="leaderboard")
+    @commands.command(name="leaderboard", aliases=("board", 'lb'))
     async def leaderboard(self, ctx: commands.Context,
                           category: str = param(description="Board to display.",
                                                 default='exp')) -> None:
         """Shows the current leaderboard. Optional type of board.
-        Valid optional boards are: gold, exp, deaths, kills
+        Valid optional boards are:
+        gold, exp, deaths, kills, level, difficulty, gold_multiplier, msg_count
+
 
         examples:
             (prefix)leaderboard
@@ -103,13 +105,16 @@ class User(commands.Cog):
             return
 
         category = category.lower()
-        if category not in ('gold', 'exp', 'deaths', 'kills'):
+        if category not in ('gold', 'exp', 'deaths', 'kills', 'msg_count',
+                            'level', 'difficulty', 'gold_multiplier'):
             await ctx.send("That is not a valid leaderboard.", delete_after=30)
             return
 
         all_users = users.Manager.getall()
         all_users = list(filter(lambda u: getattr(u, category) > 0, all_users))
         all_users.sort(key=lambda u: getattr(u, category), reverse=True)
+
+        cat_fancy = category.replace('_', ' ').title()
 
         pos: int = 0
         board: list[str] = []
@@ -127,21 +132,31 @@ class User(commands.Cog):
             # Generate the text for the users position.
             pos += 1
             suffix: str = ""
-            if category == 'gold':
+            if category == 'gold' and user_l.gambles > 0:
                 suffix = f"[ Win-Rate: {user_l.win_rate():0.2f}% ]"
-            elif category == 'exp':
-                suffix = f"[ lvl {user_l.level()}, kills: {user_l.kills} ]"
+            elif category in ('exp', 'difficulty'):
+                suffix = f"[ lvl {user_l.level}, kills: {user_l.kills} ]"
+            elif category == 'level':
+                suffix = f"[ exp: {user_l.exp} ]"
+            elif category == 'gold_multiplier':
+                suffix = f"[ gold: {user_l.gold} ]"
             elif category == 'kills':
-                suffix = f"[ lvl {user_l.level()}, exp: {user_l.exp} ]"
+                suffix = f"[ lvl {user_l.level}, exp: {user_l.exp} ]"
+
+            # Convert to a sensible significant digit.
+            value = getattr(user_l, category)
+            display = str(value)
+            if isinstance(value, float):
+                display = f"{value:0.2f}"
 
             board.append(f"{pos}: **{user}** - "
-                         f"{category.title()}: {getattr(user_l, category)} "
+                         f"{cat_fancy}: {display} "
                          f"{suffix}")
 
         # Combine all of the user data into a single message.
         summary = "\n".join(board)
         color = discord.Colour.from_str("#00ff08")
-        embed = discord.Embed(title=f"Top 10 {category.title()}",
+        embed = discord.Embed(title=f"Top 10 {cat_fancy}",
                               description=summary, color=color)
         embed.set_footer(text=f"Total kills: {kills}")
         await ctx.send(embed=embed)
@@ -206,7 +221,7 @@ class User(commands.Cog):
         color = discord.Colour.from_str("#00ff08")
         desc = f"**{user}**\n\n{new_loc_text}"\
             f"**id**: {user.id}\n"\
-            f"**level**: {user_l.level()}\n"\
+            f"**level**: {user_l.level}\n"\
             f"**messages**: {user_l.msg_count}\n\n"\
             "> __**Areas Unlocked**__:\n"\
             f"**{full_text}**\n\n"\
@@ -252,11 +267,11 @@ class User(commands.Cog):
             f"**id**: {user.id}\n"\
             f"**age**: {year_str}{day_str}\n"\
             f"**deaths**: {user_l.deaths}\n"\
-            f"**level**: {user_l.level()}\n"\
+            f"**level**: {user_l.level}\n"\
             f"**gold**: {user_l.gold} gp\n"\
             f"**messages**: {user_l.msg_count}\n"\
             f"{powerhour_text}"\
-            f"**gold multiplier**: {(user_l.gold_multiplier()):0.2f}\n\n"\
+            f"**gold multiplier**: {(user_l.gold_multiplier):0.2f}\n\n"\
             "> __Gamble__:\n"\
             f"> ├ **total**: {user_l.gambles}\n"\
             f"> ├ **won**: {user_l.gambles_won}\n"\

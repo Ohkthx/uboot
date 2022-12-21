@@ -137,6 +137,7 @@ class User():
                 self.locations.unlock(new_area)
         return new_area
 
+    @property
     def level(self) -> int:
         """Calculates the level of the user based on their exp."""
         raw = math.pow(self.exp / 50, 1 / 2.75) - 1
@@ -149,18 +150,20 @@ class User():
 
     def expected_exp(self, base: int) -> float:
         """Calculates expected exp based on what is provided."""
-        mod = max(math.log(self.level() + 10, 10), 1)
+        mod = max(math.log(self.level + 10, 10), 1)
         return mod * base
 
+    @property
     def difficulty(self) -> float:
         """Calculates the difficulty of the user."""
-        level_offset = self.level() / 100
-        gold_offset = self.gold / (self.msg_count * 3)
+        level_offset = self.level / 100
+        gold_offset = self.gold / (max(self.msg_count, 1) * 3)
         return level_offset + gold_offset + 1
 
+    @property
     def gold_multiplier(self) -> float:
         """Generates a gold multiplier based on the players level."""
-        return max(math.log(self.level() / 6, 400) + 1, 1.0)
+        return max(math.log(self.level / 6, 400) + 1, 1.0)
 
     def add_message(self, multiplier: float = 1.0) -> None:
         """Adds a message to the user. Rewards with gold if off cooldown."""
@@ -180,7 +183,7 @@ class User():
             return
 
         # Gold is not on cooldown, add.
-        total_multiplier = self.gold_multiplier()
+        total_multiplier = self.gold_multiplier
         if multiplier > 0:
             total_multiplier += (multiplier - 1)
         self.gold = self._gold + (1 * total_multiplier)

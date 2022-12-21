@@ -222,7 +222,7 @@ class DiscordBot(commands.Bot):
         """
         # Manages the 'Red Button', randomly deleting it.
         if self.last_button:
-            if random.randint(0, 9) == 0:
+            if random.randint(0, 34) == 0:
                 try:
                     await self.last_button.delete()
                 except BaseException:
@@ -356,7 +356,7 @@ class DiscordBot(commands.Bot):
 
         # Try to spawn an entity to attack the player.
         loc = user.c_location
-        difficulty = user.difficulty()
+        difficulty = user.difficulty
         is_powerhour = user.powerhour is not None or powerhour is not None
         entity = entities.Manager.check_spawn(loc, difficulty, is_powerhour)
         if entity:

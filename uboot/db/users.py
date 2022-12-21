@@ -33,7 +33,7 @@ class UserDb(DbSocket):
             "locations INTEGER, c_location INTEGER, "\
             "deaths INTEGER )"
         self.query['insert_one'] = "INSERT OR IGNORE INTO {table_name} "\
-            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
     def find_one(self, user_id: int) -> Optional[UserRaw]:
         """Gets a single user based on its id."""

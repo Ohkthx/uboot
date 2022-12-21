@@ -48,7 +48,7 @@ class RedButtonView(ui.View):
         if 0 <= rand < 5:
             # Spawn an entity.
             loc = user_l.c_location
-            entity = entities.Manager.spawn(loc, user_l.difficulty())
+            entity = entities.Manager.spawn(loc, user_l.difficulty)
             if entity:
                 await self.bot.add_entity(interaction.message, user, entity)
                 return
