@@ -134,8 +134,11 @@ class User(commands.Cog):
             suffix: str = ""
             if category == 'gold' and user_l.gambles > 0:
                 suffix = f"[ Win-Rate: {user_l.win_rate():0.2f}% ]"
-            elif category in ('exp', 'difficulty'):
+            elif category == 'exp':
                 suffix = f"[ lvl {user_l.level}, kills: {user_l.kills} ]"
+            elif category == 'difficulty':
+                suffix = f"[ lvl {user_l.level}, exp: {user_l.exp}, "\
+                    f"kills: {user_l.kills} ]"
             elif category == 'level':
                 suffix = f"[ exp: {user_l.exp} ]"
             elif category == 'gold_multiplier':

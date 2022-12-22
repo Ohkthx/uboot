@@ -261,7 +261,7 @@ class HelpMeView(ui.View):
                                           ephemeral=True,
                                           delete_after=15)
 
-        user_l = users.Manager.get(self.user.id)
+        user_l = users.Manager.get(user.id)
         if user_l.gold == 0:
             return await res.send_message("You do not have any gold.",
                                           ephemeral=True, delete_after=15)

@@ -156,13 +156,23 @@ class User():
     @property
     def difficulty(self) -> float:
         """Calculates the difficulty of the user."""
+        if self.isbot:
+            return 0.0
         level_offset = self.level / 100
         gold_offset = self.gold / (max(self.msg_count, 1) * 3)
-        return level_offset + gold_offset + 1
+        total_offset = level_offset + gold_offset + 1
+        if self.level == 1:
+            # New player protection.
+            if self.exp < 100.0:
+                return 1.0
+            return min(total_offset, 1.25)
+        return min(total_offset, 5)
 
     @property
     def gold_multiplier(self) -> float:
         """Generates a gold multiplier based on the players level."""
+        if self.isbot:
+            return 0.0
         return max(math.log(self.level / 6, 400) + 1, 1.0)
 
     def add_message(self, multiplier: float = 1.0) -> None:

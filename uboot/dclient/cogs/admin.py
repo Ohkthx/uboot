@@ -6,7 +6,7 @@ from discord.ext.commands import param
 from managers import settings, react_roles
 from dclient import DiscordBot
 from dclient.views.support_request import SupportRequestView
-from dclient.helper import get_channel, get_message, get_member, get_role_by_name
+from dclient.helper import get_channel, get_message, get_member, get_role, get_role_by_name
 
 
 class Admin(commands.Cog):
@@ -517,6 +517,94 @@ class Admin(commands.Cog):
         """
         if not ctx.invoked_subcommand:
             await ctx.send('invalid react-role command.')
+
+    @react_role.command(name='verify')
+    async def verify(self,
+                     ctx: commands.Context,
+                     emoji: str = param(description="Emoji assigned to role.")):
+        """Checks all of those who have reacted and ensures if they have the
+        appropriate role or not.
+
+        examples:
+            (prefix)server react-role verify 😄
+        """
+        if not ctx.guild:
+            return await ctx.send("not currently in a guild.")
+
+        # Get the settings for the server.
+        setting = settings.Manager.get(ctx.guild.id)
+        channel_id = setting.react_role_channel_id
+        message_id = setting.react_role_msg_id
+
+        if channel_id <= 0:
+            await ctx.send("react-role channel id is unset, please set it "
+                           "with settings command.")
+            return
+        if message_id <= 0:
+            await ctx.send("react-role message id is unset, please set it "
+                           "with settings command.")
+            return
+
+        # Verify the channel exists.
+        react_ch = await get_channel(self.bot, channel_id)
+        if not react_ch or not isinstance(react_ch, discord.TextChannel):
+            await ctx.send("invalid channel id provided or channel type.")
+            return
+
+        # Get the message the reactions are attached to.
+        react_msg = await get_message(self.bot, channel_id, message_id)
+        if not react_msg:
+            await ctx.send("could not identify the reaction-role message.")
+            return
+
+        react_role = react_roles.Manager.find(ctx.guild.id, emoji)
+        if not react_role:
+            await ctx.send("that emoji is not current bound.", delete_after=15)
+            return
+
+        # Get the reaction from the message.
+        reactions = react_msg.reactions
+        reaction = next((x for x in reactions if x.emoji == emoji), None)
+        if not reaction:
+            await ctx.send("reaction could not be found.", delete_after=15)
+            return
+
+        # Check those who are missing the role but should have it.
+        missing_role: list[str] = []
+        users: list[discord.Member] = []
+        async for user in reaction.users():
+            if user.bot or not isinstance(user, discord.Member):
+                continue
+            users.append(user)
+            if not user.get_role(react_role.role_id):
+                missing_role.append(f"> **{user}** ({user.id})")
+
+        # Check those who have the role but should not.
+        role = await get_role(self.bot, ctx.guild.id, react_role.role_id)
+        if not role:
+            await ctx.send("role no longer exists it appears.", delete_after=15)
+            return
+
+        has_role: list[str] = []
+        for member in role.members:
+            if member not in users:
+                has_role.append(f"> **{member}** ({member.id})")
+
+        # Build the text.
+        total_missing = "> none"
+        total_has = "> none"
+        if len(missing_role) > 0:
+            total_missing = '\n'.join(missing_role)
+        if len(has_role) > 0:
+            total_has = '\n'.join(has_role)
+
+        embed = discord.Embed(title="Reaction Role Verification")
+        embed.color = discord.Colour.blurple()
+        embed.set_footer(text="Output above are potential errors.")
+        embed.description = f"__**Has reacted, no role**__:\n"\
+            f"{total_missing}\n\n"\
+            f"__**Has role, no reaction**__:\n{total_has}"
+        await ctx.send(embed=embed)
 
     @react_role.command(name='bind')
     async def bind(self,
