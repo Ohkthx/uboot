@@ -11,7 +11,7 @@ def make_raw(guild_id: int) -> GuildSettingsRaw:
     """Creates a raw setting for a guild (tuple) fit for storing into a
     database with pre-defined defaults.
     """
-    return (guild_id, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0)
+    return (guild_id, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
 
 class Settings():
@@ -33,6 +33,7 @@ class Settings():
         self.sub_guild_channel_id = raw[10]
         self.lotto_role_id = raw[11]
         self.lotto_winner_role_id = raw[12]
+        self.minigame_role_id = raw[13]
 
     @property
     def _raw(self) -> GuildSettingsRaw:
@@ -44,7 +45,8 @@ class Settings():
                 self.suggestion_reviewer_role_id,
                 self.request_review_channel_id,
                 self.sub_guild_channel_id,
-                self.lotto_role_id, self.lotto_winner_role_id)
+                self.lotto_role_id, self.lotto_winner_role_id,
+                self.minigame_role_id)
 
     def save(self) -> None:
         """Stores the Settings into the databasem saving or updating

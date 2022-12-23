@@ -5,6 +5,7 @@ from typing import Optional
 import discord
 from discord import ui
 
+from dclient.helper import get_role
 from dclient.destructable import DestructableManager
 from managers import users, entities, settings
 from managers.loot_tables import Items
@@ -262,9 +263,37 @@ class HelpMeView(ui.View):
         res = interaction.response
         msg = interaction.message
         user = interaction.user
-        if not isinstance(user, discord.Member):
+        guild = interaction.guild
+        if not guild or not isinstance(user, discord.Member):
             return await res.send_message("Could not get your server id.",
                                           ephemeral=True, delete_after=30)
+
+        # Check that the user has the minigame role.
+        setting = settings.Manager.get(guild.id)
+        role_id = setting.minigame_role_id
+        minigame_role: Optional[discord.Role] = None
+
+        # Validate the role is set to play.
+        minigame_role = await get_role(interaction.client, guild.id, role_id)
+        if not minigame_role:
+            await res.send_message("Minigame role may be current unset.",
+                                   ephemeral=True,
+                                   delete_after=30)
+            return
+
+        # User does not have the role and cannot play.
+        if minigame_role not in user.roles:
+            # Shows and optional text for easy role access.
+            in_channel: str = ""
+            if setting.react_role_channel_id > 0:
+                in_channel = f"\nGo to <#{setting.react_role_channel_id}> to get the"\
+                    " required role."
+            await res.send_message(f"You need to select the "
+                                   f"**{minigame_role}** role to do that. "
+                                   f"{in_channel}",
+                                   ephemeral=True,
+                                   delete_after=30)
+            return
 
         if self.has_contributed(user):
             return await res.send_message("You have already contributed.",

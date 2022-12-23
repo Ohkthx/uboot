@@ -3,7 +3,6 @@ import logging
 import time
 import random
 from datetime import datetime, timedelta, timezone
-from enum import Enum
 from typing import Optional
 
 import aiohttp
@@ -14,7 +13,7 @@ from discord.ext import commands, tasks
 from utils import Log
 from config import DiscordConfig
 from managers import settings, users, react_roles, tickets, subguilds, entities
-from .helper import thread_close, react_processor, get_channel, find_tag
+from .helper import thread_close, react_processor, get_channel, find_tag, get_role
 from .views.generic_panels import SuggestionView, BasicThreadView
 from .views.entity import EntityView
 from .destructable import DestructableManager, Destructable
@@ -359,6 +358,12 @@ class DiscordBot(commands.Bot):
             multiplier = powerhour.multiplier
         user.add_message(multiplier)
         user.save()
+
+        # Check that the user has the minigame role.
+        role_id = settings.Manager.get(msg.guild.id).minigame_role_id
+        minigame_role = await get_role(self, msg.guild.id, role_id)
+        if not minigame_role or minigame_role not in msg.author.roles:
+            return
 
         if user.incombat:
             return

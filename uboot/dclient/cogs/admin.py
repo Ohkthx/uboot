@@ -506,6 +506,32 @@ class Admin(commands.Cog):
         setting.save()
         await ctx.send(f"Lotto Winner Role updated to: {role_str}")
 
+    @settings.command(name='minigame-role')
+    async def minigame_role(self, ctx: commands.Context,
+                            role: discord.Role = param(
+                                description="Role to participate in minigames.",
+                                default=None)) -> None:
+        """Sets the role id for the current minigame role. This allows for
+        monster combat and gambling.
+
+        example:
+            (prefix)server settings minigame-role @combatant
+        """
+        if not ctx.guild:
+            return
+
+        role_id = 0
+        role_str = "unset"
+        if role:
+            role_id = role.id
+            role_str = f"<@&{role.id}>"
+
+        # Save the settings for the guild.
+        setting = settings.Manager.get(ctx.guild.id)
+        setting.minigame_role_id = role_id
+        setting.save()
+        await ctx.send(f"MiniGame Role updated to: {role_str}")
+
     @server.group(name="react-role")
     async def react_role(self, ctx: commands.Context) -> None:
         """Used to bind or unbind emoji reactions to roles.

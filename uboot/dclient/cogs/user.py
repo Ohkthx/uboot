@@ -9,7 +9,7 @@ from discord.ext.commands import param
 from managers import users, settings
 from dclient import DiscordBot
 from dclient.destructable import DestructableManager, Destructable
-from dclient.helper import get_member
+from dclient.helper import get_member, get_role
 from dclient.views.gamble import GambleView, gamble, ExtractedBet
 
 
@@ -388,6 +388,10 @@ class User(commands.Cog):
         example:
             (prefix)bet 40 low
         """
+        if not ctx.guild or not isinstance(ctx.author, discord.Member):
+            await ctx.reply("You must be in a server to do that.",
+                            delete_after=30)
+            return
 
         # Attempt to convert the passed parameters to real values.
         user_bet = extract_bet(amount, side)
@@ -395,6 +399,26 @@ class User(commands.Cog):
         view = None
         color_hex = "#ff0f08"  # Loss color.
         user = users.Manager.get(ctx.author.id)
+
+        # Check that the user has the minigame role.
+        setting = settings.Manager.get(ctx.guild.id)
+        role_id = setting.minigame_role_id
+        minigame_role = await get_role(self.bot, ctx.guild.id, role_id)
+        if not minigame_role:
+            await ctx.reply("Minigame role may be current unset.",
+                            delete_after=30)
+            return
+
+        # User does not have the role and cannot play.
+        if minigame_role not in ctx.author.roles:
+            # Shows and optional text for easy role access.
+            in_channel: str = ""
+            if setting.react_role_channel_id > 0:
+                in_channel = f"\nGo to <#{setting.react_role_channel_id}> to get the"\
+                    " required role."
+            await ctx.reply(f"You need to select the **{minigame_role}** role "
+                            f"to do that. {in_channel}", delete_after=30)
+            return
 
         # Remove all 'DOUBLE OR NOTHING' buttons assigned to the user.
         category = Destructable.Category.GAMBLE
@@ -526,8 +550,27 @@ class User(commands.Cog):
 
         full_text = '\n'.join(winner_text)
         # Format and print winners.
-        await ctx.send(f"{title}\n{full_text}\n\n"
-                       f"Congratulations on your new role: **{winner_role}**")
+        msg = await ctx.send(f"{title}\n{full_text}\n\n"
+                             f"Congratulations on your new role: **{winner_role}**")
+        if not msg:
+            return
+
+        # Send an embed to all winners.
+        embed = discord.Embed(title="Your ticket won!")
+        embed.color = discord.Colour.from_str("#00ff08")
+        embed.description = "You had a winning lotto/raffle ticket on "\
+            f"**{guild.name}**!\nYour reward is the "\
+            f"**{winner_role}** role.\n\nClick the link to access the "\
+            f"announcement: [**Lotto Results**]({msg.jump_url})"
+        if guild.icon:
+            embed.set_thumbnail(url=guild.icon.url)
+
+        # Notify the winners.
+        for winner in winners:
+            try:
+                await winner.send(embed=embed)
+            except BaseException:
+                pass
 
 
 async def setup(bot: DiscordBot) -> None:

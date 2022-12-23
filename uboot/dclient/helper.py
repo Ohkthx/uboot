@@ -39,7 +39,7 @@ async def get_role_by_name(bot: commands.Bot, guild_id: int,
     return role
 
 
-async def get_role(bot: commands.Bot, guild_id: int,
+async def get_role(bot: discord.Client, guild_id: int,
                    role_id: int) -> Optional[discord.Role]:
     """Attempts to get a role by its id belonging to the specified guild id.
     Tries to get it from cache first, if not found then fetches from API.
@@ -61,7 +61,7 @@ async def get_role(bot: commands.Bot, guild_id: int,
     return role
 
 
-async def get_guild(bot: commands.Bot,
+async def get_guild(bot: discord.Client,
                     guild_id: int) -> Optional[discord.Guild]:
     """Attempt to get the guild based on its id.
     Tries to get it from cache first, if not found then fetches from API.

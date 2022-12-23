@@ -16,8 +16,9 @@ from .db_socket import DbSocket, clean_name
 # 10: int - sub_guild_channel_id
 # 11: int - lotto_role_id
 # 12: int - lotto_winner_role_id
+# 13: int - minigame_role_id
 GuildSettingsRaw = tuple[int, int, int, int, int, int, int, int, int, int, int,
-                         int, int]
+                         int, int, int]
 
 
 class GuildSettingDb(DbSocket):
@@ -35,9 +36,10 @@ class GuildSettingDb(DbSocket):
             "suggestion_reviewer_role_id INTEGER, "\
             "request_review_channel_id INTEGER, "\
             "sub_guild_channel_id INTEGER, "\
-            "lotto_role_id INTEGER, lotto_winner_role_id INTEGER )"
+            "lotto_role_id INTEGER, lotto_winner_role_id INTEGER, "\
+            "minigame_role_id INTEGER )"
         self.query['insert_one'] = "INSERT OR IGNORE INTO {table_name} "\
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
     def find_one(self, guild_id: int) -> Optional[GuildSettingsRaw]:
         """Gets a single guild setting from database based on its id."""
@@ -71,7 +73,8 @@ class GuildSettingDb(DbSocket):
             f"request_review_channel_id = {raw[9]}, "\
             f"sub_guild_channel_id = {raw[10]}, "\
             f"lotto_role_id = {raw[11]}, "\
-            f"lotto_winner_role_id = {raw[12]}"
+            f"lotto_winner_role_id = {raw[12]}, "\
+            f"minigame_role_id = {raw[13]}"
         where_key = f"guild_id = {raw[0]}"
         self._update(set_key, where_key)
         return None
