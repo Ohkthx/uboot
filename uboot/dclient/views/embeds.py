@@ -1,23 +1,36 @@
 """Embed View is used to create and manage embeds created by the bot."""
-from typing import Optional
+from typing import Optional, Union
 
 import discord
 from discord import ui
 
-from dclient.modals.embed import EmbedModal
+from dclient.modals.embed import EmbedModal, Messageable
 
 # All possible embed color options supported in the dropdown.
 options = ['green', 'red', 'black', 'blue', 'yellow']
+
+Messageable = Union[discord.Thread, discord.TextChannel]
 
 
 class EmbedView(ui.View):
     """Embed View is used to create and manage embeds created by the bot."""
 
-    def __init__(self, user: int, message: Optional[discord.Message]) -> None:
+    def __init__(self, user: int, channel: Messageable, message: Optional[discord.Message]) -> None:
         self.user = user
+        self.channel = channel
         self.message = message
         self.last_color: str = ''
         super().__init__(timeout=60)
+
+    @staticmethod
+    def get_panel() -> discord.Embed:
+        """Creates the panel that is sent to the user."""
+        embed = discord.Embed(title="Embed Creator / Editor")
+        embed.color = discord.Color.blurple()
+        embed.description = "If you wish to set or change the color of the "\
+            "embed:\nSelect a color from the drop down menu before pressing "\
+            "a button.\n\nThis menu disappears after 1 minute."
+        return embed
 
     def current_color(self) -> Optional[discord.Colour]:
         """Extracts the currently selected color if there is one."""
@@ -69,7 +82,7 @@ class EmbedView(ui.View):
             await interaction.message.delete()
 
         # Send the embed creation modal to the user.
-        modal = EmbedModal(color=self.current_color())
+        modal = EmbedModal(self.channel, color=self.current_color())
         await res.send_modal(modal)
         await modal.wait()
 
@@ -86,16 +99,16 @@ class EmbedView(ui.View):
                                           ephemeral=True,
                                           delete_after=30)
 
-        # Delete the message that spawn the button.
-        if interaction.message:
-            await interaction.message.delete()
-
         # Only continue if a message was passed.
         if not self.message:
             return await res.send_message("You need to provide a valid "
                                           "message to edit",
                                           ephemeral=True,
                                           delete_after=30)
+
+        # Delete the message that spawn the button.
+        if interaction.message:
+            await interaction.message.delete()
 
         # Verify that the message has an embed already.
         if not EmbedModal.get_embed(self.message):
@@ -104,6 +117,8 @@ class EmbedView(ui.View):
                                           delete_after=30)
 
         # Send the embed creation modal to the user (also allows editing.)
-        modal = EmbedModal(color=self.current_color(), message=self.message)
+        modal = EmbedModal(self.channel,
+                           color=self.current_color(),
+                           message=self.message)
         await res.send_modal(modal)
         await modal.wait()

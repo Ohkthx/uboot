@@ -1,9 +1,11 @@
 """Embed Modal used for prompting user input in creating or editing embeds."""
 import traceback
-from typing import Optional
+from typing import Optional, Union
 
 import discord
 from discord import ui
+
+Messageable = Union[discord.Thread, discord.TextChannel]
 
 
 class EmbedModal(ui.Modal, title='Embed Manager'):
@@ -11,8 +13,10 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
     embeds.
     """
 
-    def __init__(self, color: Optional[discord.Colour] = None,
+    def __init__(self, channel: Messageable,
+                 color: Optional[discord.Colour] = None,
                  message: Optional[discord.Message] = None) -> None:
+        self.channel = channel
         self.color = color
         self.message = message
         super().__init__()
@@ -110,20 +114,20 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
         if self.color:
             embed.color = self.color
 
+        status: str = "created"
         if self.message:
             # Upload the new embed if we're editing.
-            await self.message.edit(embed=embed)
+            status = "edited"
+            self.message = await self.message.edit(embed=embed)
         else:
-            # Resolve the channel and create the new embed.
-            channel = interaction.channel
-            if not channel or not isinstance(channel, discord.TextChannel):
-                return await res.send_message("Could not find channel to "
-                                              "send embed to.",
-                                              ephemeral=True,
-                                              delete_after=60)
-            await channel.send(embed=embed)
+            self.message = await self.channel.send(embed=embed)
 
-        await res.send_message("Embed edited.", ephemeral=True, delete_after=60)
+        url: str = ""
+        if self.message:
+            url = f"Go to message: [**Click Here**]({self.message.jump_url})"
+        embed = discord.Embed(title=f"Embed {status}", description=url)
+        embed.color = discord.Color.blurple()
+        await res.send_message(embed=embed)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         res = interaction.response

@@ -145,6 +145,12 @@ class General(commands.Cog):
         if not channel or not guild:
             return
 
+        if not isinstance(channel, (discord.Thread, discord.TextChannel)):
+            await ctx.send("The channel has to be either a thread or text "
+                           "channel where embeds can be sent.",
+                           delete_after=30)
+            return
+
         msg: Optional[discord.Message] = None
         if msg_id > 0:
             # Message Id was passed, try to get the message.
@@ -160,8 +166,9 @@ class General(commands.Cog):
                                delete_after=30)
                 return
 
-        view = EmbedView(ctx.author.id, msg)
-        await ctx.send(view=view, delete_after=30)
+        panel = EmbedView.get_panel()
+        view = EmbedView(ctx.author.id, channel, msg)
+        await ctx.author.send(embed=panel, view=view, delete_after=60)
         if ctx.message:
             await ctx.message.delete()
 

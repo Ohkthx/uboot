@@ -601,7 +601,9 @@ class Admin(commands.Cog):
         embed = discord.Embed(title="Reaction Role Verification")
         embed.color = discord.Colour.blurple()
         embed.set_footer(text="Output above are potential errors.")
-        embed.description = f"__**Has reacted, no role**__:\n"\
+        embed.description = f"**Users who reacted**: {len(users)}\n"\
+            f"**Users in role**: {len(role.members)}\n\n"\
+            "__**Has reacted, no role**__:\n"\
             f"{total_missing}\n\n"\
             f"__**Has role, no reaction**__:\n{total_has}"
         await ctx.send(embed=embed)
