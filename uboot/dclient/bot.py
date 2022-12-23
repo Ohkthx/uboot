@@ -113,7 +113,7 @@ class DiscordBot(commands.Bot):
         # Initialize all of the managers and their databases.
         tickets.Manager.init("uboot.sqlite3")
         users.Manager.init("uboot.sqlite3")
-        settings.Manager.init("uboot.sqlite3")
+        settings.Manager.init("uboot.sqlite3", prefix)
         react_roles.Manager.init("uboot.sqlite3")
         subguilds.Manager.init("uboot.sqlite3")
         entities.Manager.init()
@@ -138,7 +138,12 @@ class DiscordBot(commands.Bot):
         if not isinstance(user, discord.Member):
             return
 
+        # Checks if the user is in combat or not.
         user_l = users.Manager.get(user.id)
+        if user_l.incombat:
+            return
+
+        user_l.set_combat(True)
 
         # Remove all old entities for the user.
         category = Destructable.Category.MONSTER
@@ -151,6 +156,7 @@ class DiscordBot(commands.Bot):
         # Create a destructable view for the entity.
         destruct = Destructable(category, user.id, 30, True)
         destruct.set_message(message=new_msg)
+        destruct.set_callback(entity_view.loss_callback)
 
         user_l.monsters += 1
         user_l.save()
@@ -354,6 +360,8 @@ class DiscordBot(commands.Bot):
         user.add_message(multiplier)
         user.save()
 
+        if user.incombat:
+            return
         # Try to spawn an entity to attack the player.
         loc = user.c_location
         difficulty = user.difficulty

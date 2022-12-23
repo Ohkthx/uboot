@@ -43,6 +43,9 @@ class Test(commands.Cog):
         if not isinstance(ctx.author, discord.Member):
             return await ctx.reply("Could not identify user.", delete_after=15)
         user_l = users.Manager.get(ctx.author.id)
+        if user_l.incombat:
+            return await ctx.reply("You are already in combat.",
+                                   delete_after=15)
         entity = entities.Manager.spawn(user_l.c_location, user_l.difficulty)
         if entity:
             await self.bot.add_entity(ctx.message, ctx.author, entity)

@@ -6,7 +6,7 @@ import discord
 from discord import ui
 
 from dclient.destructable import DestructableManager
-from managers import users, entities
+from managers import users, entities, settings
 from managers.loot_tables import Items
 from managers.locations import Area
 
@@ -44,7 +44,7 @@ def attack(participants: list[ParticipantData],
         user.kills += 1
         new_area = user.apply_loot(loot, len(participants) == 1)
         if helper[2] and user.deaths > 0:
-            user.deaths -= 1
+            user.deaths = user.deaths - 1
         user.save()
         helpers_exp.append(f"> {lfeed} {helper[0]} gained {exp:0.2f} exp.")
     full_help = '\n'.join(helpers_exp)
@@ -77,8 +77,13 @@ def attack(participants: list[ParticipantData],
 
     change_loc = ""
     if new_area:
+        area_name = "unknown"
+        if new_area.name:
+            area_name = new_area.name.lower()
         # Notify the user of how to change locations.
-        change_loc = "To recall to a new area, use the `recall [area]` command"
+        prefix = settings.Manager.prefix
+        change_loc = "To recall to a new area, use the "\
+            f"`{prefix}recall {area_name}` command"
 
     win = win_text[random.randrange(0, len(win_text))]
     return f"**{participants[0][0]}** {win} **{entity.name}**!\n\n"\
@@ -93,6 +98,7 @@ class Dropdown(ui.Select):
 
     def __init__(self, user: discord.Member, entity: entities.Entity):
         self.user = user
+        self.user_l = users.Manager.get(user.id)
         self.entity = entity
         options = [
             discord.SelectOption(
@@ -107,7 +113,6 @@ class Dropdown(ui.Select):
         res = interaction.response
         msg = interaction.message
 
-        user_l = users.Manager.get(self.user.id)
         if interaction.user != self.user:
             await res.send_message("You are not in combat with that creature.",
                                    ephemeral=True,
@@ -128,13 +133,13 @@ class Dropdown(ui.Select):
         if self.values[0].lower() == 'attack':
 
             embed.color = discord.Colour.from_str("#00ff08")
-            if user_l.gold < self.entity.health:
+            if self.user_l.gold < self.entity.health:
                 # Get help from another user.
-                exp = user_l.expected_exp(self.entity.health)
-                damage = user_l.gold
+                exp = self.user_l.expected_exp(self.entity.health)
+                damage = self.user_l.gold
                 self.entity.health -= damage
-                user_l.gold = 0
-                user_l.save()
+                self.user_l.gold = 0
+                self.user_l.save()
                 help_view = HelpMeView(self.user, self.entity, exp, damage)
                 help_embed = help_view.get_panel()
 
@@ -147,15 +152,18 @@ class Dropdown(ui.Select):
                 await msg.edit(embeds=[help_embed], view=help_view)
                 return await res.send_message(f"You deal {damage} damage.",
                                               ephemeral=True, delete_after=30)
-            user_l.gold -= self.entity.health
+            self.user_l.gold -= self.entity.health
             embed.description = attack([(self.user, self.entity.health, False)],
                                        self.entity)
-            embed.set_footer(text=f"Current gold: {user_l.gold} gp")
+            embed.set_footer(text=f"Current gold: {self.user_l.gold} gp")
         elif self.values[0].lower() == 'flee':
             pass
         else:
             embed.color = discord.Colour.from_str("#F1C800")
             embed.description = "You perform some unknown action?! What a feat."
+
+        # User is exiting combat.
+        self.user_l.set_combat(False)
 
         # Delete the old destructable.
         await DestructableManager.remove_one(msg.id, True)
@@ -222,6 +230,8 @@ class HelpMeView(ui.View):
 
     async def loss_callback(self, msg: Optional[discord.Message]) -> None:
         """Called when the original message gets deleted."""
+        self.user_l.set_combat(False)
+
         if self.iscomplete:
             return
 
@@ -295,6 +305,7 @@ class HelpMeView(ui.View):
         embed = discord.Embed()
         embed.color = discord.Colour.from_str("#00ff08")
         embed.description = attack(self.helpers, self.entity)
+        self.user_l.set_combat(False)
 
         cached = msg.reference.cached_message
         # Delete the old destructable.
@@ -304,6 +315,13 @@ class HelpMeView(ui.View):
 
 class EntityView(ui.View):
     """Entity View that can be interacted with after reboots."""
+
+    def __init__(self, user: discord.Member, entity: entities.Entity):
+        self.user = user
+        self.user_l = users.Manager.get(user.id)
+        self.entity = entity
+        super().__init__(timeout=None)
+        self.add_item(Dropdown(user, entity))
 
     def get_panel(self) -> discord.Embed:
         """Produces the entities message."""
@@ -333,8 +351,6 @@ class EntityView(ui.View):
         embed.set_footer(text=f"Current gold: {user_l.gold} gp")
         return embed
 
-    def __init__(self, user: discord.Member, entity: entities.Entity):
-        self.user = user
-        self.entity = entity
-        super().__init__(timeout=None)
-        self.add_item(Dropdown(user, entity))
+    async def loss_callback(self, msg: Optional[discord.Message]):
+        """Cleans up after a loss."""
+        self.user_l.set_combat(False)

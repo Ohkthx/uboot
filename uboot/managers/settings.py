@@ -58,12 +58,14 @@ class Manager():
     """Manages the Settings database in memory and in storage."""
     _db: Optional[GuildSettingDb] = None
     _guilds: dict[int, Settings] = {}
+    prefix: str = '?'
 
     @staticmethod
-    def init(dbname: str) -> None:
+    def init(dbname: str, prefix: str) -> None:
         """Initializes the Settings Manager, connecting and loading from
         database.
         """
+        Manager.prefix = prefix
         Manager._db = GuildSettingDb(dbname)
         raw_settings = Manager._db.find_all()
         for raw in raw_settings:

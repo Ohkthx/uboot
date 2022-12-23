@@ -15,7 +15,8 @@ Messageable = Union[discord.Thread, discord.TextChannel]
 class EmbedView(ui.View):
     """Embed View is used to create and manage embeds created by the bot."""
 
-    def __init__(self, user: int, channel: Messageable, message: Optional[discord.Message]) -> None:
+    def __init__(self, user: int, channel: Messageable,
+                 message: Optional[discord.Message]) -> None:
         self.user = user
         self.channel = channel
         self.message = message
@@ -27,9 +28,13 @@ class EmbedView(ui.View):
         """Creates the panel that is sent to the user."""
         embed = discord.Embed(title="Embed Creator / Editor")
         embed.color = discord.Color.blurple()
-        embed.description = "If you wish to set or change the color of the "\
-            "embed:\nSelect a color from the drop down menu before pressing "\
-            "a button.\n\nThis menu disappears after 1 minute."
+        embed.set_footer(text="Note: This panel deletes after 2 minutes.")
+        embed.description = "**Embed Color**:\nSelect the color to apply by "\
+            "choosing it in the drop down menu before selecting a button.\n\n"\
+            "**Editing Embed Fields**:\n"\
+            "By not typing in a field, it will remain unaltered. By "\
+            "placing the word 'unset' with no quotes, all text will be "\
+            "removed from that field."
         return embed
 
     def current_color(self) -> Optional[discord.Colour]:

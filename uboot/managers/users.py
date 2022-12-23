@@ -39,6 +39,7 @@ class User():
         self.deaths = raw[11]
 
         self.isbot = False
+        self._incombat = False
         self.powerhour: Optional[datetime] = None
         self.last_message = datetime.now() - timedelta(seconds=20)
 
@@ -57,6 +58,15 @@ class User():
                 self.monsters, self.kills, self.exp,
                 self.locations.raw, self.c_location.value,
                 self.deaths)
+
+    @property
+    def incombat(self) -> bool:
+        """Checks if the user is in combat or not."""
+        return self._incombat
+
+    def set_combat(self, value: bool) -> None:
+        """Set the user to be in combat."""
+        self._incombat = value
 
     @property
     def gold(self) -> int:

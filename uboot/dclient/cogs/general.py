@@ -168,7 +168,7 @@ class General(commands.Cog):
 
         panel = EmbedView.get_panel()
         view = EmbedView(ctx.author.id, channel, msg)
-        await ctx.author.send(embed=panel, view=view, delete_after=60)
+        await ctx.author.send(embed=panel, view=view, delete_after=120)
         if ctx.message:
             await ctx.message.delete()
 
