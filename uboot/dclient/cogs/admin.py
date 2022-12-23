@@ -532,6 +532,36 @@ class Admin(commands.Cog):
         setting.save()
         await ctx.send(f"MiniGame Role updated to: {role_str}")
 
+    @settings.command(name='embed-bank-channel')
+    async def embed_bank_channel(self, ctx: commands.Context,
+                                 channel: discord.abc.GuildChannel = param(
+                                     description="Channel Id of the "
+                                     "Embed Bank.",
+                                     default=None)) -> None:
+        """Sets the channel id for the banked embeds channel.
+        Channel must be a Text Channel.
+        example:
+            (prefix)server settings embed-bank-channel #embed-bank
+        """
+        if not ctx.guild:
+            return
+
+        channel_id = 0
+        channel_str = "unset"
+        if channel:
+            # Make sure the channel is the correct type.
+            if not isinstance(channel, discord.TextChannel):
+                await ctx.send("Channel is not a 'Text Channel'")
+                return
+            channel_id = channel.id
+            channel_str = f"<#{channel.id}>"
+
+        # Save the settings for the guild.
+        setting = settings.Manager.get(ctx.guild.id)
+        setting.embed_bank_channel_id = channel_id
+        setting.save()
+        await ctx.send(f"Embed Bank channel updated to: {channel_str}")
+
     @server.group(name="react-role")
     async def react_role(self, ctx: commands.Context) -> None:
         """Used to bind or unbind emoji reactions to roles.

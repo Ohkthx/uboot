@@ -12,11 +12,12 @@ from discord.ext import commands, tasks
 
 from utils import Log
 from config import DiscordConfig
-from managers import settings, users, react_roles, tickets, subguilds, entities
 from .helper import thread_close, react_processor, get_channel, find_tag, get_role
 from .views.generic_panels import SuggestionView, BasicThreadView
 from .views.entity import EntityView
 from .destructable import DestructableManager, Destructable
+from managers import (settings, users, react_roles, tickets, subguilds,
+                      entities, aliases)
 
 
 intents = discord.Intents.default()
@@ -115,6 +116,7 @@ class DiscordBot(commands.Bot):
         settings.Manager.init("uboot.sqlite3", prefix)
         react_roles.Manager.init("uboot.sqlite3")
         subguilds.Manager.init("uboot.sqlite3")
+        aliases.Manager.init("uboot.sqlite3")
         entities.Manager.init()
 
         self.sudoer: Optional[Sudoer] = None

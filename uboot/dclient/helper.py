@@ -3,7 +3,6 @@ from typing import Optional
 
 import discord
 from discord import ForumChannel, TextChannel
-from discord.ext import commands
 
 from utils import Log
 from managers import react_roles
@@ -17,12 +16,12 @@ def find_tag(tag: str, channel: ForumChannel) -> Optional[discord.ForumTag]:
     return None
 
 
-async def get_role_by_name(bot: commands.Bot, guild_id: int,
+async def get_role_by_name(client: discord.Client, guild_id: int,
                            role_name: str) -> Optional[discord.Role]:
     """Attempts to get a role by its name that belongs to a server.
     Tries to get it from cache first, if not found then fetches from API.
     """
-    guild = await get_guild(bot, guild_id)
+    guild = await get_guild(client, guild_id)
     if not guild:
         # Could not resolve guild, no tag found.
         return None
@@ -39,12 +38,12 @@ async def get_role_by_name(bot: commands.Bot, guild_id: int,
     return role
 
 
-async def get_role(bot: discord.Client, guild_id: int,
+async def get_role(client: discord.Client, guild_id: int,
                    role_id: int) -> Optional[discord.Role]:
     """Attempts to get a role by its id belonging to the specified guild id.
     Tries to get it from cache first, if not found then fetches from API.
     """
-    guild = await get_guild(bot, guild_id)
+    guild = await get_guild(client, guild_id)
     if not guild:
         # Could not resolve guild, no tag found.
         return None
@@ -61,28 +60,28 @@ async def get_role(bot: discord.Client, guild_id: int,
     return role
 
 
-async def get_guild(bot: discord.Client,
+async def get_guild(client: discord.Client,
                     guild_id: int) -> Optional[discord.Guild]:
     """Attempt to get the guild based on its id.
     Tries to get it from cache first, if not found then fetches from API.
     """
     # Check cached guilds.
-    guild = bot.get_guild(guild_id)
+    guild = client.get_guild(guild_id)
     if not guild:
         # Could not find in cachexd, try to fetch it from API.
         try:
-            guild = await bot.fetch_guild(guild_id)
+            guild = await client.fetch_guild(guild_id)
         except BaseException:
             return None
     return guild
 
 
-async def get_member(bot: commands.Bot, guild_id: int,
+async def get_member(client: discord.Client, guild_id: int,
                      user_id: int) -> Optional[discord.Member]:
     """Attempt to get the member based on its id.
     Tries to get it from cache first, if not found then fetches from API.
     """
-    guild = await get_guild(bot, guild_id)
+    guild = await get_guild(client, guild_id)
     if not guild:
         # Could not resolve guild, no member found.
         return None
@@ -98,17 +97,17 @@ async def get_member(bot: commands.Bot, guild_id: int,
     return member
 
 
-async def get_channel(bot: commands.Bot,
+async def get_channel(client: discord.Client,
                       channel_id: int) -> Optional[discord.abc.GuildChannel]:
     """Attempt to get a channel based on its id.
     Tries to get it from cache first, if not found then fetches from API.
     """
     # Attempt from cache first.
-    channel = bot.get_channel(channel_id)
+    channel = client.get_channel(channel_id)
     if not channel:
         # Fallback on trying to fetch from API.
         try:
-            channel = await bot.fetch_channel(channel_id)
+            channel = await client.fetch_channel(channel_id)
         except BaseException:
             return None
     if not isinstance(channel, discord.abc.GuildChannel):
@@ -117,10 +116,10 @@ async def get_channel(bot: commands.Bot,
     return channel
 
 
-async def get_message(bot: commands.Bot, channel_id: int,
+async def get_message(client: discord.Client, channel_id: int,
                       message_id: int) -> Optional[discord.Message]:
     """Attempt to fetch a message from the API."""
-    channel = await get_channel(bot, channel_id)
+    channel = await get_channel(client, channel_id)
     if not channel or not isinstance(channel, TextChannel):
         # Could not resolve the text channel.
         return None
@@ -180,7 +179,7 @@ async def thread_close(tag_rm_names: list[str], tag_add_name: str,
             Log.print(f"Error while sending closure message: {err}")
 
 
-async def react_processor(bot: commands.Bot,
+async def react_processor(client: discord.Client,
                           payload: discord.RawReactionActionEvent,
                           ) -> Optional[tuple[discord.Member, discord.Role, bool]]:
     """Processes Reaction events and checks if a Reaction Role pair exists
@@ -190,7 +189,7 @@ async def react_processor(bot: commands.Bot,
         return None
 
     # Validate the guild for the reaction.
-    guild = bot.get_guild(payload.guild_id)
+    guild = await get_guild(client, payload.guild_id)
     if not guild:
         return None
 
@@ -200,7 +199,7 @@ async def react_processor(bot: commands.Bot,
         return None
 
     # Validate the member/user exists.
-    user = await get_member(bot, guild.id, payload.user_id)
+    user = await get_member(client, guild.id, payload.user_id)
     if not user or user.bot:
         return None
 

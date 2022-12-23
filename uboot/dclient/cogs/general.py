@@ -8,7 +8,9 @@ from discord.ext import commands
 from discord.ext.commands import param
 
 from dclient import DiscordBot
+from dclient.helper import get_message, get_channel
 from dclient.views.embeds import EmbedView
+from managers import aliases, settings
 
 # All standard magic 8 ball options.
 eight_ball_opts = [["It is certain.", "It is decidely so.", "Without a doubt.",
@@ -21,6 +23,19 @@ eight_ball_opts = [["It is certain.", "It is decidely so.", "Without a doubt.",
                    ["Don't count on it.", "My reply is no.",
                        "My sources say no.", "Outlook not so good.",
                        "Very doubtful."]]
+
+
+async def get_alias_embed(client: discord.Client,
+                          alias: aliases.Alias) -> Optional[discord.Embed]:
+    """Attempts to get the embed from the message bank."""
+    # Get the message the reactions are attached to.
+    bank_id = settings.Manager.get(alias.guild_id).embed_bank_channel_id
+    msg = await get_message(client, bank_id, alias.msg_id)
+    if not msg:
+        return
+
+    if len(msg.embeds) > 0:
+        return msg.embeds[0]
 
 
 class General(commands.Cog):
@@ -171,6 +186,146 @@ class General(commands.Cog):
         await ctx.author.send(embed=panel, view=view, delete_after=120)
         if ctx.message:
             await ctx.message.delete()
+
+    @commands.guild_only()
+    @commands.group("alias")
+    async def alias(self, ctx: commands.Context) -> None:
+        """Group of alias commands that are used to post information. Aliases
+        are attached to embeds that send the embed that is linked.
+
+        examples:
+            (prefix)alias add hello_world 0123456789
+            (prefix)alias show
+            (prefix)alias hello_world
+            (prefix)alias remove hello_world
+        """
+        if ctx.invoked_subcommand:
+            return
+
+        # Attempt to find the alias.
+        alias_name = ctx.subcommand_passed
+        if not alias_name or not ctx.guild:
+            await ctx.send("invalid alias command.", delete_after=30)
+            return
+
+        alias = aliases.Manager.by_name(ctx.guild.id, alias_name.lower())
+        if not alias:
+            await ctx.send("invalid alias command.", delete_after=30)
+            return
+
+        embed = await get_alias_embed(self.bot, alias)
+        if not embed:
+            await ctx.send("alias broken, embed missing.", delete_after=30)
+            return
+
+        await ctx.message.delete()
+        await ctx.send(embed=embed)
+
+    @commands.has_permissions(manage_channels=True)
+    @alias.command("add")
+    async def add(self, ctx: commands.Context,
+                  name: str, message_id: int) -> None:
+        """Add a new alias that attaches to an embed. When the alias is called,
+        the associated embed will be sent.
+
+        examples:
+            (prefix)alias add test 0123456789
+        """
+        if not ctx.guild:
+            return
+
+        if name in ("add", "rm", "remove", "show", "display", "print"):
+            await ctx.reply("You cannot add an alias with that name.",
+                            delete_after=30)
+            return
+
+        # Check if name exists.
+        alias = aliases.Manager.by_name(ctx.guild.id, name.lower())
+        if alias:
+            await ctx.reply("Alias is already set.", delete_after=30)
+            return
+
+        setting = settings.Manager.get(ctx.guild.id)
+        bank_id = setting.embed_bank_channel_id
+        if bank_id <= 0:
+            await ctx.send("embed bank channel id is unset, please set it "
+                           "with settings command.")
+            return
+
+        # Check that the channel exists.
+        channel = await get_channel(self.bot, bank_id)
+        if not channel:
+            await ctx.send("channel for the bank does not exist.",
+                           delete_after=30)
+            return
+
+        if message_id <= 0:
+            await ctx.send("message id has to be greater than 0.",
+                           delete_after=30)
+            return
+
+        # Get the message the reactions are attached to.
+        msg = await get_message(self.bot, bank_id, message_id)
+        if not msg:
+            await ctx.send("could not identify the message.")
+            return
+
+        last_id = aliases.Manager.last_id(ctx.guild.id)
+        alias = aliases.Manager.get(ctx.guild.id, last_id+1)
+        alias.msg_id = message_id
+        alias.name = name.lower()
+        alias.owner_id = ctx.author.id
+        alias.save()
+
+        embed = discord.Embed(title="Alias Created")
+        embed.color = discord.Color.blurple()
+        embed.description = f"Done! **{name.lower()}** alias added to "\
+            f"[message]({msg.jump_url})."
+        await ctx.send(embed=embed, delete_after=120)
+
+    @commands.has_permissions(manage_channels=True)
+    @alias.command("remove", aliases=("rm",))
+    async def remove(self, ctx: commands.Context,
+                     name: str) -> None:
+        """Remove an alias
+
+        examples:
+            (prefix)alias remove test
+            (prefix)alias rm hello_world
+        """
+        if not ctx.guild:
+            return
+
+        success = aliases.Manager.remove(ctx.guild.id, name.lower())
+        await ctx.send(f"Alias removal success: {str(success).lower()}")
+
+    @alias.command("show", aliases=("print", "display"))
+    async def show(self, ctx: commands.Context) -> None:
+        """Shows all aliases for the server.
+
+        examples:
+            (prefix)alias show
+        """
+        if not ctx.guild:
+            return
+
+        embed = discord.Embed()
+        embed.color = discord.Colour.from_str("#ff0f08")
+        all_alias = aliases.Manager.get_all(ctx.guild.id)
+        if len(all_alias) == 0:
+            embed.description = "There are no aliases set."
+            await ctx.send(embed=embed)
+            return
+
+        alias_str: list[str] = []
+        for alias in all_alias:
+            alias_str.append(f"> {str(alias)}")
+
+        full_text: str = '\n'.join(alias_str)
+        embed.color = discord.Colour.from_str("#00ff08")
+        embed.description = f"__**Current Aliases**__:\n{full_text}"
+
+        await ctx.send(embed=embed)
 
 
 async def setup(bot: DiscordBot) -> None:

@@ -466,10 +466,12 @@ class User(commands.Cog):
                     amount: int = param(description="Amount of winners."),
                     ) -> None:
         """Performs the lotto assigning all users with the defined lotto role
-        a new winner lotto role.
+        a new winner lotto role. Can take serveral seconds to process.
+
+        Limit: 20
 
         example:
-            (prefix)lotto 10
+            (prefix)lotto 20
         """
         guild = ctx.guild
         if not guild:
@@ -479,6 +481,7 @@ class User(commands.Cog):
             await ctx.send("Need more than 0 winners picked.")
             return
 
+        amount = min(amount, 20)
         setting = settings.Manager.get(guild.id)
 
         # Get the role that lotto members belong to.
@@ -492,6 +495,8 @@ class User(commands.Cog):
         if not winner_role:
             await ctx.send("Winner role could not be found.")
             return
+
+        await ctx.send("__**Lotto started!**__\n... **drum roll** ...")
 
         # Perform Lotto.
         lotto_pool: list[discord.Member] = []
@@ -536,15 +541,12 @@ class User(commands.Cog):
         for n, winner in enumerate(winners):
             lfeed = '└' if n + 1 == len(winners) else '├'
             winner_text.append(f"> {lfeed} {winner.mention} (**{winner}**)")
-            if lotto_role in winner.roles:
-                try:
-                    # Remove the lotto role to replace with winner role.
-                    await winner.remove_roles(lotto_role)
-                except BaseException:
-                    pass
+
+            # Remove the lotto role and add winning role.
+            roles = [r for r in winner.roles if r != lotto_role]
+            roles.append(winner_role)
             try:
-                # Add the winner role.
-                await winner.add_roles(winner_role)
+                await winner.edit(roles=roles)
             except BaseException:
                 pass
 
