@@ -21,4 +21,4 @@ class Orc(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.WILDERNESS, 3)]
-    manager.register(areas, Orc)
+    manager.register(areas, Orc, "orc")

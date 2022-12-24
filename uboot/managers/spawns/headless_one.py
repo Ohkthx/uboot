@@ -21,4 +21,4 @@ class HeadlessOne(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.WILDERNESS, 5)]
-    manager.register(areas, HeadlessOne)
+    manager.register(areas, HeadlessOne, "headless one")

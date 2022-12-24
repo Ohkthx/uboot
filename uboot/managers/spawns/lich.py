@@ -21,4 +21,4 @@ class Lich(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.WILDERNESS, 1), (Area.GRAVEYARD, 1), (Area.FIRE, 5)]
-    manager.register(areas, Lich)
+    manager.register(areas, Lich, "lich")

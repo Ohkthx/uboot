@@ -28,4 +28,4 @@ class BoneMagi(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.FIRE, 5)]
-    manager.register(areas, BoneMagi)
+    manager.register(areas, BoneMagi, "bone magi")

@@ -317,7 +317,10 @@ class HelpMeView(ui.View):
 
         # Cannot do a final blow, so add them as a participant.
         if user_l.gold < self.entity.health:
-            DestructableManager.extend(msg.id, 60)
+            extension: int = 60
+            if self.entity.isboss:
+                extension = 600
+            DestructableManager.extend(msg.id, extension)
             self.helpers.append((user, user_l.gold, True))
             # Other player helping but cannot finish.
             damage = user_l.gold

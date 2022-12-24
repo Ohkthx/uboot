@@ -2,6 +2,7 @@
 
 import discord
 from discord.ext import commands
+from discord.ext.commands import param
 
 from dclient import DiscordBot
 from dclient.helper import get_role
@@ -39,10 +40,19 @@ class Test(commands.Cog):
         self.bot.last_button = last
 
     @test.command(name="spawn")
-    async def spawn(self, ctx: commands.Context):
-        """Spawns a monster."""
-        if not ctx.guild or not isinstance(ctx.author, discord.Member):
-            return await ctx.reply("Could not identify user.", delete_after=15)
+    async def spawn(self, ctx: commands.Context,
+                    name: str = param(description="Creature to spawn.",
+                                      default="orc"),
+                    user: discord.Member = param(
+                        description="User to spawn on.",
+                        default=lambda ctx: ctx.author,
+                        displayed_default="self")):
+        """Spawns a monster.
+
+        examples:
+            (prefix)test spawn orc @Schism"""
+        if not ctx.guild or not isinstance(user, discord.Member):
+            return await ctx.reply(f"Could not identify user: {user}.", delete_after=15)
 
         # Check that the user has the minigame role.
         setting = settings.Manager.get(ctx.guild.id)
@@ -54,7 +64,7 @@ class Test(commands.Cog):
             return
 
         # User does not have the role and cannot play.
-        if minigame_role not in ctx.author.roles:
+        if minigame_role not in user.roles:
             # Shows and optional text for easy role access.
             in_channel: str = ""
             if setting.react_role_channel_id > 0:
@@ -64,13 +74,19 @@ class Test(commands.Cog):
                             f"to do that. {in_channel}", delete_after=30)
             return
 
-        user_l = users.Manager.get(ctx.author.id)
+        user_l = users.Manager.get(user.id)
         if user_l.incombat:
             return await ctx.reply("You are already in combat.",
                                    delete_after=15)
-        entity = entities.Manager.spawn(user_l.c_location, user_l.difficulty)
-        if entity:
-            await self.bot.add_entity(ctx.message, ctx.author, entity)
+
+        # Looks up the name.
+        entity_type = entities.Manager.by_name(name.lower())
+        if not entity_type:
+            await ctx.send(f"Could not find {name} to spawn.", delete_after=30)
+            return
+
+        entity = entity_type(user_l.c_location, 1.0)
+        await self.bot.add_entity(ctx.message, user, entity)
 
 
 async def setup(bot: DiscordBot) -> None:

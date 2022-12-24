@@ -21,4 +21,4 @@ class Mongbat(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.WILDERNESS, 7)]
-    manager.register(areas, Mongbat)
+    manager.register(areas, Mongbat, "mongbat")

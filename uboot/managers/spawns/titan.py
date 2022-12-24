@@ -21,4 +21,4 @@ class Titan(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.DESPISE, 2)]
-    manager.register(areas, Titan)
+    manager.register(areas, Titan, "titan")

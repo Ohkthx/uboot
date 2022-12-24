@@ -21,4 +21,4 @@ class Daemon(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.FIRE, 1)]
-    manager.register(areas, Daemon)
+    manager.register(areas, Daemon, "daemon")

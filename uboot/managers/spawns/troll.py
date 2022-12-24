@@ -21,4 +21,4 @@ class Troll(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.WILDERNESS, 2), (Area.DESPISE, 2)]
-    manager.register(areas, Troll)
+    manager.register(areas, Troll, "troll")

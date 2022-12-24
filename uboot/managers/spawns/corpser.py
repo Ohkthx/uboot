@@ -21,4 +21,4 @@ class Corpser(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.WILDERNESS, 2)]
-    manager.register(areas, Corpser)
+    manager.register(areas, Corpser, "corpser")

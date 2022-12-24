@@ -21,4 +21,4 @@ class Ettin(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.WILDERNESS, 4), (Area.DESPISE, 6)]
-    manager.register(areas, Ettin)
+    manager.register(areas, Ettin, "ettin")

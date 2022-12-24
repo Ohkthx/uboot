@@ -21,4 +21,4 @@ class Ogre(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.WILDERNESS, 3), (Area.DESPISE, 4)]
-    manager.register(areas, Ogre)
+    manager.register(areas, Ogre, "ogre")

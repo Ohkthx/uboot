@@ -1,11 +1,12 @@
 """Embed Modal used for prompting user input in creating or editing embeds."""
 import traceback
 from typing import Optional, Union
+from typing_extensions import TypeAlias
 
 import discord
 from discord import ui
 
-Messageable = Union[discord.Thread, discord.TextChannel]
+Messageable: TypeAlias = Union[discord.Thread, discord.TextChannel]
 
 
 class EmbedModal(ui.Modal, title='Embed Manager'):
@@ -45,7 +46,7 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
         style=discord.TextStyle.long,
         placeholder='Optional new description.',
         required=False,
-        max_length=300,
+        max_length=3000,
     )
 
     # For the Footer portion of the Embed.
@@ -127,7 +128,7 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
             url = f"Go to message: [**Click Here**]({self.message.jump_url})"
         embed = discord.Embed(title=f"Embed {status}", description=url)
         embed.color = discord.Color.blurple()
-        await res.send_message(embed=embed)
+        await res.send_message(embed=embed, delete_after=60)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         res = interaction.response

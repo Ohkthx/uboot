@@ -28,4 +28,4 @@ class Slime(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.SEWERS, 1), (Area.DESPISE, 5)]
-    manager.register(areas, Slime)
+    manager.register(areas, Slime, "slime")

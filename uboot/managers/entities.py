@@ -5,7 +5,7 @@ import sys
 import pathlib
 import random
 import importlib.util
-from typing import Optional, Type
+from typing import Optional, Type, Set
 from enum import Enum, auto
 
 from .locations import Area
@@ -34,8 +34,10 @@ def _is_paragon(difficulty: float) -> bool:
 
 
 class Types(Enum):
-    CREATURE = auto()
+    """Idenfitifies the type of entity."""
     CHEST = auto()
+    CREATURE = auto()
+    BOSS = auto()
 
 
 class Entity():
@@ -61,6 +63,11 @@ class Entity():
     def ischest(self) -> bool:
         """Returns if the entity is a treasure chest or not."""
         return self.type == Types.CHEST
+
+    @property
+    def isboss(self) -> bool:
+        """Returns if the entity is a boss or not."""
+        return self.type == Types.BOSS
 
     def set_name(self, name: str) -> None:
         """Sets the name of the entity."""
@@ -128,6 +135,7 @@ class Manager():
     """Manages the spawning of entities."""
     # Area => Weight, Entity
     _areas: dict[Area, list[tuple[int, Type[Entity]]]] = {}
+    _entities: dict[str, Type[Entity]] = {}
     _loaded: dict = {}
 
     @staticmethod
@@ -169,8 +177,12 @@ class Manager():
             Manager._load_entity(f"managers.spawns.{item.stem}")
 
     @staticmethod
-    def register(areas: list[AreaWeight], entity: Type[Entity]) -> None:
+    def register(areas: list[AreaWeight],
+                 entity: Type[Entity], name: str) -> None:
         """Used to register entites for factory use."""
+        # Add to general tracked.
+        Manager._entities[name.lower()] = entity
+
         for area, weight in areas:
             if not Manager._areas.get(area):
                 Manager._areas[area] = []
@@ -189,6 +201,13 @@ class Manager():
             # Add the entity to the area and sort it on the weight.
             area_spawns.append((weight, entity))
             area_spawns.sort(key=lambda a: a[0])
+
+    @staticmethod
+    def by_name(name: str) -> Optional[Type[Entity]]:
+        """Attempts to find a spawn by name."""
+        for ename, entity in Manager._entities.items():
+            if ename == name.lower():
+                return entity
 
     @staticmethod
     def spawn(area: Area, difficulty: float) -> Optional[Entity]:

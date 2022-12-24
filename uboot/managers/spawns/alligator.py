@@ -22,4 +22,4 @@ class Alligator(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.SEWERS, 2)]
-    manager.register(areas, Alligator)
+    manager.register(areas, Alligator, "alligator")

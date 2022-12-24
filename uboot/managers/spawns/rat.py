@@ -28,4 +28,4 @@ class Rat(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.SEWERS, 8)]
-    manager.register(areas, Rat)
+    manager.register(areas, Rat, "rat")

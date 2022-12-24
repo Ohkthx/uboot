@@ -21,4 +21,4 @@ class Skeleton(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.WILDERNESS, 3), (Area.GRAVEYARD, 7)]
-    manager.register(areas, Skeleton)
+    manager.register(areas, Skeleton, "skeleton")

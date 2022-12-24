@@ -101,9 +101,16 @@ class General(commands.Cog):
     @commands.guild_only()
     @commands.is_owner()
     @commands.command(name="powerhour", aliases=("ph",))
-    async def powerhour(self, ctx: commands.Context) -> None:
+    async def powerhour(self, ctx: commands.Context,
+                        length: int = param(description="How many hours of "
+                                            "powerhour.", default=1)) -> None:
         """Starts a powerhour for messages! 3x gold generation per message."""
         if not ctx.guild or not ctx.channel:
+            return
+
+        if length <= 0:
+            await ctx.send("Length of powerhour has to be more than 0.",
+                           delete_after=30)
             return
 
         if not isinstance(ctx.channel, discord.TextChannel):
@@ -112,10 +119,11 @@ class General(commands.Cog):
                            delete_after=15)
             return
 
-        self.bot.start_powerhour(ctx.guild.id, ctx.channel.id, 3.0)
+        self.bot.start_powerhour(ctx.guild.id, ctx.channel.id, 3.0, length)
         embed = discord.Embed()
         embed.description = "__**Message POWERHOUR started!**__\n"\
-            "> └ Gold generation per message is increased by 3x."
+            "> ├ Gold generation per message is increased by 3x.\n"\
+            f"> └ Hours Active: {length}"
         embed.color = discord.Colour.from_str("#00ff08")
         embed.set_footer(text=f"Powerhour started by {ctx.author}")
         await ctx.send(embed=embed)

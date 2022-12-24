@@ -31,4 +31,4 @@ class Wraith(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.GRAVEYARD, 3)]
-    manager.register(areas, Wraith)
+    manager.register(areas, Wraith, "wraith")

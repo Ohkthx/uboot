@@ -1,5 +1,5 @@
 """Embed View is used to create and manage embeds created by the bot."""
-from typing import Optional, Union
+from typing import Optional
 
 import discord
 from discord import ui
@@ -8,8 +8,6 @@ from dclient.modals.embed import EmbedModal, Messageable
 
 # All possible embed color options supported in the dropdown.
 options = ['green', 'red', 'black', 'blue', 'yellow']
-
-Messageable = Union[discord.Thread, discord.TextChannel]
 
 
 class EmbedView(ui.View):

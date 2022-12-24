@@ -21,4 +21,4 @@ class EarthElemental(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.DESPISE, 5)]
-    manager.register(areas, EarthElemental)
+    manager.register(areas, EarthElemental, "earth elemental")

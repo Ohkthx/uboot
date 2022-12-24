@@ -14,7 +14,7 @@ from utils import Log
 from config import DiscordConfig
 from .helper import thread_close, react_processor, get_channel, find_tag, get_role
 from .views.generic_panels import SuggestionView, BasicThreadView
-from .views.entity import EntityView
+from .views.entity import EntityView, HelpMeView
 from .destructable import DestructableManager, Destructable
 from managers import (settings, users, react_roles, tickets, subguilds,
                       entities, aliases)
@@ -58,16 +58,18 @@ class Sudoer():
 class Powerhour():
     """Powerhour is a single hour in which gold generation is increased."""
 
-    def __init__(self, guild_id: int, channel_id: int, multiplier: float):
+    def __init__(self, guild_id: int, channel_id: int,
+                 multiplier: float, length: int) -> None:
         self.guild_id = guild_id
         self.channel_id = channel_id
         self.multiplier = multiplier
+        self.length = length
         self.timestamp = datetime.now()
 
     def isexpired(self) -> bool:
         """Checks if the time has elapsed and powerhour should be removed."""
         now = datetime.now()
-        return now - self.timestamp > timedelta(hours=1)
+        return now - self.timestamp > timedelta(hours=(1 * self.length))
 
     async def send_end(self, bot: 'DiscordBot') -> None:
         """Notifies the channel that the powerhour has ended."""
@@ -129,9 +131,11 @@ class DiscordBot(commands.Bot):
         self.sudoer = Sudoer(user, role, length)
 
     def start_powerhour(self, guild_id: int, channel_id: int,
-                        multiplier: float) -> None:
+                        multiplier: float, length: int = 1) -> None:
         """Starts a powerhour for the selected guild."""
-        self.powerhours[guild_id] = Powerhour(guild_id, channel_id, multiplier)
+        self.powerhours[guild_id] = Powerhour(guild_id, channel_id,
+                                              multiplier,
+                                              length)
 
     async def add_entity(self, msg: discord.Message, user: discord.Member,
                          mob: entities.Entity) -> None:
@@ -150,12 +154,17 @@ class DiscordBot(commands.Bot):
         category = Destructable.Category.MONSTER
         await DestructableManager.remove_many(user.id, True, category)
 
+        timeout: int = 30
         entity_view = EntityView(user, mob)
+        if user_l.isbot or self.user == user or mob.isboss:
+            timeout = 1800
+            exp = user_l.expected_exp(mob.max_health)
+            entity_view = HelpMeView(user, mob, exp, 0)
         new_msg = await msg.reply(embed=entity_view.get_panel(),
                                   view=entity_view)
 
         # Create a destructable view for the entity.
-        destruct = Destructable(category, user.id, 30, True)
+        destruct = Destructable(category, user.id, timeout, True)
         destruct.set_message(message=new_msg)
         destruct.set_callback(entity_view.loss_callback)
 

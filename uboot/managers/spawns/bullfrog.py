@@ -22,4 +22,4 @@ class Bullfrog(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.SEWERS, 3)]
-    manager.register(areas, Bullfrog)
+    manager.register(areas, Bullfrog, "bullfrog")

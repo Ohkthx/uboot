@@ -21,4 +21,4 @@ class Efreet(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.FIRE, 3)]
-    manager.register(areas, Efreet)
+    manager.register(areas, Efreet, "efreet")

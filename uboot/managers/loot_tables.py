@@ -19,6 +19,7 @@ class LootPacks(IntEnum):
     RARE = auto()
     EPIC = auto()
     LEGENDARY = auto()
+    MYTHICAL = auto()
 
 
 class Item():
@@ -76,7 +77,7 @@ class LootTable():
     @staticmethod
     def lootpack(lootpack: LootPacks, upgrade: bool, ischest: bool = False):
         """Gets loot based on the provided lootpack definition."""
-        if upgrade and lootpack < LootPacks.LEGENDARY:
+        if upgrade and lootpack < LootPacks.MYTHICAL:
             lootpack = LootPacks(lootpack + 1)
 
         if lootpack == LootPacks.COMMON:
@@ -89,6 +90,8 @@ class LootTable():
             return EpicLoot(ischest)
         if lootpack == LootPacks.LEGENDARY:
             return LegendaryLoot(ischest)
+        if lootpack == LootPacks.MYTHICAL:
+            return MythicalLoot(ischest)
         return UncommonLoot(ischest)
 
     def add_item(self, item: ItemCreator, weight: int) -> None:
@@ -192,7 +195,7 @@ class RareLoot(LootTable):
 
         super().__init__(items)
         self.add_item(ItemCreator(Items.NONE, 0, 0), int(3 * none_mod))
-        self.add_item(ItemCreator(Items.GOLD, 108, 180), 3 * chest_mod)
+        self.add_item(ItemCreator(Items.GOLD, 108, 240), 3 * chest_mod)
         self.add_item(ItemCreator(Items.POWERHOUR), 3)
         self.add_item(ItemCreator(Items.LOCATION), 2)
 
@@ -211,7 +214,7 @@ class EpicLoot(LootTable):
 
         super().__init__(items)
         self.add_item(ItemCreator(Items.NONE, 0, 0), int(3 * none_mod))
-        self.add_item(ItemCreator(Items.GOLD, 240, 375), 3 * chest_mod)
+        self.add_item(ItemCreator(Items.GOLD, 303, 580), 3 * chest_mod)
         self.add_item(ItemCreator(Items.POWERHOUR), 3)
         self.add_item(ItemCreator(Items.LOCATION), 2)
 
@@ -230,6 +233,25 @@ class LegendaryLoot(LootTable):
 
         super().__init__(items)
         self.add_item(ItemCreator(Items.NONE, 0, 0), int(3 * none_mod))
-        self.add_item(ItemCreator(Items.GOLD, 403, 700), 3 * chest_mod)
+        self.add_item(ItemCreator(Items.GOLD, 606, 1200), 3 * chest_mod)
+        self.add_item(ItemCreator(Items.POWERHOUR), 3)
+        self.add_item(ItemCreator(Items.LOCATION), 2)
+
+
+class MythicalLoot(LootTable):
+    """Mythical loot, only spoken in legend."""
+
+    def __init__(self, ischest: bool = False) -> None:
+        items = 5
+        none_mod = 1
+        chest_mod = 1
+        if ischest:
+            items += 3
+            none_mod = 0.5
+            chest_mod = 10
+
+        super().__init__(items)
+        self.add_item(ItemCreator(Items.NONE, 0, 0), int(3 * none_mod))
+        self.add_item(ItemCreator(Items.GOLD, 810, 1800), 4 * chest_mod)
         self.add_item(ItemCreator(Items.POWERHOUR), 3)
         self.add_item(ItemCreator(Items.LOCATION), 2)

@@ -21,4 +21,4 @@ class HellHound(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.FIRE, 4)]
-    manager.register(areas, HellHound)
+    manager.register(areas, HellHound, "hell hound")

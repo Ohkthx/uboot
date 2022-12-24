@@ -21,4 +21,4 @@ class Ghoul(entities.Entity):
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
     areas = [(Area.WILDERNESS, 3), (Area.GRAVEYARD, 6)]
-    manager.register(areas, Ghoul)
+    manager.register(areas, Ghoul, "ghoul")
