@@ -434,11 +434,18 @@ class User(commands.Cog):
 
         # Update their stats.
         user.save()
+        gold_dropped: int = 0
         if results.winnings > 0:
             user_bet.amount = results.winnings
             # Prepare to present them with a 'DOUBLE OR NOTHING' opportunity.
             view = GambleView(self.bot, user, 300, user_bet, old_gold)
             color_hex = "#00ff08"
+        elif random.randint(1, 12) == 1 and user.gold < user.minimum(20):
+            # Dealer gives some gold.
+            low = user.minimum(20)
+            gold_dropped = random.randrange(int(low * 0.8), int(low * 1.2))
+            user.gold += gold_dropped
+            user.save()
 
         # Update the bot statistics.
         if self.bot.user:
@@ -458,6 +465,16 @@ class User(commands.Cog):
             category = Destructable.Category.GAMBLE
             destruct = Destructable(category, user.id, 300)
             destruct.set_message(message=msg)
+
+        if gold_dropped > 0:
+            # Dealer gives some gold.
+            embed = discord.Embed(color=discord.Colour.from_str("#f1c800"))
+            dealer: str = "A voice"
+            if self.bot.user:
+                dealer = str(self.bot.user)
+            embed.description = f'**{dealer}** whispers:\n"Down on your luck?'\
+                f' Here is **{gold_dropped}** gp to keep your spirits up."'
+            await ctx.send(embed=embed)
 
     @commands.guild_only()
     @commands.has_guild_permissions(manage_messages=True)

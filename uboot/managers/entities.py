@@ -6,12 +6,16 @@ import pathlib
 import random
 import importlib.util
 from typing import Optional, Type
+from enum import Enum, auto
 
 from .locations import Area
 from .loot_tables import LootTable, Item, LootPacks
 
-actions = ["was ambushed", "was attacked", "was approached",
-           "is being stalked"]
+creature_actions = ["was ambushed by", "was attacked by", "was approached by",
+                    "is being stalked by"]
+
+chest_actions = ["stumbles upon", "discovers", "approaches", "finds",
+                 "grows suspicious of"]
 
 AreaWeight = tuple[Area, int]
 
@@ -29,6 +33,11 @@ def _is_paragon(difficulty: float) -> bool:
     return val >= _rand_decimal()
 
 
+class Types(Enum):
+    CREATURE = auto()
+    CHEST = auto()
+
+
 class Entity():
     """Represents an entity who can be combated by users."""
 
@@ -43,9 +52,15 @@ class Entity():
 
         # Create a base loot table.
         self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)
+        self.type = Types.CREATURE
 
     def __str__(self) -> str:
         return f"{self.name} [{self.difficulty}]: {self.location}"
+
+    @property
+    def ischest(self) -> bool:
+        """Returns if the entity is a treasure chest or not."""
+        return self.type == Types.CHEST
 
     def set_name(self, name: str) -> None:
         """Sets the name of the entity."""
@@ -77,11 +92,29 @@ class Entity():
 
     def get_action(self) -> str:
         """Gets flavored text for the entitys action."""
-        return actions[random.randrange(0, len(actions))]
+        if self.ischest:
+            return chest_actions[random.randrange(0, len(chest_actions))]
+        return creature_actions[random.randrange(0, len(creature_actions))]
 
     def get_loot(self) -> list[Item]:
         """Gets loot from the loot table."""
-        return self.lootpack.get_loot()
+        return self.lootpack.get_loot(self.ischest)
+
+
+class Chest(Entity):
+    """Represents a treasure chest that can found."""
+
+    def __init__(self, location: Area, difficulty: float) -> None:
+        super().__init__(location, min(difficulty, 1.0))
+        self.set_name("a Treasure Chest")
+        self.set_health(1, 1)
+        self.type = Types.CHEST
+
+        # Add the lootpack.
+        packs = [LootPacks.UNCOMMON, LootPacks.RARE, LootPacks.EPIC]
+        weights = [13, 11, 1]
+        pack = random.choices(packs, weights=weights)
+        self.lootpack = LootTable.lootpack(pack[0], self.isparagon)
 
 
 def _resolve_name(name: str) -> str:
@@ -178,11 +211,14 @@ class Manager():
     def check_spawn(area: Area, difficulty: float,
                     double_chance: bool) -> Optional[Entity]:
         """Check if an entity should be spawned, if so- does."""
-        zone = 0.01
+        creature_max = 0.02
         if double_chance:
-            zone *= 2
+            creature_max *= 2
 
-        val = _rand_decimal()
-        if val <= zone:
+        val = random.randint(0, 150) / 100
+        if val == 0.00:
+            # Chest spawned.
+            return Chest(area, difficulty)
+        if 0.01 <= val <= creature_max:
+            # Creature spawned.
             return Manager.spawn(area, difficulty)
-        return None

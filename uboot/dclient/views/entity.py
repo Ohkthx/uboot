@@ -74,7 +74,7 @@ def attack(participants: list[ParticipantData],
     # Combine the text.
     full_loot = '\n'.join(loot_text)
     if len(loot_text) == 0:
-        full_loot = "> └ **none**"
+        full_loot = "> └ **empty**"
 
     change_loc = ""
     if new_area:
@@ -87,6 +87,8 @@ def attack(participants: list[ParticipantData],
             f"`{prefix}recall {area_name}` command"
 
     win = win_text[random.randrange(0, len(win_text))]
+    if entity.ischest:
+        win = "heroically opens"
     return f"**{participants[0][0]}** {win} **{entity.name}**!\n\n"\
         f"**Total Reward**: {total_exp:0.2f} exp\n"\
         f"__**Participant Exp**__:\n{full_help}\n\n"\
@@ -101,9 +103,13 @@ class Dropdown(ui.Select):
         self.user = user
         self.user_l = users.Manager.get(user.id)
         self.entity = entity
+        atk_label = "Attack"
+        if entity.ischest:
+            atk_label = "Open"
+
         options = [
             discord.SelectOption(
-                label='Attack', description="Choose to attack."),
+                label=atk_label, description=f"Choose to {atk_label.lower()}."),
             discord.SelectOption(
                 label='Flee', description="Choose to run."),
         ]
@@ -131,7 +137,7 @@ class Dropdown(ui.Select):
         embed.description = f"**{self.user}** flees like a coward from "\
             f"**{self.entity.name}**, keeping their gold."
 
-        if self.values[0].lower() == 'attack':
+        if self.values[0].lower() in ('attack', 'open'):
 
             embed.color = discord.Colour.from_str("#00ff08")
             if self.user_l.gold < self.entity.health:
@@ -367,14 +373,17 @@ class EntityView(ui.View):
                 "By attacking, you risk losing all of it unless someone helps."
 
         loc_name = 'Unknown'
+        atk: str = "Attack"
+        if self.entity.ischest:
+            atk = "Open"
         if self.entity.location.name:
             loc_name = self.entity.location.name.title()
         embed.color = discord.Colour.from_str("#F1C800")
-        embed.description = f"**{self.user}** {action} by **{self.entity.name}**!\n"\
+        embed.description = f"**{self.user}** {action} **{self.entity.name}**!\n"\
             f"**Location**: {loc_name}\n"\
             f"**Health**: {cost}\n\n"\
             "> __**Options**:__\n"\
-            f"> ├ **Attack**: Costing {cost} gp, gaining {gained_exp:0.2f} exp.\n"\
+            f"> ├ **{atk}**: Costing {cost} gp, gaining {gained_exp:0.2f} exp.\n"\
             "> └ **Flee**: Flee, keeping your gold.\n\n"\
             f"{gold_warning}"
         embed.set_footer(text=f"Current gold: {user_l.gold} gp")

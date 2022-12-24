@@ -271,7 +271,7 @@ class General(commands.Cog):
             return
 
         last_id = aliases.Manager.last_id(ctx.guild.id)
-        alias = aliases.Manager.get(ctx.guild.id, last_id+1)
+        alias = aliases.Manager.get(ctx.guild.id, last_id + 1)
         alias.msg_id = message_id
         alias.name = name.lower()
         alias.owner_id = ctx.author.id
