@@ -6,6 +6,7 @@ from discord.ext import commands
 
 from dclient import DiscordBot
 from dclient.helper import find_tag, thread_close, get_member
+from dclient.views.dm import DMDeleteView
 
 
 class Threads(commands.Cog):
@@ -115,34 +116,20 @@ class Threads(commands.Cog):
             return
 
         reason = f"thread close command called by {author} {author.id}"
-        user_msg = f"Your thread '{ctx.channel.name}' was closed"
-        if ctx.guild and owner_id:
-            owner = await get_member(self.bot, ctx.guild.id, owner_id)
-            if owner:
-                user_msg = f"{user_msg} by {author}"
 
         # Send the closure text and close, lock, and archive the thread.
         await ctx.channel.send(f"Thread closed by {author}.")
         await ctx.message.delete()
-        await thread_close(['open', 'in-progress'], 'closed', ctx.channel, reason,
-                           f"{user_msg}.")
+        await thread_close(['open', 'in-progress'], 'closed',
+                           ctx.channel, reason)
 
-    @thread.command(name='panel')
-    @commands.has_guild_permissions(manage_messages=True)
-    async def panel(self, ctx: commands.Context) -> None:
-        """Creates a panel for a thread."""
-        await ctx.message.delete()
-
-        # Check to make sure this is a thread it is being called in.
-        thread = ctx.channel
-        if not thread or not isinstance(thread, discord.Thread):
+        owner = await get_member(self.bot, ctx.guild.id, owner_id)
+        if not owner:
             return
 
-        # Requires the thread to be in a Forum Channel.
-        if not isinstance(thread.parent, discord.ForumChannel):
-            return
-
-        await self.bot.on_thread_create(thread)
+        view = DMDeleteView(self.bot)
+        user_msg = f"Your thread '{ctx.channel.name}' was closed by {author}"
+        await owner.send(content=user_msg, view=view)
 
 
 async def setup(bot: DiscordBot) -> None:

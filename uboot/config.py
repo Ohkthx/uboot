@@ -28,11 +28,11 @@ class DiscordConfig():
     @property
     def prefix(self) -> str:
         """Command prefix for the bot to register what is a command.
-        Default: ?
+        Default: [
         """
-        val = self._config.get('Prefix', fallback='?')
+        val = self._config.get('Prefix', fallback='[')
         if val is None or val == "":
-            return '?'
+            return '['
         return val
 
     @property
@@ -41,6 +41,13 @@ class DiscordConfig():
         Default: 0
         """
         return self._config.getint('OwnerId', 0)
+
+    @property
+    def ccdm_id(self) -> int:
+        """DM Channel Id of the bots command server.
+        Default: 0
+        """
+        return self._config.getint('CCDMId', 0)
 
 
 class GeneralConfig():
@@ -81,8 +88,9 @@ class GeneralConfig():
         config['DEFAULT']['Debug'] = 'False'
         config['DISCORD'] = {}
         config['DISCORD']['Token'] = 'unset'
-        config['DISCORD']['Prefix'] = '?'
+        config['DISCORD']['Prefix'] = '['
         config['DISCORD']['OwnerId'] = '0'
+        config['DISCORD']['CCDMId'] = '0'
 
         # Save it locally.
         with open(CONFIG_FILENAME, 'w', encoding='utf-8') as configfile:

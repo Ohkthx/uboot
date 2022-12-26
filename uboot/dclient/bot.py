@@ -9,21 +9,25 @@ import aiohttp
 import discord
 from discord import RawReactionActionEvent
 from discord.ext import commands, tasks
+from dclient.views.dm import DMResponseView, DMDeleteView
 
 from utils import Log
 from config import DiscordConfig
-from .helper import thread_close, react_processor, get_channel, find_tag, get_role
-from .views.generic_panels import SuggestionView, BasicThreadView
-from .views.entity import EntityView, HelpMeView
-from .destructable import DestructableManager, Destructable
 from managers import (settings, users, react_roles, tickets, subguilds,
                       entities, aliases)
+from .views.generic_panels import SuggestionView, BasicThreadView
+from .views.entity import EntityView, HelpMeView
+from .ccserver import CCServer
+from .destructable import DestructableManager, Destructable
+from .helper import (get_guild, get_member, get_user, thread_close, react_processor, get_channel,
+                     find_tag, get_role)
 
 
 intents = discord.Intents.default()
 intents.message_content = True  # pylint: disable=assigning-non-slot
 intents.reactions = True  # pylint: disable=assigning-non-slot
 intents.members = True  # pylint: disable=assigning-non-slot
+intents.guilds = True  # pylint: disable=assigning-non-slot
 
 member_cache = discord.MemberCacheFlags(joined=True)
 
@@ -90,8 +94,10 @@ cog_extensions: list[str] = ['dclient.cogs.general',
                              'dclient.cogs.user',
                              'dclient.cogs.admin',
                              'dclient.cogs.private_guild',
+                             'dclient.cogs.panel',
                              'dclient.cogs.test',
                              'dclient.views.test',
+                             'dclient.views.dm',
                              'dclient.views.support_request',
                              'dclient.views.support_thread',
                              'dclient.views.red_button',
@@ -102,15 +108,24 @@ cog_extensions: list[str] = ['dclient.cogs.general',
 class DiscordBot(commands.Bot):
     """The core of the Discord Bot and Client."""
 
-    def __init__(self, prefix: str, owner_id: Optional[int]) -> None:
+    def __init__(self, config: DiscordConfig) -> None:
+        prefix = config.prefix
+        owner_id: Optional[int] = None
+        if config.owner_id > 0:
+            owner_id = config.owner_id
+
         super().__init__(command_prefix=commands.when_mentioned_or(prefix),
                          owner_id=owner_id,
                          intents=intents,
                          member_cache_flags=member_cache,
                          help_command=defaultHelp)
+
+        self.conf = config
         self.prefix = prefix
         self._extensions = cog_extensions
         self.session: Optional[aiohttp.ClientSession] = None
+        self.owner: Optional[discord.User] = None
+        self.ccserver: Optional[CCServer] = None
 
         # Initialize all of the managers and their databases.
         tickets.Manager.init("uboot.sqlite3")
@@ -157,7 +172,7 @@ class DiscordBot(commands.Bot):
         timeout: int = 30
         entity_view = EntityView(user, mob)
         if user_l.isbot or self.user == user or mob.isboss:
-            timeout = 1800
+            timeout = 3600
             exp = user_l.expected_exp(mob.max_health)
             entity_view = HelpMeView(user, mob, exp, 0)
         new_msg = await msg.reply(embed=entity_view.get_panel(),
@@ -179,6 +194,18 @@ class DiscordBot(commands.Bot):
         self.session = aiohttp.ClientSession()
         for ext in self._extensions:
             await self.load_extension(ext)
+
+        if self.owner_id:
+            self.owner = await get_user(self, self.owner_id)
+
+        # Set up the CCServer
+        if self.owner:
+            dmchannel = await get_channel(self, self.conf.ccdm_id)
+            if dmchannel and isinstance(dmchannel, discord.TextChannel):
+                # Make sure we have cached all of the guild threads.
+                for thread in await dmchannel.guild.active_threads():
+                    dmchannel.guild._add_thread(thread)
+                self.ccserver = CCServer(self, self.owner, dmchannel)
 
         # Persistent Views
         self.add_view(BasicThreadView())
@@ -298,7 +325,6 @@ class DiscordBot(commands.Bot):
                     continue
 
                 # Calculate if it is expired.
-                msg = f"Your post '{thread.name}' expired."
                 elapsed = datetime.now(timezone.utc) - thread.created_at
                 if elapsed < timedelta(days=setting.expiration_days):
                     # Not expired, continue.
@@ -309,7 +335,15 @@ class DiscordBot(commands.Bot):
                     await thread.edit(name=f"[EXPIRED] {thread.name}")
 
                 # Close the thread.
-                await thread_close(['none'], 'expired', thread, reason, msg)
+                await thread_close(['none'], 'expired', thread, reason)
+
+                msg = f"Your post '{thread.name}' expired."
+                owner = await get_member(self, guild.id, thread.owner_id)
+                if not owner:
+                    continue
+
+                view = DMDeleteView(self)
+                await owner.send(content=msg, view=view)
 
     @status_update.before_loop
     async def status_update_wait_on_login(self) -> None:
@@ -343,21 +377,16 @@ class DiscordBot(commands.Bot):
         user = users.Manager.get(msg.author.id)
 
         # Log all DMs sent to the bot.
-        if isinstance(msg.channel, discord.DMChannel):
-            if not self.owner_id or user.id == self.owner_id:
-                return
-            embed = discord.Embed(title="DM Detected",
-                                  description=msg.content)
-            embed.set_footer(text=msg.author)
-            embed.set_thumbnail(url=msg.author.display_avatar.url)
-            owner = self.get_user(self.owner_id)
-            if not owner:
-                try:
-                    owner = await self.fetch_user(self.owner_id)
-                except BaseException:
-                    pass
-            if owner:
-                await owner.send(embed=embed)
+        if self.ccserver and self.ccserver.is_dm(msg):
+            # if not self.owner_id or user.id == self.owner_id:
+            #    return
+
+            return await self.ccserver.dmlog(msg)
+
+        # Process DM responses.
+        if self.ccserver and self.ccserver.is_response(msg):
+            await self.ccserver.process(msg)
+            return
 
         # Add message and gold to user, saving to database.
         if not msg.guild or not isinstance(msg.author, discord.Member):
@@ -472,13 +501,8 @@ class DiscordBot(commands.Bot):
                                           encoding='utf-8',
                                           mode='w')
 
-            # Try to resolve the owner.
-            owner_id: Optional[int] = None
-            if config.owner_id > 0:
-                owner_id = config.owner_id
-
             # Initialize the Discord Bot.
-            dbot: DiscordBot = DiscordBot(config.prefix, owner_id)
+            dbot: DiscordBot = DiscordBot(config)
             dbot.run(config.token, log_handler=handler,
                      log_level=logging.DEBUG)
         except KeyboardInterrupt:

@@ -97,6 +97,22 @@ async def get_member(client: discord.Client, guild_id: int,
     return member
 
 
+async def get_user(client: discord.Client,
+                   user_id: int) -> Optional[discord.User]:
+    """Attempt to get the user based on its id.
+    Tries to get it from cache first, if not found then fetches from API.
+    """
+    # Attempt to find the user in cache first.
+    user = client.get_user(user_id)
+    if not user:
+        # Could not find in cache, try to fetch from API.
+        try:
+            user = await client.fetch_user(user_id)
+        except BaseException:
+            return None
+    return user
+
+
 async def get_channel(client: discord.Client,
                       channel_id: int) -> Optional[discord.abc.GuildChannel]:
     """Attempt to get a channel based on its id.
@@ -132,11 +148,8 @@ async def get_message(client: discord.Client, channel_id: int,
 
 async def thread_close(tag_rm_names: list[str], tag_add_name: str,
                        thread: discord.Thread,
-                       reason: str,
-                       user_msg: Optional[str] = None) -> None:
-    """Closes and archives a thread. Removes and replaces tags/labels.
-    Notifies the owner of the thread if the user_msg is passed.
-    """
+                       reason: str) -> None:
+    """Closes and archives a thread. Removes and replaces tags/labels."""
     tags = []
     if isinstance(thread.parent, ForumChannel):
         # Find the tags from available tags.
@@ -155,28 +168,6 @@ async def thread_close(tag_rm_names: list[str], tag_add_name: str,
     # Archive and Lock.
     await thread.edit(archived=True, locked=True, reason=reason,
                       applied_tags=tags)
-
-    # Message owner that their thread is closed.
-    if not thread.guild or not thread.owner_id:
-        return
-
-    if user_msg is None or user_msg == "":
-        return
-
-    # Try to notify the owner.
-    owner = thread.guild.get_member(thread.owner_id)
-    if not owner:
-        # Fetch the owner from the API since we could not get from cache.
-        try:
-            owner = await thread.guild.fetch_member(thread.owner_id)
-        except BaseException as err:
-            Log.print(f"Error while closing thread: {err}")
-            return
-    if owner:
-        try:
-            await owner.send(user_msg)
-        except BaseException as err:
-            Log.print(f"Error while sending closure message: {err}")
 
 
 async def react_processor(client: discord.Client,

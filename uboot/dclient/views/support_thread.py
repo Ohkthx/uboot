@@ -8,7 +8,6 @@ import discord
 from discord import ui
 
 from managers import tickets, settings
-from dclient import DiscordBot
 from dclient.helper import thread_close, get_role, get_member
 from dclient.modals.generic_reason import ReasonModal
 
@@ -18,7 +17,7 @@ class SupportThreadView(ui.View):
     control the Support Ticket.
     """
 
-    def __init__(self, bot: DiscordBot) -> None:
+    def __init__(self, bot: discord.Client) -> None:
         self.bot = bot
         super().__init__(timeout=None)
 
@@ -150,6 +149,6 @@ class SupportThreadView(ui.View):
                            "unlisted closure")
 
 
-async def setup(bot: DiscordBot) -> None:
+async def setup(bot: discord.Client) -> None:
     """This is called by process that loads extensions."""
     bot.add_view(SupportThreadView(bot))

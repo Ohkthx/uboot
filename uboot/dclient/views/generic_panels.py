@@ -6,8 +6,9 @@ from discord import ui
 from discord.ext import commands
 
 from managers import settings
-from dclient.helper import thread_close, find_tag, get_guild
+from dclient.helper import get_member, thread_close, find_tag, get_guild
 from dclient.modals.generic_reason import ReasonModal
+from dclient.views.dm import DMDeleteView
 
 
 async def validate_user(interaction: discord.Interaction,
@@ -292,15 +293,16 @@ class SuggestionView(ui.View):
         unless it is reopened by staff.
         """
         thread = interaction.channel
-        if not interaction.guild or not isinstance(thread, discord.Thread):
+        guild = interaction.guild
+        if not guild or not isinstance(thread, discord.Thread):
             return
         if not isinstance(thread.parent, discord.ForumChannel):
             return
 
         # Validate that the user can perform that action.
-        setting = settings.Manager.get(interaction.guild.id)
+        setting = settings.Manager.get(guild.id)
         role_id = setting.suggestion_reviewer_role_id
-        role = await validate_user(interaction, interaction.guild, role_id)
+        role = await validate_user(interaction, guild, role_id)
         if not role:
             return
 
@@ -314,5 +316,15 @@ class SuggestionView(ui.View):
         # Close, lock, and archive the thread.
         if interaction.user.id == thread.owner_id:
             user_msg = ""
-        await thread_close(["open", "in-progress"], "closed", thread,
-                           "unlisted closure", user_msg)
+        await thread_close(["open", "in-progress"], "closed",
+                           thread, "unlisted closure")
+
+        if not user_msg or user_msg == "":
+            return
+
+        owner = await get_member(interaction.client, guild.id, thread.owner_id)
+        if not owner:
+            return
+
+        view = DMDeleteView(interaction.client)
+        await owner.send(content=user_msg, view=view)

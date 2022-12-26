@@ -115,12 +115,6 @@ class Admin(commands.Cog):
 
         await ctx.send(f"**{guild_role.name}** role added to {added} members.")
 
-    @server.command(name="support")
-    async def support(self, ctx: commands.Context):
-        """Creates the support ticket button."""
-        await ctx.send(embed=SupportRequestView.get_panel(),
-                       view=SupportRequestView(self.bot))
-
     @server.group(name="settings", aliases=("setting",))
     async def settings(self, ctx: commands.Context) -> None:
         """Set various server specific settings for the discord bot.

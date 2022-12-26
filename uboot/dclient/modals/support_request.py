@@ -7,7 +7,6 @@ import discord
 from discord import ui
 
 from managers import settings, tickets
-from dclient import DiscordBot
 from dclient.helper import get_channel
 from dclient.views.support_thread import SupportThreadView
 
@@ -17,8 +16,7 @@ class SupportRequestModal(ui.Modal, title='Support Request'):
     support from staff/admins. This is part of the Support Ticket system.
     """
 
-    def __init__(self, bot: DiscordBot, issue: str) -> None:
-        self.bot = bot
+    def __init__(self, issue: str) -> None:
         self.issue = issue.lower()
         super().__init__()
 
@@ -36,13 +34,15 @@ class SupportRequestModal(ui.Modal, title='Support Request'):
         the form by creating the support thread and bringing in all users.
         """
         res = interaction.response
-        if not interaction.guild:
+        client = interaction.client
+        guild = interaction.guild
+        if not guild:
             return
 
-        setting = settings.Manager.get(interaction.guild.id)
+        setting = settings.Manager.get(guild.id)
 
         # Make sure the support channel exists.
-        channel = await get_channel(self.bot, setting.support_channel_id)
+        channel = await get_channel(client, setting.support_channel_id)
         if not channel:
             return await res.send_message("Support channel may be unset.",
                                           ephemeral=True,
@@ -55,7 +55,7 @@ class SupportRequestModal(ui.Modal, title='Support Request'):
                                           delete_after=60)
 
         # Get the role that will have access to give assistance.
-        role = interaction.guild.get_role(setting.support_role_id)
+        role = guild.get_role(setting.support_role_id)
         if not role:
             return await res.send_message("Support role may be unset.",
                                           ephemeral=True,
@@ -63,7 +63,7 @@ class SupportRequestModal(ui.Modal, title='Support Request'):
 
         # Create the support ticket and thread.
         user = interaction.user
-        ticket_id = tickets.Manager.last_id(interaction.guild.id) + 1
+        ticket_id = tickets.Manager.last_id(guild.id) + 1
         thread_name = f"{ticket_id}-{self.issue}"
         thread = await channel.create_thread(name=thread_name,
                                              type=discord.ChannelType.private_thread)
@@ -76,7 +76,7 @@ class SupportRequestModal(ui.Modal, title='Support Request'):
         await thread.send(embed=panel_text,
                           content="Summoning assistance... Hail, "
                           f"{role.mention}!",
-                          view=SupportThreadView(self.bot)
+                          view=SupportThreadView(client)
                           )
 
         # Add the user requesting help.
@@ -87,7 +87,7 @@ class SupportRequestModal(ui.Modal, title='Support Request'):
                                delete_after=120)
 
         # Update the ticket and save it.
-        ticket = tickets.Manager.get(interaction.guild.id, ticket_id)
+        ticket = tickets.Manager.get(guild.id, ticket_id)
         ticket.title = self.issue
         ticket.owner_id = interaction.user.id
         ticket.save()

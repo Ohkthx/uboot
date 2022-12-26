@@ -319,7 +319,7 @@ class HelpMeView(ui.View):
         if user_l.gold < self.entity.health:
             extension: int = 60
             if self.entity.isboss:
-                extension = 600
+                extension = 1800
             DestructableManager.extend(msg.id, extension)
             self.helpers.append((user, user_l.gold, True))
             # Other player helping but cannot finish.

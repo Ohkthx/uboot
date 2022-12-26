@@ -9,8 +9,9 @@ from discord.ext.commands import param
 from managers import users, settings
 from dclient import DiscordBot
 from dclient.destructable import DestructableManager, Destructable
-from dclient.helper import get_member, get_role
+from dclient.helper import get_member, get_role, get_user
 from dclient.views.gamble import GambleView, gamble, ExtractedBet
+from dclient.views.dm import DMDeleteView
 
 
 def parse_amount(amount: str) -> int:
@@ -236,7 +237,7 @@ class User(commands.Cog):
         embed.set_thumbnail(url=user.display_avatar.url)
         await ctx.send(embed=embed)
 
-    @commands.command(name="stats", aliases=("balance", "statement"))
+    @commands.command(name="stats", aliases=("balance", "who", "whois"))
     async def stats(self, ctx: commands.Context,
                     user: discord.User = param(
                         description="Optional Id of the user to lookup.",
@@ -248,6 +249,19 @@ class User(commands.Cog):
             (prefix)stats @Gatekeeper
             (prefix)stats 1044706648964472902
         """
+        # Check if the channel name is a user id
+        thread = ctx.message.channel
+        if isinstance(thread, discord.Thread):
+            # Try to get the user.
+            user_id: int = 0
+            try:
+                user_id = int(thread.name)
+            except BaseException:
+                pass
+            thread_user = await get_user(self.bot, user_id)
+            if thread_user:
+                user = thread_user
+
         # Get the local user.
         user_l = users.Manager.get(user.id)
         title = '' if user_l.button_press == 0 else ', the Button Presser'
@@ -587,7 +601,8 @@ class User(commands.Cog):
         # Notify the winners.
         for winner in winners:
             try:
-                await winner.send(embed=embed)
+                view = DMDeleteView(ctx.bot)
+                await winner.send(embed=embed, view=view)
             except BaseException:
                 pass
 

@@ -6,7 +6,6 @@ thread on their behalf.
 import discord
 from discord import ui, ButtonStyle
 
-from dclient import DiscordBot
 from dclient.modals.support_request import SupportRequestModal
 
 
@@ -17,7 +16,7 @@ class SupportRequestView(ui.View):
     create a support thread on their behalf.
     """
 
-    def __init__(self, bot: DiscordBot) -> None:
+    def __init__(self, bot: discord.Client) -> None:
         self.bot = bot
         super().__init__(timeout=None)
 
@@ -45,7 +44,7 @@ class SupportRequestView(ui.View):
                custom_id='get_support_view:in_game')
     async def in_game_opt(self, interaction: discord.Interaction, button: ui.Button):
         """For in-game related issues."""
-        modal = SupportRequestModal(self.bot, "In_Game")
+        modal = SupportRequestModal("In_Game")
         await interaction.response.send_modal(modal)
         await modal.wait()
 
@@ -53,7 +52,7 @@ class SupportRequestView(ui.View):
                custom_id='get_support_view:discord')
     async def discord_opt(self, interaction: discord.Interaction, button: ui.Button):
         """For discord related issues."""
-        modal = SupportRequestModal(self.bot, "Discord")
+        modal = SupportRequestModal("Discord")
         await interaction.response.send_modal(modal)
         await modal.wait()
 
@@ -61,7 +60,7 @@ class SupportRequestView(ui.View):
                custom_id='get_support_view:website')
     async def website_opt(self, interaction: discord.Interaction, button: ui.Button):
         """For website related issues."""
-        modal = SupportRequestModal(self.bot, "Website")
+        modal = SupportRequestModal("Website")
         await interaction.response.send_modal(modal)
         await modal.wait()
 
@@ -69,11 +68,11 @@ class SupportRequestView(ui.View):
                custom_id='get_support_view:other')
     async def other_opt(self, interaction: discord.Interaction, button: ui.Button):
         """For unknown related issues."""
-        modal = SupportRequestModal(self.bot, "Other")
+        modal = SupportRequestModal("Other")
         await interaction.response.send_modal(modal)
         await modal.wait()
 
 
-async def setup(bot: DiscordBot) -> None:
+async def setup(bot: discord.Client) -> None:
     """This is called by process that loads extensions."""
     bot.add_view(SupportRequestView(bot))

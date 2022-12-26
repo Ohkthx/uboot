@@ -5,6 +5,8 @@ from typing import Union
 import discord
 from discord import ui
 
+from dclient.views.dm import DMDeleteView
+
 
 class ReasonModal(ui.Modal, title='Reason'):
     """Generic Reason an action has been taken by staff. Sends to the
@@ -44,7 +46,8 @@ class ReasonModal(ui.Modal, title='Reason'):
         if self.from_user:
             embed.set_footer(text=f"Reviewed by {self.from_user}")
         if self.to_user:
-            await self.to_user.send(embed=embed)
+            view = DMDeleteView(interaction.client)
+            await self.to_user.send(embed=embed, view=view)
         await res.send_message(embed=embed)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:

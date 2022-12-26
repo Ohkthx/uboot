@@ -6,6 +6,8 @@ from typing_extensions import TypeAlias
 import discord
 from discord import ui
 
+from dclient.views.dm import DMDeleteView
+
 Messageable: TypeAlias = Union[discord.Thread, discord.TextChannel]
 
 
@@ -28,7 +30,7 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
         style=discord.TextStyle.short,
         placeholder='Optional new author.',
         required=False,
-        max_length=62,
+        max_length=62
     )
 
     # For the Title portion of the Embed.
@@ -128,7 +130,8 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
             url = f"Go to message: [**Click Here**]({self.message.jump_url})"
         embed = discord.Embed(title=f"Embed {status}", description=url)
         embed.color = discord.Color.blurple()
-        await res.send_message(embed=embed, delete_after=60)
+        view = DMDeleteView(interaction.client)
+        await res.send_message(embed=embed, view=view, delete_after=60)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         res = interaction.response
