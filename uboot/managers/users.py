@@ -8,7 +8,7 @@ from typing import Optional
 
 from db.users import UserDb, UserRaw
 from .locations import Locations, Area
-from .loot_tables import Item, Items
+from .loot_tables import Item, Chest, Items
 
 
 def make_raw(user_id: int) -> UserRaw:
@@ -136,6 +136,8 @@ class User():
                 self.gold += item.amount
             elif item.type == Items.POWERHOUR:
                 self.powerhour = datetime.now()
+            elif item.type == Items.CHEST and isinstance(item, Chest):
+                self.apply_loot(item.items, allow_area)
             elif item.type == Items.LOCATION and allow_area:
                 # Get all connections, removing the ones already discovered.
                 conn = self.locations.connections(self.c_location)

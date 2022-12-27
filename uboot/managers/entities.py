@@ -112,7 +112,7 @@ class Entity():
 
     def get_loot(self) -> list[Item]:
         """Gets loot from the loot table."""
-        return self.lootpack.get_loot(self.ischest)
+        return self.lootpack.get_loot()
 
 
 class Chest(Entity):
@@ -130,7 +130,7 @@ class Chest(Entity):
         self.set_health(1, 1)
         self.type = Types.CHEST
 
-        self.lootpack = LootTable.lootpack(pack[0], self.isparagon)
+        self.lootpack = LootTable.lootpack(pack[0], self.isparagon, True)
 
     def get_exp(self, level: int) -> float:
         """Gets the custom EXP for a treasure chest."""

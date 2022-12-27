@@ -10,6 +10,7 @@ class Items(IntEnum):
     GOLD = auto()
     POWERHOUR = auto()
     LOCATION = auto()
+    CHEST = auto()
 
 
 class LootPacks(IntEnum):
@@ -43,6 +44,20 @@ class Item():
         return self.type.name.title()
 
 
+class Chest(Item):
+    """Represents a chest with multiple items."""
+
+    def __init__(self, quality: LootPacks, items: list[Item]) -> None:
+        super().__init__(Items.CHEST, 1, 1)
+        self.quality = quality
+        self.items = items
+
+    @property
+    def name(self) -> str:
+        """Gets the name of the item based on its type."""
+        return f"A Treasure Chest [{self.quality.name.capitalize()}]"
+
+
 class ItemCreator():
     """Responsible for creating an item."""
 
@@ -60,11 +75,33 @@ class ItemCreator():
     @property
     def isunique(self) -> bool:
         """Checks if only 1 of the type of item is valid for looting."""
-        return self.type in (Items.POWERHOUR, Items.LOCATION)
+        return self.type in (Items.POWERHOUR, Items.LOCATION, Items.CHEST)
 
-    def create(self) -> Item:
+    def generate(self) -> Item:
         """Creates an instance of this item."""
         return Item(self.type, self.min, self.max)
+
+
+class ChestCreator(ItemCreator):
+    """Creates a chest."""
+
+    def __init__(self, max_loot: int, quality: LootPacks) -> None:
+        super().__init__(Items.CHEST, 1, 1)
+        self.max_loot = max_loot
+        self.quality = quality
+        self.items: list[tuple[int, ItemCreator]] = []
+
+    def add_item(self, item: ItemCreator, weight: int) -> None:
+        """Adds an item to the loot table."""
+        self.items.append((weight, item))
+
+        # Sort the list.
+        self.items.sort(key=lambda i: i[0])
+
+    def generate(self) -> Chest:
+        """Creates an instance of this item."""
+        items = LootTable.generate_loot(self.items, self.max_loot)
+        return Chest(self.quality, items)
 
 
 class LootTable():
@@ -99,20 +136,29 @@ class LootTable():
         """Adds an item to the loot table."""
         self.items.append((weight, item))
 
-    def get_loot(self, ischest: bool = False) -> list[Item]:
-        """Gets loot from the loot table."""
         # Sort the list.
         self.items.sort(key=lambda i: i[0])
 
+    def get_loot(self) -> list[Item]:
+        """Generates the loot for the lootpack instance."""
+        return LootTable.generate_loot(self.items, self.max_loot)
+
+    @staticmethod
+    def generate_loot(item_tables: list[tuple[int, ItemCreator]],
+                      max_loot: int) -> list[Item]:
+        """Generates loot form a weighted table."""
+        # Sort the list.
+        item_tables.sort(key=lambda i: i[0])
+
         # Build the lists.
-        weights = [item[0] for item in self.items]
-        items = [item[1] for item in self.items]
+        weights = [item[0] for item in item_tables]
+        items = [item[1] for item in item_tables]
 
         # Create the loot, preventing duplicates except null spaces.
         loot: list[Item] = []
         max_attempts = 20
         attempts: int = 0
-        while len(loot) < self.max_loot:
+        while len(loot) < max_loot:
             if attempts > max_attempts:
                 break
             attempts += 1
@@ -123,142 +169,181 @@ class LootTable():
 
             # Keep empty loot.
             if item[0].type == Items.NONE:
-                loot.append(item[0].create())
+                loot.append(item[0].generate())
                 continue
 
             # If the item already exists, we will ignore it.
             exists: bool = False
             for i in loot:
-                if not ischest and i.type == item[0].type:
-                    exists = True
-                    break
-                if ischest and i.type == item[0].type and item[0].isunique:
+                if i.type == item[0].type and item[0].isunique:
                     exists = True
                     break
 
             if not exists:
-                loot.append(item[0].create())
+                loot.append(item[0].generate())
 
         # Organize the loot.
         loot.sort(key=lambda i: i.type.value)
         return loot
 
 
+class CommonChest(ChestCreator):
+    """Common chest, basic loot."""
+
+    def __init__(self) -> None:
+        super().__init__(2, LootPacks.COMMON)
+        self.add_item(ItemCreator(Items.NONE, 0, 0), 4)
+        self.add_item(ItemCreator(Items.GOLD, 22, 40), 10)
+        self.add_item(ItemCreator(Items.POWERHOUR), 6)
+
+
+class UncommonChest(ChestCreator):
+    """Uncommon chest, wow so cool..."""
+
+    def __init__(self) -> None:
+        super().__init__(2, LootPacks.UNCOMMON)
+        self.add_item(ItemCreator(Items.NONE, 0, 0), 4)
+        self.add_item(ItemCreator(Items.GOLD, 44, 80), 10)
+        self.add_item(ItemCreator(Items.POWERHOUR), 6)
+
+
+class RareChest(ChestCreator):
+    """Rare chest, hardly worth the time. """
+
+    def __init__(self) -> None:
+        super().__init__(2, LootPacks.RARE)
+        self.add_item(ItemCreator(Items.NONE, 0, 0), 4)
+        self.add_item(ItemCreator(Items.GOLD, 108, 240), 10)
+        self.add_item(ItemCreator(Items.POWERHOUR), 6)
+
+
+class EpicChest(ChestCreator):
+    """Epic chest, put in a little sweat, did ya?"""
+
+    def __init__(self) -> None:
+        super().__init__(3, LootPacks.EPIC)
+        self.add_item(ItemCreator(Items.NONE, 0, 0), 4)
+        self.add_item(ItemCreator(Items.GOLD, 303, 580), 10)
+        self.add_item(ItemCreator(Items.POWERHOUR), 6)
+
+
+class LegendaryChest(ChestCreator):
+    """Legendary chest, only for the worthy."""
+
+    def __init__(self) -> None:
+        super().__init__(4, LootPacks.LEGENDARY)
+        self.add_item(ItemCreator(Items.NONE, 0, 0), 4)
+        self.add_item(ItemCreator(Items.GOLD, 606, 1200), 10)
+        self.add_item(ItemCreator(Items.POWERHOUR), 6)
+
+
+class MythicalChest(ChestCreator):
+    """Mythical chest, oh it is so grossly incandescent!"""
+
+    def __init__(self) -> None:
+        super().__init__(5, LootPacks.MYTHICAL)
+        self.add_item(ItemCreator(Items.NONE, 0, 0), 4)
+        self.add_item(ItemCreator(Items.GOLD, 810, 1800), 10)
+        self.add_item(ItemCreator(Items.POWERHOUR), 6)
+
+
 class CommonLoot(LootTable):
     """Common loot, nothing to write home about."""
 
     def __init__(self, ischest: bool = False) -> None:
-        items = 2
-        none_mod = 1
-        chest_mod = 1
-        if ischest:
-            items += 3
-            none_mod = 0.5
-            chest_mod = 10
-
-        super().__init__(items)
+        super().__init__(2)
         self.quality = LootPacks.COMMON
-        self.add_item(ItemCreator(Items.NONE, 0, 0), int(5 * none_mod))
-        self.add_item(ItemCreator(Items.GOLD, 22, 40), 2 * chest_mod)
-        self.add_item(ItemCreator(Items.POWERHOUR), 3)
-        self.add_item(ItemCreator(Items.LOCATION), 2)
+
+        self.add_item(CommonChest(), 1)
+        if ischest:
+            return
+
+        self.add_item(ItemCreator(Items.NONE, 0, 0), 8)
+        self.add_item(ItemCreator(Items.GOLD, 22, 40), 4)
+        self.add_item(ItemCreator(Items.POWERHOUR), 4)
+        self.add_item(ItemCreator(Items.LOCATION), 3)
 
 
 class UncommonLoot(LootTable):
     """Uncommon loot, loot is meh."""
 
     def __init__(self, ischest: bool = False) -> None:
-        items = 2
-        none_mod = 1
-        chest_mod = 1
-        if ischest:
-            items += 3
-            none_mod = 0.5
-            chest_mod = 10
-
-        super().__init__(items)
+        super().__init__(2)
         self.quality = LootPacks.UNCOMMON
-        self.add_item(ItemCreator(Items.NONE, 0, 0), int(4 * none_mod))
-        self.add_item(ItemCreator(Items.GOLD, 44, 80), 2 * chest_mod)
-        self.add_item(ItemCreator(Items.POWERHOUR), 3)
-        self.add_item(ItemCreator(Items.LOCATION), 2)
+
+        self.add_item(UncommonChest(), 1)
+        if ischest:
+            return
+
+        self.add_item(ItemCreator(Items.NONE, 0, 0), 8)
+        self.add_item(ItemCreator(Items.GOLD, 44, 80), 4)
+        self.add_item(ItemCreator(Items.POWERHOUR), 4)
+        self.add_item(ItemCreator(Items.LOCATION), 3)
 
 
 class RareLoot(LootTable):
     """Rare loot, finally worth keeping."""
 
     def __init__(self, ischest: bool = False) -> None:
-        items = 3
-        none_mod = 1
-        chest_mod = 1
-        if ischest:
-            items += 3
-            none_mod = 0.5
-            chest_mod = 10
-
-        super().__init__(items)
+        super().__init__(3)
         self.quality = LootPacks.RARE
-        self.add_item(ItemCreator(Items.NONE, 0, 0), int(3 * none_mod))
-        self.add_item(ItemCreator(Items.GOLD, 108, 240), 3 * chest_mod)
-        self.add_item(ItemCreator(Items.POWERHOUR), 3)
-        self.add_item(ItemCreator(Items.LOCATION), 2)
+
+        self.add_item(RareChest(), 1)
+        if ischest:
+            return
+
+        self.add_item(ItemCreator(Items.NONE, 0, 0), 8)
+        self.add_item(ItemCreator(Items.GOLD, 108, 240), 4)
+        self.add_item(ItemCreator(Items.POWERHOUR), 4)
+        self.add_item(ItemCreator(Items.LOCATION), 3)
 
 
 class EpicLoot(LootTable):
     """Epic loot, I may never let go of this."""
 
     def __init__(self, ischest: bool = False) -> None:
-        items = 3
-        none_mod = 1
-        chest_mod = 1
-        if ischest:
-            items += 3
-            none_mod = 0.5
-            chest_mod = 10
-
-        super().__init__(items)
+        super().__init__(3)
         self.quality = LootPacks.EPIC
-        self.add_item(ItemCreator(Items.NONE, 0, 0), int(3 * none_mod))
-        self.add_item(ItemCreator(Items.GOLD, 303, 580), 3 * chest_mod)
-        self.add_item(ItemCreator(Items.POWERHOUR), 3)
-        self.add_item(ItemCreator(Items.LOCATION), 2)
+
+        self.add_item(EpicChest(), 1)
+        if ischest:
+            return
+
+        self.add_item(ItemCreator(Items.NONE, 0, 0), 8)
+        self.add_item(ItemCreator(Items.GOLD, 303, 580), 4)
+        self.add_item(ItemCreator(Items.POWERHOUR), 4)
+        self.add_item(ItemCreator(Items.LOCATION), 3)
 
 
 class LegendaryLoot(LootTable):
     """Legendary loot, how did a mortal obtain this?"""
 
     def __init__(self, ischest: bool = False) -> None:
-        items = 4
-        none_mod = 1
-        chest_mod = 1
-        if ischest:
-            items += 3
-            none_mod = 0.5
-            chest_mod = 10
-
-        super().__init__(items)
+        super().__init__(4)
         self.quality = LootPacks.LEGENDARY
-        self.add_item(ItemCreator(Items.NONE, 0, 0), int(3 * none_mod))
-        self.add_item(ItemCreator(Items.GOLD, 606, 1200), 3 * chest_mod)
-        self.add_item(ItemCreator(Items.POWERHOUR), 3)
-        self.add_item(ItemCreator(Items.LOCATION), 2)
+
+        self.add_item(LegendaryChest(), 1)
+        if ischest:
+            return
+
+        self.add_item(ItemCreator(Items.NONE, 0, 0), 8)
+        self.add_item(ItemCreator(Items.GOLD, 606, 1200), 4)
+        self.add_item(ItemCreator(Items.POWERHOUR), 4)
+        self.add_item(ItemCreator(Items.LOCATION), 3)
 
 
 class MythicalLoot(LootTable):
     """Mythical loot, only spoken in legend."""
 
     def __init__(self, ischest: bool = False) -> None:
-        items = 5
-        none_mod = 1
-        chest_mod = 1
-        if ischest:
-            items += 3
-            none_mod = 0.5
-            chest_mod = 10
-
-        super().__init__(items)
+        super().__init__(5)
         self.quality = LootPacks.MYTHICAL
-        self.add_item(ItemCreator(Items.NONE, 0, 0), int(3 * none_mod))
-        self.add_item(ItemCreator(Items.GOLD, 810, 1800), 4 * chest_mod)
-        self.add_item(ItemCreator(Items.POWERHOUR), 3)
-        self.add_item(ItemCreator(Items.LOCATION), 2)
+
+        self.add_item(MythicalChest(), 1)
+        if ischest:
+            return
+
+        self.add_item(ItemCreator(Items.NONE, 0, 0), 8)
+        self.add_item(ItemCreator(Items.GOLD, 810, 1800), 4)
+        self.add_item(ItemCreator(Items.POWERHOUR), 4)
+        self.add_item(ItemCreator(Items.LOCATION), 3)

@@ -8,7 +8,7 @@ from discord import ui
 from dclient.helper import get_role
 from dclient.destructable import DestructableManager
 from managers import users, entities, settings
-from managers.loot_tables import Items
+from managers.loot_tables import Chest, Items, Item
 from managers.locations import Area
 
 # Flavour winning text.
@@ -20,6 +20,39 @@ win_text: list[str] = ["slays", "defeats", "conquers", "strikes down", "kills",
                        ]
 
 ParticipantData = tuple[discord.Member, int, bool]
+
+
+def loot_text(loot: list[Item], indent: int, new_area: Optional[Area]) -> str:
+    """Generates all of the text for the loot acquired."""
+    spacer: str = "ㅤ" * indent
+    loot = [l for l in loot if l.type != Items.NONE]
+
+    item_texts: list[str] = []
+    for n, item in enumerate(loot):
+        lfeed = '└' if n + 1 == len(loot) else '├'
+        amt_text: str = ''
+        if item.amount > 1:
+            amt_text = f" [{item.amount}]"
+
+        name = item.name
+        if new_area and item.type == Items.LOCATION:
+            # Have special text for new location discoveries.
+            area_name = "Unknown"
+            if new_area.name:
+                area_name = new_area.name.title()
+            name = f"NEW AREA FOUND: {area_name}"
+
+        item_texts.append(f"> {spacer}{lfeed} **{name}**{amt_text}")
+
+        if item.type == Items.CHEST and isinstance(item, Chest):
+            tchest_text = loot_text(item.items, indent + 1, new_area)
+            item_texts.append(tchest_text)
+
+    # Combine the text.
+    full_loot = '\n'.join(item_texts)
+    if len(item_texts) == 0:
+        full_loot = f"> {spacer}└ **empty**"
+    return full_loot
 
 
 def attack(participants: list[ParticipantData],
@@ -54,27 +87,7 @@ def attack(participants: list[ParticipantData],
         loot = [l for l in loot if l.type != Items.LOCATION]
 
     # Creates the text for loot.
-    loot_text: list[str] = []
-    for n, item in enumerate(loot):
-        lfeed = '└' if n + 1 == len(loot) else '├'
-        amt_text: str = ''
-        if item.amount > 1:
-            amt_text = f" [{item.amount}]"
-
-        name = item.name
-        if new_area and item.type == Items.LOCATION:
-            # Have special text for new location discoveries.
-            area_name = "Unknown"
-            if new_area.name:
-                area_name = new_area.name.title()
-            name = f"NEW AREA FOUND: {area_name}"
-
-        loot_text.append(f"> {lfeed} **{name}**{amt_text}")
-
-    # Combine the text.
-    full_loot = '\n'.join(loot_text)
-    if len(loot_text) == 0:
-        full_loot = "> └ **empty**"
+    full_loot = loot_text(loot, 0, new_area)
 
     change_loc = ""
     if new_area:
