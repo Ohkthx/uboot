@@ -12,6 +12,7 @@ from dclient.destructable import DestructableManager, Destructable
 from dclient.helper import get_member, get_role, get_user
 from dclient.views.gamble import GambleView, gamble, ExtractedBet
 from dclient.views.dm import DMDeleteView
+from dclient.views.user import UserView
 
 
 def parse_amount(amount: str) -> int:
@@ -249,6 +250,9 @@ class User(commands.Cog):
             (prefix)stats @Gatekeeper
             (prefix)stats 1044706648964472902
         """
+        category = Destructable.Category.OTHER
+        await DestructableManager.remove_many(ctx.author.id, True, category)
+
         # Check if the channel name is a user id
         thread = ctx.message.channel
         if isinstance(thread, discord.Thread):
@@ -262,52 +266,14 @@ class User(commands.Cog):
             if thread_user:
                 user = thread_user
 
-        # Get the local user.
-        user_l = users.Manager.get(user.id)
-        title = '' if user_l.button_press == 0 else ', the Button Presser'
+        view = UserView(self.bot)
+        view.set_user(user)
+        embed = UserView.get_panel(user)
+        message = await ctx.send(embed=embed, view=view)
 
-        # Add a unique title if it is the bot.
-        if self.bot.user and self.bot.user.id == user.id:
-            title = ', the Scholar'
-
-        # Calculate the users age based on when they joined Discord.
-        age = datetime.now(timezone.utc) - user.created_at
-        year_str = '' if age.days // 365 < 1 else f"{age.days//365} year(s), "
-        day_str = '' if age.days % 365 == 0 else f"{int(age.days%365)} day(s)"
-
-        powerhour_text = ""
-        if user_l.powerhour:
-            powerhour_text = "**powerhour**: enabled\n"
-
-        color = discord.Colour.from_str("#00ff08")
-        desc = f"**{user}{title}**\n\n"\
-            f"**id**: {user.id}\n"\
-            f"**age**: {year_str}{day_str}\n"\
-            f"**deaths**: {user_l.deaths}\n"\
-            f"**level**: {user_l.level}\n"\
-            f"**gold**: {user_l.gold} gp\n"\
-            f"**messages**: {user_l.msg_count}\n"\
-            f"{powerhour_text}"\
-            f"**gold multiplier**: {(user_l.gold_multiplier):0.2f}\n\n"\
-            "> __Gamble__:\n"\
-            f"> ├ **total**: {user_l.gambles}\n"\
-            f"> ├ **won**: {user_l.gambles_won}\n"\
-            f"> ├ **win-rate**: {user_l.win_rate():0.2f}%\n"\
-            f"> └ **minimum**: {user_l.minimum(20)} gp\n\n"\
-            "> __Slaying__:\n"\
-            f"> ├ **exp**: {user_l.exp}\n"\
-            f"> ├ **total**: {user_l.monsters}\n"\
-            f"> ├ **killed**: {user_l.kills}\n"\
-            f"> └ **fled**: {user_l.monsters - user_l.kills}\n"
-
-        c_location: str = 'Unknown'
-        if user_l.c_location.name:
-            c_location = user_l.c_location.name.title()
-        embed = discord.Embed(description=desc, color=color)
-        embed.set_footer(text=f"Current Location: {c_location}")
-        embed.set_thumbnail(url=user.display_avatar.url)
-
-        await ctx.send(embed=embed)
+        # Create the destructable.
+        destruct = Destructable(category, ctx.author.id, 60, True)
+        destruct.set_message(message)
 
     @commands.is_owner()
     @commands.command(name="spawn")

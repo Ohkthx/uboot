@@ -36,7 +36,7 @@ class User():
         self.c_location: Area = Area(raw[10])
         if not self.locations.is_unlocked(self.c_location):
             self.c_location = Area.SEWERS
-        self.deaths = raw[11]
+        self._deaths = raw[11]
 
         self.isbot = False
         self._incombat = False
@@ -57,7 +57,7 @@ class User():
                 self.gambles_won, self.button_press,
                 self.monsters, self.kills, self.exp,
                 self.locations.raw, self.c_location.value,
-                self.deaths)
+                self._deaths)
 
     @property
     def incombat(self) -> bool:
@@ -95,6 +95,17 @@ class User():
         # Player has died.
         if self.msg_count > 0 and self._gold == 0:
             self.deaths += 1
+
+    @property
+    def deaths(self) -> int:
+        """Displays the current amount of deaths a user has."""
+        return max(self._deaths, 0)
+
+    @deaths.setter
+    def deaths(self, val) -> None:
+        """Setter for accessing protected deaths property."""
+        self._deaths = val
+        self._deaths = max(self._deaths, 0)
 
     @property
     def exp(self) -> int:

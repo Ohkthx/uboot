@@ -102,7 +102,8 @@ cog_extensions: list[str] = ['dclient.cogs.general',
                              'dclient.views.support_thread',
                              'dclient.views.red_button',
                              'dclient.views.private_guild_signup',
-                             'dclient.views.private_guild_panel']
+                             'dclient.views.private_guild_panel',
+                             'dclient.views.user']
 
 
 class DiscordBot(commands.Bot):

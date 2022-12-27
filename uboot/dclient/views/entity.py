@@ -19,17 +19,78 @@ win_text: list[str] = ["slays", "defeats", "conquers", "strikes down", "kills",
                        "butchers",
                        ]
 
-ParticipantData = tuple[discord.Member, int, bool]
+
+class Participant():
+    """A single participant inside of a party."""
+
+    def __init__(self, user: discord.Member) -> None:
+        self.user = user
+        self.user_l = users.Manager.get(user.id)
+        self.damage: list[int] = []
+        self.deaths: int = 0
+
+    def add_damage(self, damage: int) -> None:
+        """Adds additional damage the user performed."""
+        if damage > self.user_l.gold:
+            damage = self.user_l.gold
+
+        self.damage.append(damage)
+        self.user_l.gold -= damage
+        if self.user_l.gold == 0:
+            self.deaths += 1
+        self.user_l.save()
+
+    def total_damage(self) -> int:
+        """Gets the total damage performed."""
+        return sum(self.damage)
 
 
-def loot_text(loot: list[Item], indent: int, new_area: Optional[Area]) -> str:
+class Party():
+    """Represents several participants and their objective."""
+
+    def __init__(self, leader: discord.Member,
+                 entity: entities.Entity) -> None:
+        self.leader = Participant(leader)
+        self.entity = entity
+        self.helpers: dict[int, Participant] = {}
+        self.helpers[leader.id] = self.leader
+
+    @property
+    def count(self) -> int:
+        """Total amount of party members."""
+        return len(self.helpers.keys())
+
+    def get(self, user: discord.Member) -> Participant:
+        """Gets a single user in a party, adding automatically."""
+        helper = self.helpers.get(user.id, None)
+        if not helper:
+            helper = Participant(user)
+            self.helpers[user.id] = helper
+        return helper
+
+    def add_damage(self, user: discord.Member, amount: int) -> None:
+        """Adds damage that the party has done to the objective."""
+        if amount > self.entity.health:
+            amount = self.entity.health
+
+        self.entity.health -= amount
+        helper = self.get(user)
+        helper.add_damage(amount)
+
+    def get_all(self) -> list[Participant]:
+        """Get all party members."""
+        return list(self.helpers.values())
+
+
+def loot_text(all_loot: list[Item], indent: int,
+              new_area: Optional[Area]) -> str:
     """Generates all of the text for the loot acquired."""
     spacer: str = "ㅤ" * indent
-    loot = [l for l in loot if l.type != Items.NONE]
+    all_loot = [l for l in all_loot if l.type != Items.NONE]
 
     item_texts: list[str] = []
-    for n, item in enumerate(loot):
-        lfeed = '└' if n + 1 == len(loot) else '├'
+    for n, item in enumerate(all_loot):
+        lfeed = '└' if n + 1 == len(all_loot) else '├'
         amt_text: str = ''
         if item.amount > 1:
             amt_text = f" [{item.amount}]"
@@ -55,39 +116,42 @@ def loot_text(loot: list[Item], indent: int, new_area: Optional[Area]) -> str:
     return full_loot
 
 
-def attack(participants: list[ParticipantData],
-           entity: entities.Entity) -> str:
+def loot(party: Party) -> str:
     """Attempts to attack the entity."""
-    if len(participants) == 0:
+    if party.count == 0:
         return "How did you manage to kill something with no one?"
 
-    leader = users.Manager.get(participants[0][0].id)
+    leader = users.Manager.get(party.leader.user.id)
+    entity = party.entity
 
-    loot = entity.get_loot()
-    loot = [l for l in loot if l.type != Items.NONE]
+    all_loot = entity.get_loot()
+    all_loot = [l for l in all_loot if l.type != Items.NONE]
 
     # Apply all loot to each participant.
     new_area: Optional[Area] = None
     helpers_exp: list[str] = []
-    total_exp = entity.get_exp(leader.level)
-    for n, helper in enumerate(participants):
-        lfeed = '└' if n + 1 == len(participants) else '├'
-        user = users.Manager.get(helper[0].id)
-        exp = helper[1] / entity.max_health * total_exp
+    total_exp = party.entity.get_exp(leader.level)
+    for n, helper in enumerate(party.get_all()):
+        if helper.total_damage() == 0:
+            continue
+
+        lfeed = '└' if n + 1 == party.count else '├'
+        user = users.Manager.get(helper.user.id)
+        exp = helper.total_damage() / entity.max_health * total_exp
         user.exp += exp
         user.kills += 1
-        new_area = user.apply_loot(loot, len(participants) == 1)
-        if helper[2] and user.deaths > 0:
-            user.deaths = user.deaths - 1
+        new_area = user.apply_loot(all_loot, party.count == 1)
+        if helper.deaths > 0:
+            user.deaths -= helper.deaths
         user.save()
-        helpers_exp.append(f"> {lfeed} {helper[0]} gained {exp:0.2f} exp.")
+        helpers_exp.append(f"> {lfeed} {helper.user} gained {exp:0.2f} exp.")
     full_help = '\n'.join(helpers_exp)
 
     if not new_area:
-        loot = [l for l in loot if l.type != Items.LOCATION]
+        all_loot = [l for l in all_loot if l.type != Items.LOCATION]
 
     # Creates the text for loot.
-    full_loot = loot_text(loot, 0, new_area)
+    full_loot = loot_text(all_loot, 0, new_area)
 
     change_loc = ""
     if new_area:
@@ -102,7 +166,7 @@ def attack(participants: list[ParticipantData],
     win = win_text[random.randrange(0, len(win_text))]
     if entity.ischest:
         win = "heroically opens"
-    return f"**{participants[0][0]}** {win} **{entity.name}**!\n\n"\
+    return f"**{party.leader.user}** {win} **{entity.name}**!\n\n"\
         f"**Total Reward**: {total_exp:0.2f} exp\n"\
         f"__**Participant Exp**__:\n{full_help}\n\n"\
         f"> __**Loot**__:\n  {full_loot}\n\n"\
@@ -157,9 +221,6 @@ class Dropdown(ui.Select):
                 # Get help from another user.
                 exp = self.entity.get_exp(self.user_l.level)
                 damage = self.user_l.gold
-                self.entity.health -= damage
-                self.user_l.gold = 0
-                self.user_l.save()
                 help_view = HelpMeView(self.user, self.entity, exp, damage)
                 help_embed = help_view.get_panel()
 
@@ -172,9 +233,9 @@ class Dropdown(ui.Select):
                 await msg.edit(embeds=[help_embed], view=help_view)
                 return await res.send_message(f"You deal {damage} damage.",
                                               ephemeral=True, delete_after=30)
-            self.user_l.gold -= self.entity.health
-            embed.description = attack([(self.user, self.entity.health, False)],
-                                       self.entity)
+            party = Party(self.user, self.entity)
+            party.add_damage(self.user, self.entity.health)
+            embed.description = loot(party)
             embed.set_footer(text=f"Current gold: {self.user_l.gold} gp")
         elif self.values[0].lower() == 'flee':
             pass
@@ -200,17 +261,18 @@ class HelpMeView(ui.View):
         self.user = user
         self.user_l = users.Manager.get(self.user.id)
         self.entity = entity
-        self.helpers: list[ParticipantData] = [(user, damage, True)]
+
+        self.party: Party = Party(user, entity)
+        self.party.add_damage(user, damage)
+
         self.exp_gain: float = exp_gain
         self.iscomplete: bool = False
         super().__init__(timeout=None)
 
     def has_contributed(self, user: discord.Member) -> bool:
         """Checks if a user has contributed already."""
-        for helper in self.helpers:
-            if helper[0] == user:
-                return True
-        return False
+        helper = self.party.get(user)
+        return helper.total_damage() > 0
 
     def get_panel(self) -> discord.Embed:
         """Produces the entities message."""
@@ -222,13 +284,15 @@ class HelpMeView(ui.View):
         # Add all of the participants and their contributions.
         participants_full: str = ""
         all_help: list[str] = []
-        if len(self.helpers) > 0:
-            for helper in self.helpers:
-                all_help.append(
-                    f"> **{helper[0]}** performed {helper[1]} damage.")
+        if self.party.count > 0:
+            for helper in self.party.get_all():
+                if helper.total_damage() == 0:
+                    continue
+                dmg = helper.total_damage()
+                all_help.append(f"> **{helper.user}** performed {dmg} damage.")
 
             full_help = '\n  '.join(all_help)
-            participants_full = f"__**Participants**__:\n{full_help}\n\n"
+            participants_full = f"__**Party**__:\n{full_help}\n\n"
 
         loc_name = 'Unknown'
         if self.entity.location.name:
@@ -259,13 +323,17 @@ class HelpMeView(ui.View):
             return
 
         # Generate all of the gold that was lost text.
-        helpers = self.helpers
+        party = self.party
         dead_text: list[str] = []
-        for helper in helpers:
-            dead_text.append(f"> {helper[0]} lost {helper[1]} gp.")
+        for helper in party.get_all():
+            if helper.total_damage() == 0:
+                continue
+            cost = helper.total_damage()
+            dead_text.append(f"> {helper.user} lost {cost} gp.")
         dead_full = '\n'.join(dead_text)
 
-        party = "The **party**" if len(helpers) > 1 else f"**{helpers[0][0]}**"
+        leader = party.leader
+        party = "The **party**" if party.count > 1 else f"**{leader.user}**"
         description = f"{party} has failed to kill **{self.entity.name}**.\n\n"\
             f"__**Losses**__:\n{dead_full}"
 
@@ -275,9 +343,27 @@ class HelpMeView(ui.View):
         cached = msg.reference.cached_message
         await cached.reply(embed=embed)
 
-    @ui.button(label='HELP', style=discord.ButtonStyle.red,
-               custom_id='helpme_view:help')
-    async def help(self, interaction: discord.Interaction, button: ui.Button):
+    @ui.button(label='HELP [ALL]', style=discord.ButtonStyle.red,
+               custom_id='helpme_view:help_all')
+    async def help_all(self, interaction: discord.Interaction, button: ui.Button):
+        user = users.Manager.get(interaction.user.id)
+        await self.help(interaction, user.gold)
+
+    @ui.button(label='HELP [1000]', style=discord.ButtonStyle.red,
+               custom_id='helpme_view:help_1k')
+    async def help_1000(self, interaction: discord.Interaction, button: ui.Button):
+        user = users.Manager.get(interaction.user.id)
+        amount = 1000 if user.gold > 1000 else user.gold
+        await self.help(interaction, amount)
+
+    @ui.button(label='HELP [100]', style=discord.ButtonStyle.red,
+               custom_id='helpme_view:help_100')
+    async def help_100(self, interaction: discord.Interaction, button: ui.Button):
+        user = users.Manager.get(interaction.user.id)
+        amount = 100 if user.gold > 100 else user.gold
+        await self.help(interaction, amount)
+
+    async def help(self, interaction: discord.Interaction, amount: int) -> None:
         """Provides help to a user."""
         res = interaction.response
         msg = interaction.message
@@ -314,13 +400,7 @@ class HelpMeView(ui.View):
                                    delete_after=30)
             return
 
-        if self.has_contributed(user):
-            return await res.send_message("You have already contributed.",
-                                          ephemeral=True,
-                                          delete_after=15)
-
-        user_l = users.Manager.get(user.id)
-        if user_l.gold == 0:
+        if amount == 0:
             return await res.send_message("You do not have any gold.",
                                           ephemeral=True, delete_after=15)
 
@@ -329,25 +409,21 @@ class HelpMeView(ui.View):
             return
 
         # Cannot do a final blow, so add them as a participant.
-        if user_l.gold < self.entity.health:
+        if amount < self.entity.health:
             extension: int = 60
             if self.entity.isboss:
                 extension = 1800
             DestructableManager.extend(msg.id, extension)
-            self.helpers.append((user, user_l.gold, True))
-            # Other player helping but cannot finish.
-            damage = user_l.gold
-            self.entity.health -= damage
-            user_l.gold = 0
-            user_l.save()
+
+            self.party.add_damage(user, amount)
             help_embed = self.get_panel()
             await msg.edit(embeds=[help_embed])
-            return await res.send_message(f"You deal {damage} damage.",
+            return await res.send_message(f"You deal {amount} damage.",
                                           ephemeral=True, delete_after=15)
 
         # Enough gold to do the final blow.
-        self.helpers.append((user, self.entity.health, False))
-        user_l.gold -= self.entity.health
+        self.party.add_damage(user, self.entity.health)
+
         self.iscomplete = True
         await res.send_message("You deal the fatal blow!",
                                ephemeral=True, delete_after=30)
@@ -355,7 +431,7 @@ class HelpMeView(ui.View):
         # Build the final embed and send it.
         embed = discord.Embed()
         embed.color = discord.Colour.from_str("#00ff08")
-        embed.description = attack(self.helpers, self.entity)
+        embed.description = loot(self.party)
         self.user_l.set_combat(False)
 
         cached = msg.reference.cached_message
