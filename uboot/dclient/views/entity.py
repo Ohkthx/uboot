@@ -36,7 +36,7 @@ def attack(participants: list[ParticipantData],
     # Apply all loot to each participant.
     new_area: Optional[Area] = None
     helpers_exp: list[str] = []
-    total_exp = leader.expected_exp(entity.max_health)
+    total_exp = entity.get_exp(leader.level)
     for n, helper in enumerate(participants):
         lfeed = '└' if n + 1 == len(participants) else '├'
         user = users.Manager.get(helper[0].id)
@@ -142,7 +142,7 @@ class Dropdown(ui.Select):
             embed.color = discord.Colour.from_str("#00ff08")
             if self.user_l.gold < self.entity.health:
                 # Get help from another user.
-                exp = self.user_l.expected_exp(self.entity.health)
+                exp = self.entity.get_exp(self.user_l.level)
                 damage = self.user_l.gold
                 self.entity.health -= damage
                 self.user_l.gold = 0
@@ -368,7 +368,7 @@ class EntityView(ui.View):
 
         action = self.entity.get_action()
         cost = self.entity.health
-        gained_exp = user_l.expected_exp(cost)
+        gained_exp = self.entity.get_exp(user_l.level)
 
         gold_warning: str = ""
         if user_l.gold < cost:

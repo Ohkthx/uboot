@@ -173,7 +173,7 @@ class DiscordBot(commands.Bot):
         entity_view = EntityView(user, mob)
         if user_l.isbot or self.user == user or mob.isboss:
             timeout = 3600
-            exp = user_l.expected_exp(mob.max_health)
+            exp = mob.get_exp(user_l.level)
             entity_view = HelpMeView(user, mob, exp, 0)
         new_msg = await msg.reply(embed=entity_view.get_panel(),
                                   view=entity_view)
@@ -425,7 +425,9 @@ class DiscordBot(commands.Bot):
             return
 
         if not isinstance(thread.parent, discord.ForumChannel):
-            # Ignore if it isn't a forum channel thread.
+            # Either a private or public text channel thread.
+            if self.ccserver:
+                self.ccserver.add_thread(thread)
             return
 
         setting = settings.Manager.get(thread.guild.id)
@@ -463,6 +465,13 @@ class DiscordBot(commands.Bot):
         # Remove user from the thread if they are banned.
         if member.id in subguild.banned:
             await thread.remove_user(member)
+
+    async def on_thread_delete(self, thread: discord.Thread) -> None:
+        """Triggered on 'on_thread_delete' event."""
+        if not isinstance(thread.parent, discord.ForumChannel):
+            # Either a private or public text channel thread.
+            if self.ccserver:
+                self.ccserver.remove_thread(thread)
 
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
         """Triggered on 'on_raw_reaction_add' event. If is a bound Reaction

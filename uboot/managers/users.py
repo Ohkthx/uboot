@@ -158,11 +158,6 @@ class User():
 
         return int(raw * 6)
 
-    def expected_exp(self, base: int) -> float:
-        """Calculates expected exp based on what is provided."""
-        mod = max(math.log(self.level + 10, 10), 1)
-        return mod * base
-
     @property
     def difficulty(self) -> float:
         """Calculates the difficulty of the user."""

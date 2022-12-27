@@ -2,10 +2,11 @@
 
 import os
 import sys
+import math
 import pathlib
 import random
 import importlib.util
-from typing import Optional, Type, Set
+from typing import Optional, Type
 from enum import Enum, auto
 
 from .locations import Area
@@ -69,10 +70,11 @@ class Entity():
         """Returns if the entity is a boss or not."""
         return self.type == Types.BOSS
 
-    def set_name(self, name: str) -> None:
+    def set_name(self, name: str, quality: str = "") -> None:
         """Sets the name of the entity."""
+        quality = f" [{quality.capitalize()}]" if quality != "" else ""
         mod: str = " (Paragon)" if self.isparagon else ""
-        self.name = f"{name}{mod}"
+        self.name = f"{name}{quality}{mod}"
 
     def set_health(self, min_hp: int, max_hp: int) -> None:
         """Sets the health of the entity."""
@@ -97,6 +99,11 @@ class Entity():
         self._health = val
         self._health = max(self._health, 0)
 
+    def get_exp(self, level: int) -> float:
+        """Calculates expected exp based on level that is provided."""
+        mod = max(math.log(level + 10, 10), 1)
+        return mod * self.max_health
+
     def get_action(self) -> str:
         """Gets flavored text for the entitys action."""
         if self.ischest:
@@ -113,15 +120,21 @@ class Chest(Entity):
 
     def __init__(self, location: Area, difficulty: float) -> None:
         super().__init__(location, min(difficulty, 1.0))
-        self.set_name("a Treasure Chest")
+
+        # Get the quality.
+        packs = [LootPacks.EPIC, LootPacks.RARE, LootPacks.UNCOMMON]
+        weights = [1, 11, 13]
+        pack = random.choices(packs, weights=weights)
+
+        self.set_name("a Treasure Chest", pack[0].name)
         self.set_health(1, 1)
         self.type = Types.CHEST
 
-        # Add the lootpack.
-        packs = [LootPacks.UNCOMMON, LootPacks.RARE, LootPacks.EPIC]
-        weights = [13, 11, 1]
-        pack = random.choices(packs, weights=weights)
         self.lootpack = LootTable.lootpack(pack[0], self.isparagon)
+
+    def get_exp(self, level: int) -> float:
+        """Gets the custom EXP for a treasure chest."""
+        return (2 ** (self.lootpack.quality.value - 1)) * 50
 
 
 def _resolve_name(name: str) -> str:

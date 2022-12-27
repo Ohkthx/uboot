@@ -73,6 +73,7 @@ class LootTable():
     def __init__(self, max_loot: int) -> None:
         self.max_loot = max_loot
         self.items: list[tuple[int, ItemCreator]] = []
+        self.quality = LootPacks.COMMON
 
     @staticmethod
     def lootpack(lootpack: LootPacks, upgrade: bool, ischest: bool = False):
@@ -156,6 +157,7 @@ class CommonLoot(LootTable):
             chest_mod = 10
 
         super().__init__(items)
+        self.quality = LootPacks.COMMON
         self.add_item(ItemCreator(Items.NONE, 0, 0), int(5 * none_mod))
         self.add_item(ItemCreator(Items.GOLD, 22, 40), 2 * chest_mod)
         self.add_item(ItemCreator(Items.POWERHOUR), 3)
@@ -175,6 +177,7 @@ class UncommonLoot(LootTable):
             chest_mod = 10
 
         super().__init__(items)
+        self.quality = LootPacks.UNCOMMON
         self.add_item(ItemCreator(Items.NONE, 0, 0), int(4 * none_mod))
         self.add_item(ItemCreator(Items.GOLD, 44, 80), 2 * chest_mod)
         self.add_item(ItemCreator(Items.POWERHOUR), 3)
@@ -194,6 +197,7 @@ class RareLoot(LootTable):
             chest_mod = 10
 
         super().__init__(items)
+        self.quality = LootPacks.RARE
         self.add_item(ItemCreator(Items.NONE, 0, 0), int(3 * none_mod))
         self.add_item(ItemCreator(Items.GOLD, 108, 240), 3 * chest_mod)
         self.add_item(ItemCreator(Items.POWERHOUR), 3)
@@ -213,6 +217,7 @@ class EpicLoot(LootTable):
             chest_mod = 10
 
         super().__init__(items)
+        self.quality = LootPacks.EPIC
         self.add_item(ItemCreator(Items.NONE, 0, 0), int(3 * none_mod))
         self.add_item(ItemCreator(Items.GOLD, 303, 580), 3 * chest_mod)
         self.add_item(ItemCreator(Items.POWERHOUR), 3)
@@ -232,6 +237,7 @@ class LegendaryLoot(LootTable):
             chest_mod = 10
 
         super().__init__(items)
+        self.quality = LootPacks.LEGENDARY
         self.add_item(ItemCreator(Items.NONE, 0, 0), int(3 * none_mod))
         self.add_item(ItemCreator(Items.GOLD, 606, 1200), 3 * chest_mod)
         self.add_item(ItemCreator(Items.POWERHOUR), 3)
@@ -251,6 +257,7 @@ class MythicalLoot(LootTable):
             chest_mod = 10
 
         super().__init__(items)
+        self.quality = LootPacks.MYTHICAL
         self.add_item(ItemCreator(Items.NONE, 0, 0), int(3 * none_mod))
         self.add_item(ItemCreator(Items.GOLD, 810, 1800), 4 * chest_mod)
         self.add_item(ItemCreator(Items.POWERHOUR), 3)

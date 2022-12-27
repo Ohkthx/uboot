@@ -37,6 +37,24 @@ class CCServer():
 
         return thread.parent == self.dmchannel
 
+    def add_thread(self, thread: discord.Thread) -> None:
+        """Adds a thread to memory."""
+        if isinstance(thread.parent, discord.ForumChannel):
+            return
+        if thread.parent != self.dmchannel:
+            return
+
+        self.guild._add_thread(thread)
+
+    def remove_thread(self, thread: discord.Thread) -> None:
+        """Removes a thread from memory."""
+        if isinstance(thread.parent, discord.ForumChannel):
+            return
+        if thread.parent != self.dmchannel:
+            return
+
+        self.guild._remove_thread(thread)
+
     async def get_thread(self, user: discord.User) -> discord.Thread:
         """Gets the users DM thread. Creates a new one if cannot be found."""
         threads = self.dmchannel.threads
@@ -52,7 +70,7 @@ class CCServer():
         # Create the thread and add it to the cache.
         thread = await self.dmchannel.create_thread(name=str(user.id),
                                                     message=message)
-        self.dmchannel.guild._add_thread(thread)
+        self.add_thread(thread)
 
         await thread.add_user(self.owner)
         return thread
@@ -65,13 +83,10 @@ class CCServer():
         if not isinstance(message.author, discord.User):
             return
 
-        # Create the embed.
-        # embed = discord.Embed(description=f"```{message.content}```")
-
         # Send the message to the dm channel and thread.
         user_thread = await self.get_thread(message.author)
-        # await user_thread.send(embed=embed)
-        await user_thread.send(f"{message.content}")
+        content = message.content.replace("```", "+++")
+        await user_thread.send(f"```{content}```")
 
     async def process(self, message: discord.Message) -> None:
         """Process a message inside a DM Thread and respond."""
