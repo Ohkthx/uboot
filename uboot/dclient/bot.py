@@ -14,7 +14,7 @@ from dclient.views.dm import DMResponseView, DMDeleteView
 from utils import Log
 from config import DiscordConfig
 from managers import (settings, users, react_roles, tickets, subguilds,
-                      entities, aliases)
+                      entities, aliases, images)
 from .views.generic_panels import SuggestionView, BasicThreadView
 from .views.entity import EntityView, HelpMeView
 from .ccserver import CCServer
@@ -136,6 +136,7 @@ class DiscordBot(commands.Bot):
         subguilds.Manager.init("uboot.sqlite3")
         aliases.Manager.init("uboot.sqlite3")
         entities.Manager.init()
+        images.Manager.init()
 
         self.sudoer: Optional[Sudoer] = None
         self.last_button: Optional[discord.Message] = None
@@ -176,8 +177,17 @@ class DiscordBot(commands.Bot):
             timeout = 3600
             exp = mob.get_exp(user_l.level)
             entity_view = HelpMeView(user, mob, exp, 0)
-        new_msg = await msg.reply(embed=entity_view.get_panel(),
-                                  view=entity_view)
+
+        embed = entity_view.get_panel()
+
+        file: Optional[discord.File] = None
+        if mob.image:
+            file = images.Manager.get(mob.image)
+            if file:
+                url = f"attachment://{mob.image}"
+                embed.set_thumbnail(url=url)
+
+        new_msg = await msg.reply(embed=embed, view=entity_view, file=file)
 
         # Create a destructable view for the entity.
         destruct = Destructable(category, user.id, timeout, True)

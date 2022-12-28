@@ -13,6 +13,7 @@ class Mongbat(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("a Mongbat")
         self.set_health(4, 6)
+        self.image = "mongbat_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)

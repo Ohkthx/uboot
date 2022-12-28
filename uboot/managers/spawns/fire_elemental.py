@@ -14,6 +14,7 @@ class FireElemental(entities.Entity):
 
         self.set_name("a Fire Elemental")
         self.set_health(76, 93)
+        self.image = "fire_elemental_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)

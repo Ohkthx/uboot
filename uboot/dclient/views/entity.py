@@ -7,7 +7,7 @@ from discord import ui
 
 from dclient.helper import get_role
 from dclient.destructable import DestructableManager
-from managers import users, entities, settings
+from managers import users, entities, settings, images
 from managers.loot_tables import Chest, Items, Item
 from managers.locations import Area
 
@@ -208,8 +208,15 @@ class Dropdown(ui.Select):
 
         embed = discord.Embed()
         embed.color = discord.Colour.from_str("#ff0f08")
-        embed.description = f"**{self.user}** flees like a coward from "\
-            f"**{self.entity.name}**, keeping their gold."
+        embed.description = f"**{self.user}** flees like a coward.\n"\
+            f"Leaving {self.entity.get_exp(self.user_l.level):0.2f} exp.\n\n"\
+            f"**{self.entity.name.title()}** begins to hunt again."
+        file: Optional[discord.File] = None
+        if self.entity.image:
+            file = images.Manager.get(self.entity.image)
+            if file:
+                url = f"attachment://{self.entity.image}"
+                embed.set_thumbnail(url=url)
 
         if self.values[0].lower() in ('attack', 'open'):
 
@@ -220,6 +227,9 @@ class Dropdown(ui.Select):
                 damage = self.user_l.gold
                 help_view = HelpMeView(self.user, self.entity, exp, damage)
                 help_embed = help_view.get_panel()
+                if file:
+                    url = f"attachment://{self.entity.image}"
+                    help_embed.set_thumbnail(url=url)
 
                 # Register the "loss" callback.
                 destruct = DestructableManager.get(msg.id)
@@ -227,7 +237,7 @@ class Dropdown(ui.Select):
                     destruct.set_callback(help_view.loss_callback)
                     destruct.add_time(60)
 
-                await msg.edit(embeds=[help_embed], view=help_view)
+                await msg.edit(embed=help_embed, view=help_view)
                 return await res.send_message(f"You deal {damage} damage.",
                                               ephemeral=True, delete_after=30)
             party = Party(self.user, self.entity)
@@ -250,7 +260,7 @@ class Dropdown(ui.Select):
         delete_after: Optional[int] = None
         if not self.entity.isboss:
             delete_after = 420
-        await cached.reply(embed=embed, delete_after=delete_after)
+        await cached.reply(embed=embed, delete_after=delete_after, file=file)
 
 
 class HelpMeView(ui.View):
@@ -343,12 +353,18 @@ class HelpMeView(ui.View):
         embed = discord.Embed(description=description)
         embed.color = discord.Colour.from_str("#ff0f08")
         embed.set_footer(text="Better luck next time!")
-        cached = msg.reference.cached_message
+        file: Optional[discord.File] = None
+        if self.entity.image:
+            file = images.Manager.get(self.entity.image)
+            if file:
+                url = f"attachment://{self.entity.image}"
+                embed.set_thumbnail(url=url)
 
         delete_after: Optional[int] = None
         if not party.entity.isboss:
             delete_after = 360
-        await cached.reply(embed=embed, delete_after=delete_after)
+        cached = msg.reference.cached_message
+        await cached.reply(embed=embed, delete_after=delete_after, file=file)
 
     @ui.button(label='HELP [ALL]', style=discord.ButtonStyle.red,
                custom_id='helpme_view:help_all')
@@ -424,12 +440,15 @@ class HelpMeView(ui.View):
 
             self.party.add_damage(user, amount)
             help_embed = self.get_panel()
-            await msg.edit(embeds=[help_embed])
+
+            await msg.edit(embed=help_embed)
             return await res.send_message(f"You deal {amount} damage.",
                                           ephemeral=True, delete_after=15)
 
         # Enough gold to do the final blow.
         self.party.add_damage(user, self.entity.health)
+
+        self.user_l.set_combat(False)
 
         self.iscomplete = True
         await res.send_message("You deal the fatal blow!",
@@ -439,7 +458,13 @@ class HelpMeView(ui.View):
         embed = discord.Embed()
         embed.color = discord.Colour.from_str("#00ff08")
         embed.description = loot(self.party)
-        self.user_l.set_combat(False)
+
+        file: Optional[discord.File] = None
+        if self.entity.image:
+            file = images.Manager.get(self.entity.image)
+            if file:
+                url = f"attachment://{self.entity.image}"
+                embed.set_thumbnail(url=url)
 
         cached = msg.reference.cached_message
         # Delete the old destructable.
@@ -449,7 +474,7 @@ class HelpMeView(ui.View):
         delete_after: Optional[int] = None
         if not self.party.entity.isboss:
             delete_after = 420
-        await cached.reply(embed=embed, delete_after=delete_after)
+        await cached.reply(embed=embed, delete_after=delete_after, file=file)
 
 
 class EntityView(ui.View):

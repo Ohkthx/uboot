@@ -13,6 +13,7 @@ class GiantRat(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("a Giant Rat")
         self.set_health(26, 39)
+        self.image = "giant_rat_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)

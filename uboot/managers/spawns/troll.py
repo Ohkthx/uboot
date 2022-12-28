@@ -13,6 +13,7 @@ class Troll(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("a Troll")
         self.set_health(106, 123)
+        self.image = "troll_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)

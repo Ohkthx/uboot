@@ -13,6 +13,7 @@ class Ogre(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("an Ogre")
         self.set_health(100, 117)
+        self.image = "ogre_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)

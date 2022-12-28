@@ -16,6 +16,7 @@ class Imp(entities.Entity):
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)
+        self.image = "imp_alive.png"
 
 
 def setup(manager: entities.Manager):

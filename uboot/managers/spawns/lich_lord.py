@@ -13,6 +13,7 @@ class LichLord(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("a Lich Lord")
         self.set_health(250, 303)
+        self.image = "lich_lord_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.RARE, self.isparagon)

@@ -13,6 +13,7 @@ class Titan(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("a Titan")
         self.set_health(322, 351)
+        self.image = "titan_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.RARE, self.isparagon)

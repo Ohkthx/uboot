@@ -13,6 +13,7 @@ class Ghoul(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("a Ghoul")
         self.set_health(46, 60)
+        self.image = "ghoul_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)

@@ -13,6 +13,7 @@ class LavaSnake(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("a Lava Snake")
         self.set_health(28, 32)
+        self.image = "snake_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)

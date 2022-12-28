@@ -13,6 +13,7 @@ class Daemon(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("a Daemon")
         self.set_health(301, 325)
+        self.image = "daemon_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.EPIC, self.isparagon)

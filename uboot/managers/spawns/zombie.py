@@ -13,6 +13,7 @@ class Zombie(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("a Zombie")
         self.set_health(28, 42)
+        self.image = "zombie_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)

@@ -14,6 +14,7 @@ class Alligator(entities.Entity):
 
         self.set_name("an Alligator")
         self.set_health(46, 60)
+        self.image = "alligator_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)

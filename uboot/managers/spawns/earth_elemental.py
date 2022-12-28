@@ -13,6 +13,7 @@ class EarthElemental(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("an Earth Elemental")
         self.set_health(76, 93)
+        self.image = "earth_elemental_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)

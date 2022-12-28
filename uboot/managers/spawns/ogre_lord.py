@@ -13,6 +13,7 @@ class OgreLord(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("an Ogre Lord")
         self.set_health(476, 552)
+        self.image = "ogre_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.EPIC, self.isparagon)

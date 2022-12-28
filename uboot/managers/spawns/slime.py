@@ -20,6 +20,7 @@ class Slime(entities.Entity):
 
         self.set_name(name)
         self.set_health(15, 19)
+        self.image = "slime_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)

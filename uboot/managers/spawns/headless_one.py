@@ -13,6 +13,7 @@ class HeadlessOne(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("a Headless One")
         self.set_health(15, 30)
+        self.image = "headless_one_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)

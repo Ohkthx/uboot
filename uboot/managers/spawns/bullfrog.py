@@ -14,6 +14,7 @@ class Bullfrog(entities.Entity):
 
         self.set_name("a Bullfrog")
         self.set_health(28, 42)
+        self.image = "bullfrog_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)

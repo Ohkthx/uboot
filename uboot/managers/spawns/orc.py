@@ -13,6 +13,7 @@ class Orc(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("an Orc")
         self.set_health(58, 72)
+        self.image = "orc_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)

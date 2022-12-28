@@ -56,6 +56,7 @@ class Entity():
         # Create a base loot table.
         self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)
         self.type = Types.CREATURE
+        self.image: Optional[str] = None
 
     def __str__(self) -> str:
         return f"{self.name} [{self.difficulty}]: {self.location}"

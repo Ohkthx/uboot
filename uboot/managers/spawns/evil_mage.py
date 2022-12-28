@@ -14,6 +14,7 @@ class EvilMage(entities.Entity):
 
         self.set_name("an Evil Mage")
         self.set_health(49, 63)
+        self.image = "evil_mage_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)

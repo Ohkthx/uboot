@@ -20,6 +20,7 @@ class Rat(entities.Entity):
 
         self.set_name(name)
         self.set_health(6, 6)
+        self.image = "rat_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)

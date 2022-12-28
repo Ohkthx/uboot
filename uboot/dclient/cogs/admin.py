@@ -1,11 +1,12 @@
 """Admin and Staff commands for managing the server."""
+from datetime import datetime, timezone
+
 import discord
 from discord.ext import commands
 from discord.ext.commands import param
 
 from managers import settings, react_roles
 from dclient import DiscordBot
-from dclient.views.support_request import SupportRequestView
 from dclient.helper import get_channel, get_message, get_member, get_role, get_role_by_name
 
 
@@ -31,6 +32,50 @@ class Admin(commands.Cog):
         """
         if not ctx.invoked_subcommand:
             await ctx.send('invalid server command.')
+
+    @server.command(name="info")
+    async def info(self, ctx: commands.Context) -> None:
+        """Pulls basic server statistics along with links to all images.
+
+        examples:
+            (prefix)server info
+        """
+        guild = ctx.guild
+        if not guild:
+            return
+
+        # Calculate the servers age based on when they joined Discord.
+        age = datetime.now(timezone.utc) - guild.created_at
+        year_str = '' if age.days // 365 < 1 else f"{age.days//365} year(s), "
+        day_str = '' if age.days % 365 == 0 else f"{int(age.days%365)} day(s)"
+
+        # Get the URLs for images.
+        banner = f" [banner]({guild.banner.url})" if guild.banner else ""
+        icon = f" [icon]({guild.icon.url})" if guild.icon else ""
+
+        # Calculate the member count.
+        members: int = -1
+        if guild.member_count and guild.approximate_member_count:
+            true, approx = guild.member_count, guild.approximate_member_count
+            members = true if true > approx else approx
+        elif guild.member_count:
+            members = guild.member_count
+        elif guild.approximate_member_count:
+            members = guild.approximate_member_count
+
+        embed = discord.Embed(color=discord.Color.blurple())
+        if guild.icon:
+            embed.set_thumbnail(url=guild.icon.url)
+
+        embed.description = f"**server name**: {guild.name}\n"\
+            f"**id**: {guild.id}\n"\
+            f"**age**: {year_str}{day_str}\n\n"\
+            f"**images**: {banner}{icon}\n"\
+            f"**members**: {members}\n"\
+            f"**channels**: {len(guild.channels)}\n"\
+            f"**roles**: {len(guild.roles)}\n"
+
+        await ctx.reply(embed=embed)
 
     @commands.is_owner()
     @server.command(name="sudo")

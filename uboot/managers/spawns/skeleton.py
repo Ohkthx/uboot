@@ -16,6 +16,7 @@ class Skeleton(entities.Entity):
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)
+        self.image = "skeleton_alive.png"
 
 
 def setup(manager: entities.Manager):

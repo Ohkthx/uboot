@@ -20,6 +20,7 @@ class BoneMagi(entities.Entity):
 
         self.set_name(name)
         self.set_health(46, 60)
+        self.image = "bone_magi_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)

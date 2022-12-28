@@ -13,6 +13,7 @@ class Ettin(entities.Entity):
         super().__init__(location, min(difficulty, 1.0))
         self.set_name("an Ettin")
         self.set_health(82, 99)
+        self.image = "ettin_alive.png"
 
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)
