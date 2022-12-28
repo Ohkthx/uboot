@@ -58,7 +58,7 @@ class Party():
     @property
     def count(self) -> int:
         """Total amount of party members."""
-        return len(self.helpers.keys())
+        return len(self.get_all())
 
     def get(self, user: discord.Member) -> Participant:
         """Gets a single user in a party, adding automatically."""
@@ -79,7 +79,7 @@ class Party():
 
     def get_all(self) -> list[Participant]:
         """Get all party members."""
-        return list(self.helpers.values())
+        return [u for u in list(self.helpers.values()) if u.total_damage() > 0]
 
 
 def loot_text(all_loot: list[Item], indent: int,
@@ -92,7 +92,7 @@ def loot_text(all_loot: list[Item], indent: int,
     for n, item in enumerate(all_loot):
         lfeed = '└' if n + 1 == len(all_loot) else '├'
         amt_text: str = ''
-        if item.amount > 1:
+        if item.amount > 1 and item.type != Items.SWORD:
             amt_text = f" [{item.amount}]"
 
         name = item.name
@@ -132,9 +132,6 @@ def loot(party: Party) -> str:
     helpers_exp: list[str] = []
     total_exp = party.entity.get_exp(leader.level)
     for n, helper in enumerate(party.get_all()):
-        if helper.total_damage() == 0:
-            continue
-
         lfeed = '└' if n + 1 == party.count else '├'
         user = users.Manager.get(helper.user.id)
         exp = helper.total_damage() / entity.max_health * total_exp
@@ -248,7 +245,12 @@ class Dropdown(ui.Select):
 
         # Delete the old destructable.
         await DestructableManager.remove_one(msg.id, True)
-        await cached.reply(embed=embed)
+
+        # Create the new one.
+        delete_after: Optional[int] = None
+        if not self.entity.isboss:
+            delete_after = 420
+        await cached.reply(embed=embed, delete_after=delete_after)
 
 
 class HelpMeView(ui.View):
@@ -284,14 +286,16 @@ class HelpMeView(ui.View):
         # Add all of the participants and their contributions.
         participants_full: str = ""
         all_help: list[str] = []
-        if self.party.count > 0:
+        if self.party.count == 0:
+            participants_full = "__**Party**__:\n> empty\n\n"
+        else:
             for helper in self.party.get_all():
-                if helper.total_damage() == 0:
-                    continue
                 dmg = helper.total_damage()
                 all_help.append(f"> **{helper.user}** performed {dmg} damage.")
 
             full_help = '\n  '.join(all_help)
+            if len(all_help) == 0:
+                full_help = " > empty"
             participants_full = f"__**Party**__:\n{full_help}\n\n"
 
         loc_name = 'Unknown'
@@ -307,9 +311,7 @@ class HelpMeView(ui.View):
             f"> ├ **Help**: Costing {cost} gp, gaining {self.exp_gain:0.2f} exp.\n"\
             "> └ **Do Nothing**: Watch them die.\n\n"
         other_than = f"other than {self.user}"
-        embed.set_footer(text=f"Note: Only other users {other_than} can help."
-                         "\nYou are risking your gold to help if it is not "
-                         "killed.")
+        embed.set_footer(text=f"Note: Only other users {other_than} can help.")
         return embed
 
     async def loss_callback(self, msg: Optional[discord.Message]) -> None:
@@ -325,23 +327,28 @@ class HelpMeView(ui.View):
         # Generate all of the gold that was lost text.
         party = self.party
         dead_text: list[str] = []
-        for helper in party.get_all():
-            if helper.total_damage() == 0:
-                continue
-            cost = helper.total_damage()
-            dead_text.append(f"> {helper.user} lost {cost} gp.")
+        if party.count == 0:
+            dead_text.append("> empty")
+        else:
+            for helper in party.get_all():
+                cost = helper.total_damage()
+                dead_text.append(f"> {helper.user} lost {cost} gp.")
         dead_full = '\n'.join(dead_text)
 
         leader = party.leader
-        party = "The **party**" if party.count > 1 else f"**{leader.user}**"
-        description = f"{party} has failed to kill **{self.entity.name}**.\n\n"\
+        partytxt = "The **party**" if party.count > 1 else f"**{leader.user}**"
+        description = f"{partytxt} has failed to kill **{self.entity.name}**.\n\n"\
             f"__**Losses**__:\n{dead_full}"
 
         embed = discord.Embed(description=description)
         embed.color = discord.Colour.from_str("#ff0f08")
         embed.set_footer(text="Better luck next time!")
         cached = msg.reference.cached_message
-        await cached.reply(embed=embed)
+
+        delete_after: Optional[int] = None
+        if not party.entity.isboss:
+            delete_after = 360
+        await cached.reply(embed=embed, delete_after=delete_after)
 
     @ui.button(label='HELP [ALL]', style=discord.ButtonStyle.red,
                custom_id='helpme_view:help_all')
@@ -437,7 +444,12 @@ class HelpMeView(ui.View):
         cached = msg.reference.cached_message
         # Delete the old destructable.
         await DestructableManager.remove_one(msg.id, True)
-        await cached.reply(embed=embed)
+
+        # Create a new one.
+        delete_after: Optional[int] = None
+        if not self.party.entity.isboss:
+            delete_after = 420
+        await cached.reply(embed=embed, delete_after=delete_after)
 
 
 class EntityView(ui.View):

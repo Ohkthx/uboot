@@ -132,7 +132,7 @@ class Chest(Entity):
 
         self.lootpack = LootTable.lootpack(pack[0], self.isparagon, True)
 
-    def get_exp(self, level: int) -> float:
+    def get_exp(self, _: int) -> float:
         """Gets the custom EXP for a treasure chest."""
         return (2 ** (self.lootpack.quality.value - 1)) * 50
 
@@ -221,6 +221,7 @@ class Manager():
         for ename, entity in Manager._entities.items():
             if ename == name.lower():
                 return entity
+        return None
 
     @staticmethod
     def spawn(area: Area, difficulty: float) -> Optional[Entity]:
@@ -254,3 +255,4 @@ class Manager():
         if 0.01 <= val <= creature_max:
             # Creature spawned.
             return Manager.spawn(area, difficulty)
+        return None

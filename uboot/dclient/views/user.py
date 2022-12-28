@@ -6,7 +6,7 @@ import discord
 from discord import ui
 
 from managers import users
-from managers.locations import Area
+from managers.loot_tables import Material
 
 
 class LocationDropdown(ui.Select):
@@ -76,6 +76,11 @@ class UserView(ui.View):
         if user_l.powerhour:
             powerhour_text = "**powerhour**: enabled\n"
 
+        weapon_name = "unarmed"
+        if user_l.weapon > Material.NONE:
+            material = Material(user_l.weapon)
+            weapon_name = f"{material.name.replace('_', ' ')} Sword"
+
         color = discord.Colour.from_str("#00ff08")
         desc = f"**{user}{title}**\n\n"\
             f"**id**: {user.id}\n"\
@@ -83,6 +88,7 @@ class UserView(ui.View):
             f"**deaths**: {user_l.deaths}\n"\
             f"**level**: {user_l.level}\n"\
             f"**gold**: {user_l.gold} gp\n"\
+            f"**weapon**: {weapon_name.lower()}\n"\
             f"**messages**: {user_l.msg_count}\n"\
             f"{powerhour_text}"\
             f"**gold multiplier**: {(user_l.gold_multiplier):0.2f}\n\n"\

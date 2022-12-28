@@ -7,6 +7,8 @@ import discord
 
 from utils import Log
 
+DelCallback = Callable[[Optional[discord.Message]], Awaitable[Any]]
+
 
 class Destructable():
     """A Destructable that has a temporary life. Upon expiration it is
@@ -57,8 +59,7 @@ class Destructable():
         self._msg = message
         DestructableManager.add(self)
 
-    def set_callback(
-            self, func: Callable[[Optional[discord.Message]], Awaitable[Any]]) -> None:
+    def set_callback(self, func: DelCallback) -> None:
         """Sets a function to be called upon removing."""
         self._callback = func
 

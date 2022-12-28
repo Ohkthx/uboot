@@ -12,6 +12,7 @@ class Items(IntEnum):
     POWERHOUR = auto()
     LOCATION = auto()
     CHEST = auto()
+    SWORD = auto()
 
 
 class LootPacks(IntEnum):
@@ -22,6 +23,21 @@ class LootPacks(IntEnum):
     EPIC = auto()
     LEGENDARY = auto()
     MYTHICAL = auto()
+
+
+class Material(IntEnum):
+    """Material for items."""
+    NONE = auto()
+    WOOD = auto()
+    IRON = auto()
+    DULL_COPPER = auto()
+    SHADOW_IRON = auto()
+    COPPER = auto()
+    BRONZE = auto()
+    GOLD = auto()
+    AGAPITE = auto()
+    VERITE = auto()
+    VALORITE = auto()
 
 
 class Item():
@@ -40,9 +56,13 @@ class Item():
     @property
     def name(self) -> str:
         """Gets the name of the item based on its type."""
+        quality: str = ""
+        if self.type == Items.SWORD:
+            material = Material(self.amount)
+            quality = f"{material.name.title().replace('_', ' ')} "
         if not self.type.name:
-            return 'Unknown'
-        return self.type.name.title()
+            return f'{quality}Unknown'
+        return f'{quality}{self.type.name.title()}'
 
 
 class Chest(Item):
@@ -78,7 +98,8 @@ class ItemCreator():
     @property
     def isunique(self) -> bool:
         """Checks if only 1 of the type of item is valid for looting."""
-        return self.type in (Items.POWERHOUR, Items.LOCATION, Items.CHEST)
+        uniques = (Items.POWERHOUR, Items.LOCATION, Items.CHEST, Items.SWORD)
+        return self.type in uniques
 
     def generate(self) -> Item:
         """Creates an instance of this item."""
@@ -198,7 +219,10 @@ class CommonChest(ChestCreator):
         super().__init__(2, LootPacks.COMMON)
         self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 4)
         self.add_item(ItemCreator(Items.GOLD, 2, 22, 40), 10)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 6)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 5)
+
+        worst, best = Material.WOOD, Material.DULL_COPPER
+        self.add_item(ItemCreator(Items.SWORD, 1, worst, best), 1)
 
 
 class UncommonChest(ChestCreator):
@@ -208,7 +232,10 @@ class UncommonChest(ChestCreator):
         super().__init__(2, LootPacks.UNCOMMON)
         self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 4)
         self.add_item(ItemCreator(Items.GOLD, 2, 44, 80), 10)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 6)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 5)
+
+        worst, best = Material.IRON, Material.SHADOW_IRON
+        self.add_item(ItemCreator(Items.SWORD, 1, worst, best), 1)
 
 
 class RareChest(ChestCreator):
@@ -218,7 +245,10 @@ class RareChest(ChestCreator):
         super().__init__(2, LootPacks.RARE)
         self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 4)
         self.add_item(ItemCreator(Items.GOLD, 2, 108, 240), 10)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 6)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 5)
+
+        worst, best = Material.DULL_COPPER, Material.BRONZE
+        self.add_item(ItemCreator(Items.SWORD, 1, worst, best), 1)
 
 
 class EpicChest(ChestCreator):
@@ -228,7 +258,10 @@ class EpicChest(ChestCreator):
         super().__init__(3, LootPacks.EPIC)
         self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 4)
         self.add_item(ItemCreator(Items.GOLD, 3, 303, 580), 10)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 6)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 5)
+
+        worst, best = Material.COPPER, Material.AGAPITE
+        self.add_item(ItemCreator(Items.SWORD, 1, worst, best), 1)
 
 
 class LegendaryChest(ChestCreator):
@@ -238,7 +271,10 @@ class LegendaryChest(ChestCreator):
         super().__init__(4, LootPacks.LEGENDARY)
         self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 4)
         self.add_item(ItemCreator(Items.GOLD, 4, 606, 1200), 10)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 6)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 5)
+
+        worst, best = Material.GOLD, Material.VERITE
+        self.add_item(ItemCreator(Items.SWORD, 1, worst, best), 1)
 
 
 class MythicalChest(ChestCreator):
@@ -248,7 +284,10 @@ class MythicalChest(ChestCreator):
         super().__init__(5, LootPacks.MYTHICAL)
         self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 4)
         self.add_item(ItemCreator(Items.GOLD, 5, 810, 1800), 10)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 6)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 5)
+
+        worst, best = Material.VERITE, Material.VALORITE
+        self.add_item(ItemCreator(Items.SWORD, 1, worst, best), 1)
 
 
 class CommonLoot(LootTable):
@@ -262,10 +301,13 @@ class CommonLoot(LootTable):
         if ischest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 8)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 7)
         self.add_item(ItemCreator(Items.GOLD, 1, 22, 40), 4)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
         self.add_item(ItemCreator(Items.LOCATION, 1), 3)
+
+        worst, best = Material.WOOD, Material.DULL_COPPER
+        self.add_item(ItemCreator(Items.SWORD, 1, worst, best), 1)
 
 
 class UncommonLoot(LootTable):
@@ -279,10 +321,13 @@ class UncommonLoot(LootTable):
         if ischest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 8)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 7)
         self.add_item(ItemCreator(Items.GOLD, 1, 44, 80), 4)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
         self.add_item(ItemCreator(Items.LOCATION, 1), 3)
+
+        worst, best = Material.IRON, Material.SHADOW_IRON
+        self.add_item(ItemCreator(Items.SWORD, 1, worst, best), 1)
 
 
 class RareLoot(LootTable):
@@ -296,10 +341,13 @@ class RareLoot(LootTable):
         if ischest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 8)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 7)
         self.add_item(ItemCreator(Items.GOLD, 1, 108, 240), 4)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
         self.add_item(ItemCreator(Items.LOCATION, 1), 3)
+
+        worst, best = Material.DULL_COPPER, Material.BRONZE
+        self.add_item(ItemCreator(Items.SWORD, 1, worst, best), 1)
 
 
 class EpicLoot(LootTable):
@@ -313,10 +361,13 @@ class EpicLoot(LootTable):
         if ischest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 8)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 7)
         self.add_item(ItemCreator(Items.GOLD, 1, 303, 580), 4)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
         self.add_item(ItemCreator(Items.LOCATION, 1), 3)
+
+        worst, best = Material.COPPER, Material.AGAPITE
+        self.add_item(ItemCreator(Items.SWORD, 1, worst, best), 1)
 
 
 class LegendaryLoot(LootTable):
@@ -330,10 +381,13 @@ class LegendaryLoot(LootTable):
         if ischest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 8)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 7)
         self.add_item(ItemCreator(Items.GOLD, 1, 606, 1200), 4)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
         self.add_item(ItemCreator(Items.LOCATION, 1), 3)
+
+        worst, best = Material.GOLD, Material.VERITE
+        self.add_item(ItemCreator(Items.SWORD, 1, worst, best), 1)
 
 
 class MythicalLoot(LootTable):
@@ -347,7 +401,10 @@ class MythicalLoot(LootTable):
         if ischest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 8)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 7)
         self.add_item(ItemCreator(Items.GOLD, 1, 810, 1800), 4)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
         self.add_item(ItemCreator(Items.LOCATION, 1), 3)
+
+        worst, best = Material.VERITE, Material.VALORITE
+        self.add_item(ItemCreator(Items.SWORD, 1, worst, best), 1)

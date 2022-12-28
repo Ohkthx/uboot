@@ -15,7 +15,10 @@ from .db_socket import DbSocket, clean_name
 # 9 : int - locations
 # 10: int - c_location
 # 11: int - deaths
-UserRaw = tuple[int, int, int, int, int, int, int, int, int, int, int, int]
+# 12: int - weapon
+UserRaw = tuple[int, int, int, int, int,
+                int, int, int, int, int,
+                int, int, int]
 
 
 class UserDb(DbSocket):
@@ -31,9 +34,10 @@ class UserDb(DbSocket):
             "button_press INTEGER, "\
             "monsters INTEGER, kills INTEGER, exp INTEGER, "\
             "locations INTEGER, c_location INTEGER, "\
-            "deaths INTEGER )"
+            "deaths INTEGER,"\
+            "weapon INTEGER )"
         self.query['insert_one'] = "INSERT OR IGNORE INTO {table_name} "\
-            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
     def find_one(self, user_id: int) -> Optional[UserRaw]:
         """Gets a single user based on its id."""
@@ -62,7 +66,8 @@ class UserDb(DbSocket):
             f"button_press = {raw[5]}, "\
             f"monsters = {raw[6]}, kills = {raw[7]}, exp = {raw[8]}, "\
             f"locations = {raw[9]}, c_location = {raw[10]}, "\
-            f"deaths = {raw[11]}"
+            f"deaths = {raw[11]}, "\
+            f"weapon = {raw[12]}"
         where_key = f"id = {raw[0]}"
         self._update(set_key, where_key)
         return None

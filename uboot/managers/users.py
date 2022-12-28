@@ -8,7 +8,7 @@ from typing import Optional
 
 from db.users import UserDb, UserRaw
 from .locations import Locations, Area
-from .loot_tables import Item, Chest, Items
+from .loot_tables import Item, Chest, Items, Material
 
 
 def make_raw(user_id: int) -> UserRaw:
@@ -16,7 +16,8 @@ def make_raw(user_id: int) -> UserRaw:
     pre-defined defaults.
     """
     return (user_id, 100, 0, 0, 0, 0, 0, 0, 0,
-            Area.SEWERS.value, Area.SEWERS.value, 0)
+            Area.SEWERS.value, Area.SEWERS.value, 0,
+            Material.NONE)
 
 
 class User():
@@ -37,6 +38,7 @@ class User():
         if not self.locations.is_unlocked(self.c_location):
             self.c_location = Area.SEWERS
         self._deaths = raw[11]
+        self.weapon = raw[12]
 
         self.isbot = False
         self._incombat = False
@@ -57,7 +59,8 @@ class User():
                 self.gambles_won, self.button_press,
                 self.monsters, self.kills, self.exp,
                 self.locations.raw, self.c_location.value,
-                self._deaths)
+                self._deaths,
+                self.weapon)
 
     @property
     def incombat(self) -> bool:
@@ -149,6 +152,9 @@ class User():
                 self.powerhour = datetime.now()
             elif item.type == Items.CHEST and isinstance(item, Chest):
                 self.apply_loot(item.items, allow_area)
+            elif item.type == Items.SWORD:
+                if item.amount > self.weapon:
+                    self.weapon = item.amount
             elif item.type == Items.LOCATION and allow_area:
                 # Get all connections, removing the ones already discovered.
                 conn = self.locations.connections(self.c_location)
@@ -178,7 +184,8 @@ class User():
             return 0.0
         level_offset = self.level / 100
         gold_offset = self.gold / (max(self.msg_count, 1) * 3)
-        total_offset = level_offset + gold_offset + 1
+        weapon_offset = (max(self.weapon, Material.NONE) - 1) / 20
+        total_offset = level_offset + gold_offset + weapon_offset + 1
         if self.level == 1:
             # New player protection.
             if self.exp < 100.0:
