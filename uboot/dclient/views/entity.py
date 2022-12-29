@@ -8,7 +8,7 @@ from discord import ui
 from dclient.helper import get_role
 from dclient.destructable import DestructableManager
 from managers import users, entities, settings, images
-from managers.loot_tables import Chest, Items, Item
+from managers.loot_tables import Chest, Items, Item, Material
 from managers.locations import Area
 
 # Flavour winning text.
@@ -18,6 +18,14 @@ win_text: list[str] = ["slays", "defeats", "conquers", "strikes down", "kills",
                        "removes the final sparkle of life from the eyes of",
                        "butchers",
                        ]
+
+
+def durability_loss(leader: users.User) -> bool:
+    """Gets if there should be durability loss on a weapon."""
+    if leader.weapon > Material.NONE and random.randint(1, 2) == 1:
+        leader.weapon_durability -= 1
+        return True
+    return False
 
 
 class Participant():
@@ -31,6 +39,8 @@ class Participant():
 
     def add_damage(self, damage: int) -> None:
         """Adds additional damage the user performed."""
+        if damage == 0:
+            return
         if damage > self.user_l.gold:
             damage = self.user_l.gold
 
@@ -70,6 +80,8 @@ class Party():
 
     def add_damage(self, user: discord.Member, amount: int) -> None:
         """Adds damage that the party has done to the objective."""
+        if amount == 0:
+            return
         if amount > self.entity.health:
             amount = self.entity.health
 
@@ -121,8 +133,10 @@ def loot(party: Party) -> str:
     if party.count == 0:
         return "How did you manage to kill something with no one?"
 
-    leader = users.Manager.get(party.leader.user.id)
     entity = party.entity
+    leader_user = party.leader.user
+    leader = users.Manager.get(leader_user.id)
+    loss_dur = durability_loss(leader)
 
     all_loot = entity.get_loot()
     all_loot = [l for l in all_loot if l.type != Items.NONE]
@@ -150,6 +164,19 @@ def loot(party: Party) -> str:
     # Creates the text for loot.
     full_loot = loot_text(all_loot, 0, new_area)
 
+    # Additional notes:
+    notes_list: list[str] = []
+    if loss_dur:
+        weapon_status = f"{leader_user} **loss durability** on their weapon."
+        if leader.weapon_durability == 0:
+            weapon_status = f"{leader_user} **broke** their weapon."
+        notes_list.append(weapon_status)
+
+    notes_full = ""
+    if len(notes_list) > 0:
+        notes_text = '\n> '.join(notes_list)
+        notes_full = f"__**Notes**__:\n > {notes_text}\n\n"
+
     change_loc = ""
     if new_area:
         area_name = "unknown"
@@ -163,9 +190,10 @@ def loot(party: Party) -> str:
     win = win_text[random.randrange(0, len(win_text))]
     if entity.ischest:
         win = "heroically opens"
-    return f"**{party.leader.user}** {win} **{entity.name}**!\n\n"\
+    return f"**{leader_user}** {win} **{entity.name}**!\n\n"\
         f"**Total Reward**: {total_exp:0.2f} exp\n"\
         f"__**Participant Exp**__:\n{full_help}\n\n"\
+        f"{notes_full}"\
         f"> __**Loot**__:\n  {full_loot}\n\n"\
         f"{change_loc}"
 
@@ -334,8 +362,10 @@ class HelpMeView(ui.View):
         if not msg or not msg.reference or not msg.reference.cached_message:
             return
 
-        # Generate all of the gold that was lost text.
         party = self.party
+        leader = party.leader
+
+        # Generate all of the gold that was lost text.
         dead_text: list[str] = []
         if party.count == 0:
             dead_text.append("> empty")
@@ -345,9 +375,26 @@ class HelpMeView(ui.View):
                 dead_text.append(f"> {helper.user} lost {cost} gp.")
         dead_full = '\n'.join(dead_text)
 
+        # Check the durability of the leaders weapon.
+        loss_dur = durability_loss(leader.user_l)
+
+        notes_list: list[str] = []
+        if loss_dur:
+            leader.user_l.save()
+            weapon_status = f"{leader.user} **loss durability** on their weapon."
+            if leader.user_l.weapon_durability == 0:
+                weapon_status = f"{leader.user} **broke** their weapon."
+            notes_list.append(weapon_status)
+
+        notes_full = ""
+        if len(notes_list) > 0:
+            notes_text = '\n> '.join(notes_list)
+            notes_full = f"__**Notes**__:\n > {notes_text}\n\n"
+
         leader = party.leader
         partytxt = "The **party**" if party.count > 1 else f"**{leader.user}**"
         description = f"{partytxt} has failed to kill **{self.entity.name}**.\n\n"\
+            f"{notes_full}"\
             f"__**Losses**__:\n{dead_full}"
 
         embed = discord.Embed(description=description)

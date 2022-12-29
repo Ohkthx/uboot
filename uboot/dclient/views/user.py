@@ -79,7 +79,8 @@ class UserView(ui.View):
         weapon_name = "unarmed"
         if user_l.weapon > Material.NONE:
             material = Material(user_l.weapon)
-            weapon_name = f"{material.name.replace('_', ' ')} Sword"
+            dur = f"{user_l.weapon_durability} / {user_l.weapon * 2}"
+            weapon_name = f"{material.name.replace('_', ' ')} Sword [{dur}]"
 
         color = discord.Colour.from_str("#00ff08")
         desc = f"**{user}{title}**\n\n"\
@@ -101,7 +102,7 @@ class UserView(ui.View):
             f"> ├ **exp**: {user_l.exp}\n"\
             f"> ├ **total**: {user_l.monsters}\n"\
             f"> ├ **killed**: {user_l.kills}\n"\
-            f"> └ **fled**: {user_l.monsters - user_l.kills}\n"
+            f"> └ **fled**: {max(user_l.monsters - user_l.kills, 0)}\n"
 
         c_location: str = 'Unknown'
         if user_l.c_location.name:

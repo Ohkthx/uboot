@@ -60,6 +60,15 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
         max_length=75,
     )
 
+    # For the thumbnail portion of the Embed.
+    embed_url = ui.TextInput(
+        label='Thumbnail URL',
+        style=discord.TextStyle.short,
+        placeholder='Optional new thumbnail.',
+        required=False,
+        max_length=300,
+    )
+
     @staticmethod
     def get_embed(message: discord.Message) -> Optional[discord.Embed]:
         """Attempts to extract the embed from the message if it exists."""
@@ -112,6 +121,13 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
             if value == "unset":
                 value = ""
             embed.set_footer(text=value)
+
+        # Set the thumbnail.
+        value = self.embed_url.value
+        if value:
+            if value == "unset":
+                value = ""
+            embed.set_thumbnail(url=value)
 
         # Set the color, if it was passed.
         if self.color:

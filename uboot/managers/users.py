@@ -17,7 +17,7 @@ def make_raw(user_id: int) -> UserRaw:
     """
     return (user_id, 100, 0, 0, 0, 0, 0, 0, 0,
             Area.SEWERS.value, Area.SEWERS.value, 0,
-            Material.NONE)
+            Material.NONE, Material.NONE)
 
 
 class User():
@@ -38,7 +38,8 @@ class User():
         if not self.locations.is_unlocked(self.c_location):
             self.c_location = Area.SEWERS
         self._deaths = raw[11]
-        self.weapon = raw[12]
+        self._weapon = raw[12]
+        self._weapon_durability = raw[13]
 
         self.isbot = False
         self._incombat = False
@@ -60,12 +61,32 @@ class User():
                 self.monsters, self.kills, self.exp,
                 self.locations.raw, self.c_location.value,
                 self._deaths,
-                self.weapon)
+                int(self._weapon), self.weapon_durability)
 
     @property
     def incombat(self) -> bool:
         """Checks if the user is in combat or not."""
         return self._incombat
+
+    @property
+    def weapon(self) -> Material:
+        """Gets the users weapon type / material."""
+        return Material(self._weapon)
+
+    @property
+    def weapon_durability(self) -> int:
+        """Gets the users weapon durability."""
+        return self._weapon_durability
+
+    @weapon_durability.setter
+    def weapon_durability(self, val: int) -> None:
+        """Setter for accessing protected weapon durability property."""
+        self._weapon_durability = val
+        self._weapon_durability = max(self._weapon_durability, 0)
+
+        if self._weapon_durability == 0 and self._weapon != Material.NONE:
+            # Weapon is broken.
+            self._weapon = Material.NONE
 
     def set_combat(self, value: bool) -> None:
         """Set the user to be in combat."""
@@ -153,8 +174,18 @@ class User():
             elif item.type == Items.CHEST and isinstance(item, Chest):
                 self.apply_loot(item.items, allow_area)
             elif item.type == Items.SWORD:
-                if item.amount > self.weapon:
-                    self.weapon = item.amount
+                if item.amount < self.weapon:
+                    # Grant some durability for looting lower quality.
+                    #  Also prevent exceeding max durability.
+                    curr_dur = self.weapon_durability
+                    curr_dur = min(curr_dur + item.amount, self.weapon * 2)
+                    self.weapon_durability = curr_dur
+                elif item.amount == self.weapon:
+                    # Replace the current one with the brand new one.
+                    self.weapon_durability = item.amount * 2
+                elif item.amount > self.weapon:
+                    self._weapon = item.amount
+                    self.weapon_durability = item.amount * 2
             elif item.type == Items.LOCATION and allow_area:
                 # Get all connections, removing the ones already discovered.
                 conn = self.locations.connections(self.c_location)
