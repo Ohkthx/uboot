@@ -24,15 +24,6 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
         self.message = message
         super().__init__()
 
-    # For the Author portion of the Embed.
-    embed_author = ui.TextInput(
-        label='Author',
-        style=discord.TextStyle.short,
-        placeholder='Optional new author.',
-        required=False,
-        max_length=62
-    )
-
     # For the Title portion of the Embed.
     embed_title = ui.TextInput(
         label='Title',
@@ -61,10 +52,19 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
     )
 
     # For the thumbnail portion of the Embed.
-    embed_url = ui.TextInput(
+    embed_thumbnail_url = ui.TextInput(
         label='Thumbnail URL',
         style=discord.TextStyle.short,
         placeholder='Optional new thumbnail.',
+        required=False,
+        max_length=300,
+    )
+
+    # For the image portion of the Embed.
+    embed_image_url = ui.TextInput(
+        label='Image URL',
+        style=discord.TextStyle.short,
+        placeholder='Optional new image.',
         required=False,
         max_length=300,
     )
@@ -94,13 +94,6 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
                                               ephemeral=True,
                                               delete_after=60)
 
-        # Set the author.
-        value = self.embed_author.value
-        if value:
-            if value == "unset":
-                value = ""
-            embed.set_author(name=value)
-
         # Set the title.
         value = self.embed_title.value
         if value:
@@ -123,11 +116,18 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
             embed.set_footer(text=value)
 
         # Set the thumbnail.
-        value = self.embed_url.value
+        value = self.embed_thumbnail_url.value
         if value:
             if value == "unset":
                 value = ""
             embed.set_thumbnail(url=value)
+
+        # Set the image.
+        value = self.embed_image_url.value
+        if value:
+            if value == "unset":
+                value = ""
+            embed.set_image(url=value)
 
         # Set the color, if it was passed.
         if self.color:

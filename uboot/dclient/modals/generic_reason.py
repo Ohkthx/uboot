@@ -47,7 +47,18 @@ class ReasonModal(ui.Modal, title='Reason'):
             embed.set_footer(text=f"Reviewed by {self.from_user}")
         if self.to_user:
             view = DMDeleteView(interaction.client)
-            await self.to_user.send(embed=embed, view=view)
+            try:
+                await self.to_user.send(embed=embed, view=view)
+            except BaseException as exc:
+                from_user = ""
+                if self.from_user:
+                    from_user = str(self.from_user)
+                print(f"Could not send generic reason: {exc}")
+                print(f"Other details:\n"
+                      f"to: {self.to_user}\n"
+                      f"from: {from_user}\n"
+                      f"title: {self.text_title}\n"
+                      f"reason: {self.reason.value}")
         await res.send_message(embed=embed)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:

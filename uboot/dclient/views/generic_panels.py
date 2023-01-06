@@ -306,7 +306,8 @@ class SuggestionView(ui.View):
         if not role:
             return
 
-        user_msg = f"Your suggestion was closed by **{interaction.user}**."
+        user_msg = f"**Title**: {thread.name}\n"\
+            f"Suggestion was __**closed**__ by **{interaction.user}**."
         embed = discord.Embed(title="Suggestion Closed",
                               description=user_msg,
                               color=discord.Color.light_grey())
