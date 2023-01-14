@@ -130,6 +130,7 @@ class Chest(Entity):
         self.set_name("a Treasure Chest", pack[0].name)
         self.set_health(1, 1)
         self.type = Types.CHEST
+        self.image = "chest.png"
 
         self.lootpack = LootTable.lootpack(pack[0], self.isparagon, True)
 

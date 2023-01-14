@@ -5,6 +5,8 @@ from discord.ext.commands import param
 from dclient import DiscordBot
 from dclient.views.dm import DMDeleteView, DMResponseView
 from dclient.views.support_request import SupportRequestView
+from dclient.views.private_guild_signup import GuildSignupView
+from dclient.views.private_guild_panel import GuildManagerView
 
 
 class Panel(commands.Cog):
@@ -153,6 +155,58 @@ class Panel(commands.Cog):
             return
 
         await self.bot.on_thread_create(thread)
+
+    @commands.guild_only()
+    @commands.has_guild_permissions(manage_messages=True)
+    @panel.group(name="guild")
+    async def guild(self, ctx: commands.Context) -> None:
+        """The panel group for private guilds.
+
+        examples:
+            [panel guild signup
+            [panel guild manage
+        """
+        if not ctx.invoked_subcommand:
+            await ctx.send("Invalid guild panel command.", delete_after=30)
+
+    @guild.command(name="signup")
+    async def signup(self, ctx: commands.Context):
+        """The 'Request / Signup' Panel for Guilds.
+
+        examples:
+            [panel guild signup
+        """
+        await ctx.send(embed=GuildSignupView.get_panel(),
+                       view=GuildSignupView(self.bot))
+
+    @guild.command(name="manage")
+    async def manage(self, ctx: commands.Context,
+                     msg_id: int = param(
+                         description="id of the message to attach to.")):
+        """Applies the 'Management' Panel' to a Private Guild representation.
+        Only need to do this if it is missing.
+
+        examples:
+            [panel guild manage
+        """
+        channel = ctx.channel
+        guild = ctx.guild
+        if not channel or not guild:
+            return
+
+        # Attempt to get the message the panel is to be added to.
+        msg = await channel.fetch_message(msg_id)
+        if not msg:
+            return await ctx.send("Could not find message by that id.",
+                                  delete_after=60)
+
+        # Prevent trying to attach to non-bot messages.
+        if self.bot.user and msg.author.id != self.bot.user.id:
+            return await ctx.send("Can only attach to the bots messages.",
+                                  delete_after=60)
+
+        # Add the view.
+        await msg.edit(view=GuildManagerView(self.bot))
 
 
 async def setup(bot: DiscordBot) -> None:

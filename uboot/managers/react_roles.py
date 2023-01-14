@@ -20,7 +20,7 @@ class ReactRole():
     def __init__(self, raw: ReactRoleRaw):
         self.role_id = raw[0]
         self.guild_id = raw[1]
-        self.reaction = raw[2]
+        self.reaction = raw[2].replace("'", '')
         self.reversed = raw[3]
 
     @property

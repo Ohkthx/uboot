@@ -1,18 +1,18 @@
 """Various commands that support the gambling mechanic."""
 import random
-from datetime import datetime, timezone
 
 import discord
 from discord.ext import commands
 from discord.ext.commands import param
 
-from managers import users, settings
+from managers import users, settings, react_roles
 from dclient import DiscordBot
 from dclient.destructable import DestructableManager, Destructable
-from dclient.helper import get_member, get_role, get_user
+from dclient.helper import get_member, get_message, get_role, get_user
 from dclient.views.gamble import GambleView, gamble, ExtractedBet
 from dclient.views.dm import DMDeleteView
 from dclient.views.user import UserView
+from utils import Log
 
 
 def parse_amount(amount: str) -> int:
@@ -544,8 +544,8 @@ class User(commands.Cog):
             roles.append(winner_role)
             try:
                 await winner.edit(roles=roles)
-            except BaseException:
-                pass
+            except BaseException as exc:
+                Log.print(f"Could not add {winner} to winning role.\n{exc}")
 
         full_text = '\n'.join(winner_text)
         # Format and print winners.
@@ -569,8 +569,98 @@ class User(commands.Cog):
             try:
                 view = DMDeleteView(ctx.bot)
                 await winner.send(embed=embed, view=view)
-            except BaseException:
-                pass
+            except BaseException as exc:
+                Log.print(f"Could not notify {winner} via DM of lotto win.\n"
+                          f"{exc}")
+
+    @commands.guild_only()
+    @commands.has_guild_permissions(manage_messages=True)
+    @commands.command(name="lotto-verify", aliases=("lverify",))
+    async def lotto_verify(self, ctx: commands.Context) -> None:
+        """Verifies the lotto participants, notifies if a user has reacted but
+        has not won nor has the lotto participant role.
+
+        example:
+            (prefix)lotto-verify
+        """
+        guild = ctx.guild
+        if not guild:
+            return
+
+        # Get the settings for the server.
+        setting = settings.Manager.get(guild.id)
+        lotto_id = setting.lotto_role_id
+        winner_id = setting.lotto_winner_role_id
+
+        if lotto_id <= 0:
+            await ctx.send("lotto role is unset, please set it "
+                           "with settings command.")
+
+        if winner_id <= 0:
+            await ctx.send("winner role is unset, please set it "
+                           "with settings command.")
+
+        # Get the roles involved in the lotto.
+        lotto_role = await get_role(self.bot, guild.id, lotto_id)
+        if not lotto_role:
+            await ctx.send("lotto role no longer exists it appears.",
+                           delete_after=15)
+            return
+
+        winner_role = await get_role(self.bot, guild.id, winner_id)
+        if not winner_role:
+            await ctx.send("winner role no longer exists it appears.",
+                           delete_after=15)
+            return
+
+        # Get the list of opt-in users.
+        channel_id = setting.react_role_channel_id
+        msg_id = setting.react_role_msg_id
+        react_msg = await get_message(self.bot, channel_id, msg_id)
+        if not react_msg:
+            await ctx.send("could not identify the reaction-role message.")
+            return
+
+        # Get the reaction from the message.
+        react_role = react_roles.Manager.get(lotto_role.id)
+        if not react_role:
+            await ctx.send("could not get reaction-role pair, reaction."
+                           "may be currently unset.",
+                           delete_after=15)
+            return
+
+        emoji = react_role.reaction
+        reactions = react_msg.reactions
+        reaction = next((x for x in reactions if x.emoji == emoji), None)
+        if not reaction:
+            await ctx.send("reaction could not be found.", delete_after=15)
+            return
+
+        # Check those who are missing the role but should have it.
+        missing_role: list[str] = []
+        all_users: list[discord.Member] = []
+        async for user in reaction.users():
+            if user.bot or not isinstance(user, discord.Member):
+                continue
+            all_users.append(user)
+
+            # Check roles.
+            if not user.get_role(lotto_id) and not user.get_role(winner_id):
+                missing_role.append(f"> **{user}** ({user.id})")
+
+        # Build the text.
+        total_missing = "> none"
+        if len(missing_role) > 0:
+            total_missing = '\n'.join(missing_role)
+
+        embed = discord.Embed(title="Lotto Verification")
+        embed.color = discord.Colour.blurple()
+        embed.set_footer(text="Output above are potential errors.")
+        embed.description = f"**Users who reacted**: {len(all_users)}\n"\
+            f"**Users in lotto**: {len(lotto_role.members)}\n\n"\
+            "__**Has reacted, no roles**__:\n"\
+            f"{total_missing}"
+        await ctx.send(embed=embed)
 
 
 async def setup(bot: DiscordBot) -> None:

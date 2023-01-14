@@ -493,10 +493,16 @@ class DiscordBot(commands.Bot):
         if not values:
             return
 
-        if values[2]:
-            await values[0].remove_roles(values[1])
-        else:
-            await values[0].add_roles(values[1])
+        user, role, reverse = values
+
+        try:
+            if reverse:
+                await user.remove_roles(role)
+            else:
+                await user.add_roles(role)
+        except BaseException as exc:
+            action = 'add' if not reverse else 'remove'
+            Log.print(f"Could not {action} {role.name} to {str(user)}.\n{exc}")
 
     async def on_raw_reaction_remove(self, payload: RawReactionActionEvent):
         """Triggered on 'on_raw_reaction_remove' event. If is a bound Reaction
@@ -507,10 +513,16 @@ class DiscordBot(commands.Bot):
         if not values:
             return
 
-        if values[2]:
-            await values[0].add_roles(values[1])
-        else:
-            await values[0].remove_roles(values[1])
+        user, role, reverse = values
+
+        try:
+            if reverse:
+                await user.add_roles(role)
+            else:
+                await user.remove_roles(role)
+        except BaseException as exc:
+            action = 'add' if not reverse else 'remove'
+            Log.print(f"Could not {action} {role.name} to {str(user)}.\n{exc}")
 
     @staticmethod
     def init_run(config: DiscordConfig) -> None:

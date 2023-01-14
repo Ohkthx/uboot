@@ -8,8 +8,6 @@ from discord.ext.commands import param
 from managers import settings, subguilds
 from dclient import DiscordBot
 from dclient.helper import get_channel
-from dclient.views.private_guild_signup import GuildSignupView
-from dclient.views.private_guild_panel import GuildManagerView
 
 
 class Guild(commands.Cog):
@@ -38,42 +36,6 @@ class Guild(commands.Cog):
         """
         if not ctx.invoked_subcommand:
             await ctx.send('invalid guild command.')
-
-    @commands.is_owner()
-    @commands.guild_only()
-    @guild.command(name="signup-panel")
-    async def signup(self, ctx: commands.Context):
-        """The 'Request / Signup' Panel for Guilds."""
-        await ctx.send(embed=GuildSignupView.get_panel(),
-                       view=GuildSignupView(self.bot))
-
-    @commands.is_owner()
-    @commands.guild_only()
-    @guild.command(name="manage-panel")
-    async def manage(self, ctx: commands.Context,
-                     msg_id: int = param(
-                         description="id of the message to attach to.")):
-        """Applies the 'Management' Panel' to a Private Guild representation.
-        Only need to do this if it is missing.
-        """
-        channel = ctx.channel
-        guild = ctx.guild
-        if not channel or not guild:
-            return
-
-        # Attempt to get the message the panel is to be added to.
-        msg = await channel.fetch_message(msg_id)
-        if not msg:
-            return await ctx.send("Could not find message by that id.",
-                                  delete_after=60)
-
-        # Prevent trying to attach to non-bot messages.
-        if self.bot.user and msg.author.id != self.bot.user.id:
-            return await ctx.send("Can only attach to the bots messages.",
-                                  delete_after=60)
-
-        # Add the view.
-        await msg.edit(view=GuildManagerView(self.bot))
 
     @commands.guild_only()
     @guild.command(name="kick")
