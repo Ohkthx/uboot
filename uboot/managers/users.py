@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from db.users import UserDb, UserRaw
+from .banks import Manager as BankManager
 from .locations import Locations, Area
 from .loot_tables import Item, Chest, Items, Material
 
@@ -46,6 +47,8 @@ class User():
         self._incombat = False
         self.powerhour: Optional[datetime] = None
         self.last_message = datetime.now() - timedelta(seconds=20)
+
+        self.bank = BankManager.get(self.id)
 
     def __str__(self) -> str:
         """Overrides str to just display some basics."""
@@ -190,6 +193,9 @@ class User():
                     self._weapon = item.material
                     self.weapon_durability = item.material * 2
                     self.weapon_name = item._name
+            elif item.type == Items.TRASH:
+                self.bank.add_item(item)
+                self.bank.save()
             elif item.type == Items.LOCATION and allow_area:
                 # Get all connections, removing the ones already discovered.
                 conn = self.locations.connections(self.c_location)

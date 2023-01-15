@@ -104,8 +104,10 @@ def loot_text(all_loot: list[Item], indent: int,
     for n, item in enumerate(all_loot):
         lfeed = '└' if n + 1 == len(all_loot) else '├'
         amt_text: str = ''
-        if item.value > 1 and item.type != Items.WEAPON:
+        if item.value > 1 and item.type not in (Items.WEAPON, Items.TRASH):
             amt_text = f" [{item.value}]"
+        if item.type == Items.TRASH:
+            amt_text = f" [value: {item.value} gp]"
 
         name = item.name.title()
         if new_area and item.type == Items.LOCATION:
@@ -176,20 +178,33 @@ def loot(party: Party) -> str:
             weapon_status = f"{leader_user} **broke** their weapon."
         notes_list.append(weapon_status)
 
+    discarded_items: int = 0
+    for helper in party.get_all():
+        huser = helper.user
+        huser_l = helper.user_l
+        if len(huser_l.bank.items) >= huser_l.bank.capacity:
+            discarded_items += 1
+            notes_list.append(f"{huser} has a __**full bank**__.")
+
     notes_full = ""
     if len(notes_list) > 0:
         notes_text = '\n> '.join(notes_list)
         notes_full = f"__**Notes**__:\n > {notes_text}\n\n"
 
+    prefix = settings.Manager.prefix
     change_loc = ""
     if new_area:
         area_name = "unknown"
         if new_area.name:
             area_name = new_area.name.lower()
         # Notify the user of how to change locations.
-        prefix = settings.Manager.prefix
-        change_loc = "To recall to a new area, use the "\
+        change_loc = "\nTo recall to a new area, use the "\
             f"`{prefix}recall {area_name}` command"
+
+    check_bank = ""
+    if discarded_items > 0:
+        check_bank = f"\n**Full bank detected**!\nBe sure to type `{prefix}bank` "\
+            f"to check out and sell your items."
 
     win = win_text[random.randrange(0, len(win_text))]
     if entity.ischest:
@@ -198,8 +213,8 @@ def loot(party: Party) -> str:
         f"**Total Reward**: {total_exp:0.2f} exp\n"\
         f"__**Participant Exp**__:\n{full_help}\n\n"\
         f"{notes_full}"\
-        f"> __**Loot**__:\n  {full_loot}\n\n"\
-        f"{change_loc}"
+        f"> __**Loot**__:\n  {full_loot}\n"\
+        f"{change_loc}{check_bank}"
 
 
 class Dropdown(ui.Select):

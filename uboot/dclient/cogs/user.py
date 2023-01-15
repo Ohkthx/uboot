@@ -11,7 +11,7 @@ from dclient.destructable import DestructableManager, Destructable
 from dclient.helper import get_member, get_message, get_role, get_user
 from dclient.views.gamble import GambleView, gamble, ExtractedBet
 from dclient.views.dm import DMDeleteView
-from dclient.views.user import UserView
+from dclient.views.user import UserView, BankView
 from utils import Log
 
 
@@ -238,6 +238,31 @@ class User(commands.Cog):
         embed.set_thumbnail(url=user.display_avatar.url)
         await ctx.send(embed=embed, delete_after=60)
 
+    @commands.command(name="bank", aliases=("items", "loot"))
+    async def bank(self, ctx: commands.Context,
+                   user: discord.User = param(
+                       description="Optional Id of the user to lookup.",
+                       default=lambda ctx: ctx.author,
+                       displayed_default="self")):
+        """Shows the users bank and stored items with an option to sell.
+        Defaults to the user who performed the command.
+
+        examples:
+            (prefix)bank
+            (prefix)bank @Gatekeeper
+            (prefix)bank 1044706648964472902
+        """
+        view = BankView(self.bot)
+        view.set_user(user)
+
+        embed = BankView.get_panel(user)
+        message = await ctx.send(embed=embed, view=view)
+
+        # Create the destructable.
+        category = Destructable.Category.OTHER
+        destruct = Destructable(category, ctx.author.id, 60, True)
+        destruct.set_message(message)
+
     @commands.command(name="stats", aliases=("balance", "who", "whois"))
     async def stats(self, ctx: commands.Context,
                     user: discord.User = param(
@@ -245,6 +270,7 @@ class User(commands.Cog):
                         default=lambda ctx: ctx.author,
                         displayed_default="self")):
         """Shows statistics for a specified user, defaults to you.
+
         examples:
             (prefix)stats
             (prefix)stats @Gatekeeper

@@ -14,7 +14,7 @@ from dclient.views.dm import DMResponseView, DMDeleteView
 from utils import Log
 from config import DiscordConfig
 from managers import (settings, users, react_roles, tickets, subguilds,
-                      entities, aliases, images)
+                      entities, aliases, images, banks)
 from .views.generic_panels import SuggestionView, BasicThreadView
 from .views.entity import EntityView, HelpMeView
 from .ccserver import CCServer
@@ -130,6 +130,7 @@ class DiscordBot(commands.Bot):
 
         # Initialize all of the managers and their databases.
         tickets.Manager.init("uboot.sqlite3")
+        banks.Manager.init("uboot.sqlite3")
         users.Manager.init("uboot.sqlite3")
         settings.Manager.init("uboot.sqlite3", prefix)
         react_roles.Manager.init("uboot.sqlite3")
