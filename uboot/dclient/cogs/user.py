@@ -236,7 +236,7 @@ class User(commands.Cog):
         embed = discord.Embed(description=desc, color=color)
         embed.set_footer(text=f"Current Location: {c_location}")
         embed.set_thumbnail(url=user.display_avatar.url)
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, delete_after=60)
 
     @commands.command(name="stats", aliases=("balance", "who", "whois"))
     async def stats(self, ctx: commands.Context,

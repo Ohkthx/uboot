@@ -17,7 +17,7 @@ def make_raw(user_id: int) -> UserRaw:
     """
     return (user_id, 100, 0, 0, 0, 0, 0, 0, 0,
             Area.SEWERS.value, Area.SEWERS.value, 0,
-            Material.NONE, Material.NONE)
+            Material.NONE, Material.NONE, "unarmed")
 
 
 class User():
@@ -40,6 +40,7 @@ class User():
         self._deaths = raw[11]
         self._weapon = raw[12]
         self._weapon_durability = raw[13]
+        self.weapon_name = raw[14].replace("'", '')
 
         self.isbot = False
         self._incombat = False
@@ -61,7 +62,8 @@ class User():
                 self.monsters, self.kills, self.exp,
                 self.locations.raw, self.c_location.value,
                 self._deaths,
-                int(self._weapon), self.weapon_durability)
+                int(self._weapon), self.weapon_durability,
+                f"'{self.weapon_name}'")
 
     @property
     def incombat(self) -> bool:
@@ -87,6 +89,7 @@ class User():
         if self._weapon_durability == 0 and self._weapon != Material.NONE:
             # Weapon is broken.
             self._weapon = Material.NONE
+            self.weapon_name = "unarmed"
 
     def set_combat(self, value: bool) -> None:
         """Set the user to be in combat."""
@@ -168,24 +171,25 @@ class User():
         new_area: Optional[Area] = None
         for item in loot:
             if item.type == Items.GOLD:
-                self.gold += item.amount
+                self.gold += item.value
             elif item.type == Items.POWERHOUR:
                 self.powerhour = datetime.now()
             elif item.type == Items.CHEST and isinstance(item, Chest):
                 self.apply_loot(item.items, allow_area)
-            elif item.type == Items.SWORD:
-                if item.amount < self.weapon:
+            elif item.type == Items.WEAPON and item.material != Material.NONE:
+                if item.material < self.weapon:
                     # Grant some durability for looting lower quality.
                     #  Also prevent exceeding max durability.
                     curr_dur = self.weapon_durability
-                    curr_dur = min(curr_dur + item.amount, self.weapon * 2)
+                    curr_dur = min(curr_dur + item.material, self.weapon * 2)
                     self.weapon_durability = curr_dur
-                elif item.amount == self.weapon:
+                elif item.material == self.weapon:
                     # Replace the current one with the brand new one.
-                    self.weapon_durability = item.amount * 2
-                elif item.amount > self.weapon:
-                    self._weapon = item.amount
-                    self.weapon_durability = item.amount * 2
+                    self.weapon_durability = item.material * 2
+                elif item.material > self.weapon:
+                    self._weapon = item.material
+                    self.weapon_durability = item.material * 2
+                    self.weapon_name = item._name
             elif item.type == Items.LOCATION and allow_area:
                 # Get all connections, removing the ones already discovered.
                 conn = self.locations.connections(self.c_location)

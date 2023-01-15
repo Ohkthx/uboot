@@ -80,7 +80,8 @@ class UserView(ui.View):
         if user_l.weapon > Material.NONE:
             material = Material(user_l.weapon)
             dur = f"{user_l.weapon_durability} / {user_l.weapon * 2}"
-            weapon_name = f"{material.name.replace('_', ' ')} Sword [{dur}]"
+            wtype = user_l.weapon_name.title()
+            weapon_name = f"{material.name.replace('_', ' ')} {wtype} [{dur}]"
 
         color = discord.Colour.from_str("#00ff08")
         desc = f"**{user}{title}**\n\n"\

@@ -244,17 +244,26 @@ class Manager():
 
     @staticmethod
     def check_spawn(area: Area, difficulty: float,
-                    double_chance: bool) -> Optional[Entity]:
+                    powerhour: bool) -> Optional[Entity]:
         """Check if an entity should be spawned, if so- does."""
-        creature_max = 0.02
-        if double_chance:
-            creature_max *= 2
+        modifier: float = 1
+        if powerhour:
+            modifier *= 1.5
 
-        val = random.randint(0, 150) / 100
-        if val == 0.00:
+        if area in (Area.SEWERS, Area.DESPISE, Area.FIRE):
+            modifier *= 1.5
+
+        chest_base = 5
+        chest_range = float(chest_base * modifier)
+
+        entity_base = 10
+        entity_range = float(entity_base * modifier) + chest_range
+
+        val = random.randint(0, 100000) / 100
+        if val <= chest_range:
             # Chest spawned.
             return Chest(area, difficulty)
-        if 0.01 <= val <= creature_max:
+        if val <= entity_range:
             # Creature spawned.
             return Manager.spawn(area, difficulty)
         return None

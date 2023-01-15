@@ -104,10 +104,10 @@ def loot_text(all_loot: list[Item], indent: int,
     for n, item in enumerate(all_loot):
         lfeed = '└' if n + 1 == len(all_loot) else '├'
         amt_text: str = ''
-        if item.amount > 1 and item.type != Items.SWORD:
-            amt_text = f" [{item.amount}]"
+        if item.value > 1 and item.type != Items.WEAPON:
+            amt_text = f" [{item.value}]"
 
-        name = item.name
+        name = item.name.title()
         if new_area and item.type == Items.LOCATION:
             # Have special text for new location discoveries.
             area_name = "Unknown"
@@ -136,7 +136,11 @@ def loot(party: Party) -> str:
     entity = party.entity
     leader_user = party.leader.user
     leader = users.Manager.get(leader_user.id)
-    loss_dur = durability_loss(leader)
+
+    # Check if the leader loses durability on their weapon.
+    loss_dur: bool = False
+    if not entity.ischest:
+        loss_dur = durability_loss(leader)
 
     all_loot = entity.get_loot()
     all_loot = [l for l in all_loot if l.type != Items.NONE]
