@@ -96,8 +96,10 @@ class Item():
     @property
     def value(self) -> int:
         """Gets the value of the item based on its type."""
-        if self.type not in (Items.WEAPON,):
+        if self.type not in (Items.WEAPON, Items.POWERHOUR):
             return self._value
+        if self.type == Items.POWERHOUR:
+            return 20 * self.uses
 
         base_value = 150
 
@@ -116,7 +118,12 @@ class Item():
     @property
     def isusable(self) -> bool:
         """Checks if the item can be used."""
-        return self.type in (Items.WEAPON,)
+        return self.type in (Items.POWERHOUR, Items.WEAPON)
+
+    @property
+    def isconsumable(self) -> bool:
+        """Checks if the item can be consumed."""
+        return self.type in (Items.POWERHOUR,)
 
     @staticmethod
     def from_raw(raw: ItemRaw) -> 'Item':
@@ -183,6 +190,10 @@ class ItemCreator():
         self.stacks -= 1
 
         name: Optional[str] = None
+        if self.type == Items.POWERHOUR:
+            name = "powerhour potion"
+            return Item(self.type, name=name, uses=1, uses_max=4)
+
         value = random.randint(self.min, self.max)
         if self.type == Items.WEAPON:
             name = rand_name(WEAPON_NAMES)
@@ -192,6 +203,7 @@ class ItemCreator():
                         uses=uses, uses_max=uses)
         if self.type == Items.TRASH:
             name = rand_name(TRASH_NAMES)
+
         return Item(self.type, name=name, value=value)
 
 

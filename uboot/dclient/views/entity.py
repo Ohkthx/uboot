@@ -106,7 +106,7 @@ def loot_text(all_loot: list[Item], indent: int,
         amt_text: str = ''
         if item.value > 1 and item.type not in (Items.WEAPON, Items.TRASH):
             amt_text = f" [{item.value}]"
-        if item.type == Items.TRASH:
+        if item.type == Items.TRASH or item.isusable:
             amt_text = f" [value: {item.value} gp]"
 
         name = item.name.title()

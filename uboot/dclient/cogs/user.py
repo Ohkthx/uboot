@@ -335,7 +335,7 @@ class User(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.guild_only()
-    @commands.command(name="give", aliases=("withdraw",))
+    @commands.command(name="give", aliases=("trade",))
     async def give(self, ctx: commands.Context,
                    to: discord.Member = param(description="Recipient"),
                    amount: int = param(description="Amount to give.")) -> None:

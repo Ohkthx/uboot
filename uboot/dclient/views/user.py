@@ -1,5 +1,5 @@
 """User based views."""
-from typing import Optional
+from typing import Optional, Union
 from datetime import datetime, timezone
 
 import discord
@@ -163,10 +163,11 @@ class BankUseDropdown(ui.Select):
     async def callback(self, interaction: discord.Interaction):
         """Called when the menu is selected."""
         res = interaction.response
-        if not interaction.message:
+        msg = interaction.message
+        if not msg:
             return
 
-        user = await extract_user(interaction.client, interaction.message)
+        user = await extract_user(interaction.client, msg)
         if not user:
             await res.send_message("User could not be identified.",
                                    ephemeral=True,
@@ -194,8 +195,7 @@ class BankUseDropdown(ui.Select):
             return
 
         # Find the item.
-        item = next((i for i in user_l.bank.items if i.type == itype and
-                     i.value == ivalue and i.name == iname), None)
+        item = user_l.bank.get_item(Items(itype), iname, ivalue)
         if not item:
             await res.send_message("Could not find item. Do you still own it?",
                                    ephemeral=True,
@@ -203,6 +203,22 @@ class BankUseDropdown(ui.Select):
             return
 
         use_text = "used"
+
+        if item.isconsumable and user_l.bank.use_consumable(item):
+            granting: str = "granting a powerhour"
+            if item.type == Items.POWERHOUR:
+                user_l.powerhour = datetime.now()
+            if item.uses == 0:
+                user_l.bank.remove_item(item.type, item.name, item.value)
+                user_l.save()
+            user_l.bank.save()
+
+            view = BankView(interaction.client)
+            view.set_user(user)
+            await msg.edit(embed=BankView.get_panel(user), view=view)
+            await res.send_message(f"You {use_text} **{item.name.title()}**, "
+                                   f"{granting}.")
+            return
 
         # Remove the item from the user.
         if user_l.bank.remove_item(Items(itype), iname, ivalue):
@@ -215,6 +231,9 @@ class BankUseDropdown(ui.Select):
                 user_l.save()
             user_l.bank.save()
 
+        view = BankView(interaction.client)
+        view.set_user(user)
+        await msg.edit(embed=BankView.get_panel(user), view=view)
         await res.send_message(f"You {use_text} **{item.name.title()}**")
 
 
@@ -233,7 +252,7 @@ class UserView(ui.View):
         self.add_item(LocationDropdown(user_l))
 
     @staticmethod
-    def get_panel(user: discord.User) -> discord.Embed:
+    def get_panel(user: Union[discord.User, discord.Member]) -> discord.Embed:
         """Gets the user stats for the user provided."""
         # Get the local user.
         user_l = users.Manager.get(user.id)
@@ -294,10 +313,10 @@ class BankView(ui.View):
 
     def __init__(self, bot: discord.Client) -> None:
         self.bot = bot
-        self.user: Optional[discord.User] = None
+        self.user: Optional[Union[discord.User, discord.Member]] = None
         super().__init__(timeout=None)
 
-    def set_user(self, user: discord.User) -> None:
+    def set_user(self, user: Union[discord.User, discord.Member]) -> None:
         """Sets the user so their bank can be used in the dropdown."""
         self.user = user
         user_l = users.Manager.get(user.id)
@@ -305,7 +324,7 @@ class BankView(ui.View):
         self.add_item(BankUseDropdown(user_l))
 
     @staticmethod
-    def get_panel(user: discord.User) -> discord.Embed:
+    def get_panel(user: Union[discord.User, discord.Member]) -> discord.Embed:
         """Gets the users bank for the user provided."""
         # Get the local user.
         user_l = users.Manager.get(user.id)
@@ -313,6 +332,10 @@ class BankView(ui.View):
 
         if user.bot:
             title = ', the Scholar'
+
+        powerhour_status = "off"
+        if user_l.powerhour:
+            powerhour_status = "enabled"
 
         weapon_name = "unarmed"
         if user_l.weapon:
@@ -325,7 +348,13 @@ class BankView(ui.View):
         items: list[str] = []
         for n, item in enumerate(user_l.bank.items):
             lfeed = '└' if n + 1 == len(user_l.bank.items) else '├'
-            items.append(f"> {lfeed} **{item.name.title()}**, "
+            left: str = ""
+            if item.isconsumable:
+                left = "remaining: "
+            elif item.isusable:
+                left = "durability: "
+            uses = f" [{left}{item.uses} / {item.uses_max}]" if item.isusable else ""
+            items.append(f"> {lfeed} **{item.name.title()}**{uses}, "
                          f"value: {item.value} gp")
 
         # If none, print none.
@@ -341,7 +370,8 @@ class BankView(ui.View):
         embed.description = f"**{user}{title}**\n\n"\
             f"**id**: {user.id}\n"\
             f"**gold**: {user_l.gold} gp\n"\
-            f"**weapon**: {weapon_name.lower()}\n\n"\
+            f"**weapon**: {weapon_name.lower()}\n"\
+            f"**powerhour**: {powerhour_status}\n\n"\
             f"**Bank Capacity**: {user_l.bank.capacity}\n"\
             f"**Banked Items**: {len(user_l.bank.items)}\n"\
             f"**Banked Value**: {user_l.bank.value} gp\n\n"\

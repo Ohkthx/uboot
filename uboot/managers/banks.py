@@ -45,11 +45,41 @@ class Bank():
         """Converts items into a raw value for database storage."""
         return [item._raw for item in self.items]
 
+    def get_item(self, item_type: Items, name: str,
+                 value: int) -> Optional[Item]:
+        """Attempts to get an item based on some values."""
+        return next((i for i in self.items if i.type == item_type and
+                     i.value == value and i.name == name), None)
+
     def add_item(self, item: Item) -> None:
         """Add an item to the users bank, ignoring if bank is full."""
-        if len(self.items) >= self.capacity:
+        # If uses are not added.
+        if not item.isconsumable:
+            if len(self.items) >= self.capacity:
+                return
+            self.items.append(item)
             return
-        self.items.append(item)
+
+        owned = next((i for i in self.items if i.type == item.type), None)
+        if not owned:
+            if len(self.items) < self.capacity:
+                self.items.append(item)
+            return
+
+        # Add the uses.
+        owned.add_use(item.uses)
+
+    def use_consumable(self, item: Item) -> bool:
+        """Uses a consumable item."""
+        if not item.isconsumable:
+            return False
+
+        owned = next((i for i in self.items if i.type == item.type), None)
+        if not owned:
+            return False
+
+        owned.remove_use(1)
+        return True
 
     def remove_item(self, item_type: Items, name: str, value: int) -> bool:
         """Remove an item from the users bank."""

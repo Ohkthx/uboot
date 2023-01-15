@@ -169,11 +169,9 @@ class User():
         for item in loot:
             if item.type == Items.GOLD:
                 self.gold += item.value
-            elif item.type == Items.POWERHOUR:
-                self.powerhour = datetime.now()
             elif item.type == Items.CHEST and isinstance(item, Chest):
                 self.apply_loot(item.items, allow_area)
-            elif item.type in (Items.WEAPON, Items.TRASH):
+            elif item.type in (Items.POWERHOUR, Items.WEAPON, Items.TRASH):
                 self.bank.add_item(item)
                 self.bank.save()
             elif item.type == Items.LOCATION and allow_area:
