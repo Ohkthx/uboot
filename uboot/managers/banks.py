@@ -5,7 +5,7 @@ from typing import Optional
 import json
 
 from db.banks import BankDb, BankRaw
-from .loot_tables import Item, Material, Items
+from .loot_tables import Item, Material, Items, ItemRaw
 
 
 def make_raw(user_id: int) -> BankRaw:
@@ -25,12 +25,8 @@ class Bank():
 
         # Load the items.
         raw_items = json.loads(raw[1].replace("'", ''))
-        for i in raw_items:
-            item = Item(item_type=Items(i[0]),
-                        name=i[1],
-                        material=Material(i[2]),
-                        value=i[3])
-            self.items.append(item)
+        for item in raw_items:
+            self.items.append(Item.from_raw(item))
 
     @property
     def _raw(self) -> BankRaw:
@@ -45,10 +41,9 @@ class Bank():
             total_value += item.value
         return total_value
 
-    def raw_items(self) -> list[tuple[int, str, int, int]]:
+    def raw_items(self) -> list[ItemRaw]:
         """Converts items into a raw value for database storage."""
-        return [(int(i.type), i._name, int(i.material), i.value)
-                for i in self.items]
+        return [item._raw for item in self.items]
 
     def add_item(self, item: Item) -> None:
         """Add an item to the users bank, ignoring if bank is full."""

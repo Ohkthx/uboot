@@ -5,7 +5,7 @@ import random
 
 from managers import entities
 from managers.locations import Area
-from managers.loot_tables import LootTable, LootPacks
+from managers.loot_tables import LootTable, Rarity
 
 
 class Wraith(entities.Entity):
@@ -26,7 +26,7 @@ class Wraith(entities.Entity):
         self.image = "wraith_alive.png"
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.UNCOMMON, self.isparagon)
 
 
 def setup(manager: entities.Manager):

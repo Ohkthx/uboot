@@ -3,7 +3,7 @@ aspects for various creatures.
 """
 from managers import entities
 from managers.locations import Area
-from managers.loot_tables import LootTable, LootPacks
+from managers.loot_tables import LootTable, Rarity
 
 
 class Harpy(entities.Entity):
@@ -16,7 +16,7 @@ class Harpy(entities.Entity):
         self.image = "harpy_alive.png"
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.UNCOMMON, self.isparagon)
 
 
 def setup(manager: entities.Manager):

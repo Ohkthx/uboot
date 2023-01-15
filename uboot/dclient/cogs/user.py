@@ -238,7 +238,7 @@ class User(commands.Cog):
         embed.set_thumbnail(url=user.display_avatar.url)
         await ctx.send(embed=embed, delete_after=60)
 
-    @commands.command(name="bank", aliases=("items", "loot"))
+    @commands.command(name="bank", aliases=("items", "balance", "withdraw"))
     async def bank(self, ctx: commands.Context,
                    user: discord.User = param(
                        description="Optional Id of the user to lookup.",
@@ -252,6 +252,9 @@ class User(commands.Cog):
             (prefix)bank @Gatekeeper
             (prefix)bank 1044706648964472902
         """
+        category = Destructable.Category.OTHER
+        await DestructableManager.remove_many(ctx.author.id, True, category)
+
         view = BankView(self.bot)
         view.set_user(user)
 
@@ -259,11 +262,10 @@ class User(commands.Cog):
         message = await ctx.send(embed=embed, view=view)
 
         # Create the destructable.
-        category = Destructable.Category.OTHER
         destruct = Destructable(category, ctx.author.id, 60, True)
         destruct.set_message(message)
 
-    @commands.command(name="stats", aliases=("balance", "who", "whois"))
+    @commands.command(name="stats", aliases=("who", "whois"))
     async def stats(self, ctx: commands.Context,
                     user: discord.User = param(
                         description="Optional Id of the user to lookup.",

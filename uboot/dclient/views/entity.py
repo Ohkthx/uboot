@@ -22,8 +22,8 @@ win_text: list[str] = ["slays", "defeats", "conquers", "strikes down", "kills",
 
 def durability_loss(leader: users.User) -> bool:
     """Gets if there should be durability loss on a weapon."""
-    if leader.weapon > Material.NONE and random.randint(1, 2) == 1:
-        leader.weapon_durability -= 1
+    if leader.weapon and random.randint(1, 2) == 1:
+        leader.durability_loss(1)
         return True
     return False
 
@@ -174,7 +174,7 @@ def loot(party: Party) -> str:
     notes_list: list[str] = []
     if loss_dur:
         weapon_status = f"{leader_user} **loss durability** on their weapon."
-        if leader.weapon_durability == 0:
+        if not leader.weapon:
             weapon_status = f"{leader_user} **broke** their weapon."
         notes_list.append(weapon_status)
 
@@ -401,7 +401,7 @@ class HelpMeView(ui.View):
         if loss_dur:
             leader.user_l.save()
             weapon_status = f"{leader.user} **loss durability** on their weapon."
-            if leader.user_l.weapon_durability == 0:
+            if not leader.user_l.weapon:
                 weapon_status = f"{leader.user} **broke** their weapon."
             notes_list.append(weapon_status)
 

@@ -1,6 +1,7 @@
 """Representation of a user. Keeps track of several settings and manages the
 connection between database and memory.
 """
+import json
 import math
 import random
 from datetime import datetime, timedelta
@@ -9,7 +10,7 @@ from typing import Optional
 from db.users import UserDb, UserRaw
 from .banks import Manager as BankManager
 from .locations import Locations, Area
-from .loot_tables import Item, Chest, Items, Material
+from .loot_tables import Item, Chest, Items, Material, ItemRaw
 
 
 def make_raw(user_id: int) -> UserRaw:
@@ -17,8 +18,7 @@ def make_raw(user_id: int) -> UserRaw:
     pre-defined defaults.
     """
     return (user_id, 100, 0, 0, 0, 0, 0, 0, 0,
-            Area.SEWERS.value, Area.SEWERS.value, 0,
-            Material.NONE, Material.NONE, "unarmed")
+            Area.SEWERS.value, Area.SEWERS.value, 0, "''")
 
 
 class User():
@@ -39,9 +39,11 @@ class User():
         if not self.locations.is_unlocked(self.c_location):
             self.c_location = Area.SEWERS
         self._deaths = raw[11]
-        self._weapon = raw[12]
-        self._weapon_durability = raw[13]
-        self.weapon_name = raw[14].replace("'", '')
+
+        self.weapon: Optional[Item] = None
+        if raw[12].replace("'", '') != "":
+            weapon_raw: ItemRaw = json.loads(raw[12].replace("'", ''))
+            self.weapon = Item.from_raw(weapon_raw)
 
         self.isbot = False
         self._incombat = False
@@ -60,39 +62,31 @@ class User():
         gold = self.gold
         if self.isbot:
             gold = self._gold
+
+        weapon = "''"
+        if self.weapon:
+            weapon = f"'{json.dumps(self.weapon._raw)}'"
         return (self.id, gold, self.msg_count, self.gambles,
                 self.gambles_won, self.button_press,
                 self.monsters, self.kills, self.exp,
                 self.locations.raw, self.c_location.value,
-                self._deaths,
-                int(self._weapon), self.weapon_durability,
-                f"'{self.weapon_name}'")
+                self._deaths, weapon)
 
     @property
     def incombat(self) -> bool:
         """Checks if the user is in combat or not."""
         return self._incombat
 
-    @property
-    def weapon(self) -> Material:
-        """Gets the users weapon type / material."""
-        return Material(self._weapon)
+    def durability_loss(self, value: int) -> None:
+        """Removes durability from weapons/armor."""
+        if not self.weapon:
+            return
 
-    @property
-    def weapon_durability(self) -> int:
-        """Gets the users weapon durability."""
-        return self._weapon_durability
+        self.weapon.remove_use(value)
 
-    @weapon_durability.setter
-    def weapon_durability(self, val: int) -> None:
-        """Setter for accessing protected weapon durability property."""
-        self._weapon_durability = val
-        self._weapon_durability = max(self._weapon_durability, 0)
-
-        if self._weapon_durability == 0 and self._weapon != Material.NONE:
-            # Weapon is broken.
-            self._weapon = Material.NONE
-            self.weapon_name = "unarmed"
+        # Destroy the weapon if the uses are now 0.
+        if self.weapon.uses == 0:
+            self.weapon = None
 
     def set_combat(self, value: bool) -> None:
         """Set the user to be in combat."""
@@ -179,21 +173,7 @@ class User():
                 self.powerhour = datetime.now()
             elif item.type == Items.CHEST and isinstance(item, Chest):
                 self.apply_loot(item.items, allow_area)
-            elif item.type == Items.WEAPON and item.material != Material.NONE:
-                if item.material < self.weapon:
-                    # Grant some durability for looting lower quality.
-                    #  Also prevent exceeding max durability.
-                    curr_dur = self.weapon_durability
-                    curr_dur = min(curr_dur + item.material, self.weapon * 2)
-                    self.weapon_durability = curr_dur
-                elif item.material == self.weapon:
-                    # Replace the current one with the brand new one.
-                    self.weapon_durability = item.material * 2
-                elif item.material > self.weapon:
-                    self._weapon = item.material
-                    self.weapon_durability = item.material * 2
-                    self.weapon_name = item._name
-            elif item.type == Items.TRASH:
+            elif item.type in (Items.WEAPON, Items.TRASH):
                 self.bank.add_item(item)
                 self.bank.save()
             elif item.type == Items.LOCATION and allow_area:
@@ -223,9 +203,12 @@ class User():
         """Calculates the difficulty of the user."""
         if self.isbot:
             return 0.0
+
+        material = self.weapon.material if self.weapon else Material.NONE
+
         level_offset = self.level / 100
         gold_offset = self.gold / (max(self.msg_count, 1) * 3)
-        weapon_offset = (max(self.weapon, Material.NONE) - 1) / 20
+        weapon_offset = (max(material, Material.NONE) - 1) / 20
         total_offset = level_offset + gold_offset + weapon_offset + 1
         if self.level == 1:
             # New player protection.

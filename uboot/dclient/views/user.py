@@ -63,8 +63,8 @@ class LocationDropdown(ui.Select):
                                delete_after=30)
 
 
-class BankDropdown(ui.Select):
-    """Allows the user to select a new location."""
+class BankSellDropdown(ui.Select):
+    """Allows the user to select an item to sell."""
 
     def __init__(self, user: users.User) -> None:
         options: list[discord.SelectOption] = []
@@ -77,8 +77,8 @@ class BankDropdown(ui.Select):
             options.append(discord.SelectOption(label=label, value=value))
         options.append(discord.SelectOption(label='None', value='1:0:none'))
         super().__init__(options=options,
-                         placeholder="Sell items for gold.",
-                         custom_id="user_bank_dropdown")
+                         placeholder="Sell Items.",
+                         custom_id="user_bank_sell_dropdown")
 
     async def callback(self, interaction: discord.Interaction):
         """Called when the menu is selected."""
@@ -143,6 +143,81 @@ class BankDropdown(ui.Select):
                                f"value: {item.value} gp")
 
 
+class BankUseDropdown(ui.Select):
+    """Allows the user to select an item to use."""
+
+    def __init__(self, user: users.User) -> None:
+        options: list[discord.SelectOption] = []
+
+        for item in user.bank.items:
+            if not item.isusable:
+                continue
+            label: str = f"{item.name.title()} [{item.uses} / {item.uses_max}]"
+            value: str = f"{item.type}:{item.value}:{item.name}"
+            options.append(discord.SelectOption(label=label, value=value))
+        options.append(discord.SelectOption(label='None', value='1:0:none'))
+        super().__init__(options=options,
+                         placeholder="Use / Equip an Item.",
+                         custom_id="user_bank_use_dropdown")
+
+    async def callback(self, interaction: discord.Interaction):
+        """Called when the menu is selected."""
+        res = interaction.response
+        if not interaction.message:
+            return
+
+        user = await extract_user(interaction.client, interaction.message)
+        if not user:
+            await res.send_message("User could not be identified.",
+                                   ephemeral=True,
+                                   delete_after=20)
+            return
+
+        if interaction.user != user:
+            await res.send_message("You cannot sell another users items.",
+                                   ephemeral=True,
+                                   delete_after=20)
+            return
+
+        # Extract the item.
+        user_l = users.Manager.get(interaction.user.id)
+        item_parse = self.values[0].split(':')
+        itype = int(item_parse[0])
+        ivalue = int(item_parse[1])
+        iname = item_parse[2]
+
+        # None selected.
+        if Items(itype) == Items.NONE and ivalue == 0:
+            await res.send_message("No item used.",
+                                   ephemeral=True,
+                                   delete_after=20)
+            return
+
+        # Find the item.
+        item = next((i for i in user_l.bank.items if i.type == itype and
+                     i.value == ivalue and i.name == iname), None)
+        if not item:
+            await res.send_message("Could not find item. Do you still own it?",
+                                   ephemeral=True,
+                                   delete_after=20)
+            return
+
+        use_text = "used"
+
+        # Remove the item from the user.
+        if user_l.bank.remove_item(Items(itype), iname, ivalue):
+            # Swap the weapon out.
+            if item.type == Items.WEAPON:
+                use_text = "equipped"
+                if user_l.weapon:
+                    user_l.bank.add_item(user_l.weapon)
+                user_l.weapon = item
+                user_l.save()
+            user_l.bank.save()
+
+        await res.send_message(f"You {use_text} **{item.name.title()}**")
+
+
 class UserView(ui.View):
     """User View that can be interacted with to make user changes."""
 
@@ -177,10 +252,10 @@ class UserView(ui.View):
             powerhour_text = "**powerhour**: enabled\n"
 
         weapon_name = "unarmed"
-        if user_l.weapon > Material.NONE:
-            material = Material(user_l.weapon)
-            dur = f"{user_l.weapon_durability} / {user_l.weapon * 2}"
-            wtype = user_l.weapon_name.title()
+        if user_l.weapon:
+            material = user_l.weapon.material
+            dur = f"{user_l.weapon.uses} / {user_l.weapon.uses_max}"
+            wtype = user_l.weapon._name.title()
             weapon_name = f"{material.name.replace('_', ' ')} {wtype} [{dur}]"
 
         color = discord.Colour.from_str("#00ff08")
@@ -226,7 +301,8 @@ class BankView(ui.View):
         """Sets the user so their bank can be used in the dropdown."""
         self.user = user
         user_l = users.Manager.get(user.id)
-        self.add_item(BankDropdown(user_l))
+        self.add_item(BankSellDropdown(user_l))
+        self.add_item(BankUseDropdown(user_l))
 
     @staticmethod
     def get_panel(user: discord.User) -> discord.Embed:
@@ -237,6 +313,13 @@ class BankView(ui.View):
 
         if user.bot:
             title = ', the Scholar'
+
+        weapon_name = "unarmed"
+        if user_l.weapon:
+            material = user_l.weapon.material
+            dur = f"{user_l.weapon.uses} / {user_l.weapon.uses_max}"
+            wtype = user_l.weapon._name.title()
+            weapon_name = f"{material.name.replace('_', ' ')} {wtype} [{dur}]"
 
         # Create a list of items.
         items: list[str] = []
@@ -257,12 +340,13 @@ class BankView(ui.View):
         embed.set_thumbnail(url=user.display_avatar.url)
         embed.description = f"**{user}{title}**\n\n"\
             f"**id**: {user.id}\n"\
-            f"**gold**: {user_l.gold} gp\n\n"\
+            f"**gold**: {user_l.gold} gp\n"\
+            f"**weapon**: {weapon_name.lower()}\n\n"\
             f"**Bank Capacity**: {user_l.bank.capacity}\n"\
-            f"**Banked Items**: {len(user_l.bank.items)}\n\n"\
+            f"**Banked Items**: {len(user_l.bank.items)}\n"\
+            f"**Banked Value**: {user_l.bank.value} gp\n\n"\
             f"__**Items**__:\n"\
-            f"{items_full}\n\n"\
-            f"**__Total Value__: {user_l.bank.value} gp**"
+            f"{items_full}"
         return embed
 
 

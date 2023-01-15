@@ -3,7 +3,7 @@ aspects for various creatures.
 """
 from managers import entities
 from managers.locations import Area
-from managers.loot_tables import LootTable, LootPacks
+from managers.loot_tables import LootTable, Rarity
 
 
 class Efreet(entities.Entity):
@@ -15,7 +15,7 @@ class Efreet(entities.Entity):
         self.set_health(196, 213)
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(LootPacks.RARE, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.RARE, self.isparagon)
 
 
 def setup(manager: entities.Manager):

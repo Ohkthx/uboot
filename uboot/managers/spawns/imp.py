@@ -3,7 +3,7 @@ aspects for various creatures.
 """
 from managers import entities
 from managers.locations import Area
-from managers.loot_tables import LootTable, LootPacks
+from managers.loot_tables import LootTable, Rarity
 
 
 class Imp(entities.Entity):
@@ -15,7 +15,7 @@ class Imp(entities.Entity):
         self.set_health(55, 70)
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(LootPacks.UNCOMMON, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.UNCOMMON, self.isparagon)
         self.image = "imp_alive.png"
 
 

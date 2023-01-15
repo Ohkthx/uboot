@@ -10,7 +10,7 @@ from typing import Optional, Type
 from enum import Enum, auto
 
 from .locations import Area
-from .loot_tables import LootTable, Item, LootPacks
+from .loot_tables import LootTable, Item, Rarity
 
 creature_actions = ["was ambushed by", "was attacked by", "was approached by",
                     "is being stalked by"]
@@ -54,7 +54,7 @@ class Entity():
         self._max_health: int = -1
 
         # Create a base loot table.
-        self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.COMMON, self.isparagon)
         self.type = Types.CREATURE
         self.image: Optional[str] = None
 
@@ -71,11 +71,11 @@ class Entity():
         """Returns if the entity is a boss or not."""
         return self.type == Types.BOSS
 
-    def set_name(self, name: str, quality: str = "") -> None:
+    def set_name(self, name: str, rarity: str = "") -> None:
         """Sets the name of the entity."""
-        quality = f" [{quality.capitalize()}]" if quality != "" else ""
+        rarity = f" [{rarity.capitalize()}]" if rarity != "" else ""
         mod: str = " (Paragon)" if self.isparagon else ""
-        self.name = f"{name}{quality}{mod}"
+        self.name = f"{name}{rarity}{mod}"
 
     def set_health(self, min_hp: int, max_hp: int) -> None:
         """Sets the health of the entity."""
@@ -122,8 +122,8 @@ class Chest(Entity):
     def __init__(self, location: Area, difficulty: float) -> None:
         super().__init__(location, min(difficulty, 1.0))
 
-        # Get the quality.
-        packs = [LootPacks.EPIC, LootPacks.RARE, LootPacks.UNCOMMON]
+        # Get the rarity.
+        packs = [Rarity.EPIC, Rarity.RARE, Rarity.UNCOMMON]
         weights = [1, 11, 13]
         pack = random.choices(packs, weights=weights)
 
@@ -136,7 +136,7 @@ class Chest(Entity):
 
     def get_exp(self, _: int) -> float:
         """Gets the custom EXP for a treasure chest."""
-        return (2 ** (self.lootpack.quality.value - 1)) * 50
+        return (2 ** (self.lootpack.rarity.value - 1)) * 50
 
 
 def _resolve_name(name: str) -> str:

@@ -5,7 +5,7 @@ import random
 
 from managers import entities
 from managers.locations import Area
-from managers.loot_tables import LootTable, LootPacks
+from managers.loot_tables import LootTable, Rarity
 
 
 class Rat(entities.Entity):
@@ -23,7 +23,7 @@ class Rat(entities.Entity):
         self.image = "rat_alive.png"
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(LootPacks.COMMON, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.COMMON, self.isparagon)
 
 
 def setup(manager: entities.Manager):

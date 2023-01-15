@@ -3,7 +3,7 @@ aspects for various creatures.
 """
 from managers import entities
 from managers.locations import Area
-from managers.loot_tables import LootTable, LootPacks
+from managers.loot_tables import LootTable, Rarity
 
 
 class LichLord(entities.Entity):
@@ -16,7 +16,7 @@ class LichLord(entities.Entity):
         self.image = "lich_lord_alive.png"
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(LootPacks.RARE, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.RARE, self.isparagon)
 
 
 def setup(manager: entities.Manager):

@@ -3,7 +3,7 @@ aspects for various creatures.
 """
 from managers import entities
 from managers.locations import Area
-from managers.loot_tables import LootTable, LootPacks
+from managers.loot_tables import LootTable, Rarity
 
 
 class BaracoonThePiper(entities.Entity):
@@ -15,7 +15,7 @@ class BaracoonThePiper(entities.Entity):
         self.set_health(12000, 12000)
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(LootPacks.MYTHICAL, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.MYTHICAL, self.isparagon)
 
 
 def setup(manager: entities.Manager):
