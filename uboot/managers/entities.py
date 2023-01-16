@@ -244,11 +244,14 @@ class Manager():
 
     @staticmethod
     def check_spawn(area: Area, difficulty: float,
-                    powerhour: bool) -> Optional[Entity]:
+                    powerhour: bool, user_powerhour: bool) -> Optional[Entity]:
         """Check if an entity should be spawned, if so- does."""
         modifier: float = 1
         if powerhour:
             modifier *= 1.5
+
+        if user_powerhour:
+            modifier += 0.5
 
         if area in (Area.SEWERS, Area.DESPISE, Area.FIRE):
             modifier *= 1.5

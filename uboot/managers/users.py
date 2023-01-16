@@ -49,6 +49,7 @@ class User():
         self._incombat = False
         self.powerhour: Optional[datetime] = None
         self.last_message = datetime.now() - timedelta(seconds=20)
+        self.last_taunt = datetime.now() - timedelta(minutes=60)
 
         self.bank = BankManager.get(self.id)
 

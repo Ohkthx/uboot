@@ -1,11 +1,12 @@
 """Various commands that support the gambling mechanic."""
 import random
+from datetime import datetime, timedelta
 
 import discord
 from discord.ext import commands
 from discord.ext.commands import param
 
-from managers import users, settings, react_roles
+from managers import users, settings, react_roles, entities
 from dclient import DiscordBot
 from dclient.destructable import DestructableManager, Destructable
 from dclient.helper import get_member, get_message, get_role, get_user
@@ -13,6 +14,30 @@ from dclient.views.gamble import GambleView, gamble, ExtractedBet
 from dclient.views.dm import DMDeleteView
 from dclient.views.user import UserView, BankView
 from utils import Log
+
+
+async def check_minigame(client: discord.Client,
+                         user: discord.Member,
+                         guild_id: int) -> tuple[bool, str]:
+    """Verifies the user has the minigame role."""
+    # Check that the user has the minigame role.
+    setting = settings.Manager.get(guild_id)
+    role_id = setting.minigame_role_id
+    minigame_role = await get_role(client, guild_id, role_id)
+    if not minigame_role:
+        return (False, "Minigame role may be current unset.")
+
+    # User does not have the role and cannot play.
+    if minigame_role not in user.roles:
+        # Shows and optional text for easy role access.
+        in_channel: str = ""
+        if setting.react_role_channel_id > 0:
+            in_channel = f"\nGo to <#{setting.react_role_channel_id}> to get the"\
+                " required role."
+        return (False, f"You need to select the **{minigame_role}** role "
+                f"to do that. {in_channel}")
+
+    return (True, "")
 
 
 def parse_amount(amount: str) -> int:
@@ -166,6 +191,54 @@ class User(commands.Cog):
         embed.set_footer(text=f"Total kills: {kills}")
         await ctx.send(embed=embed)
 
+    @commands.command(name="taunt")
+    async def taunt(self, ctx: commands.Context) -> None:
+        """Attempt to taunt a nearby creature to attack you.
+
+        example:
+            (prefix}taunt
+        """
+        if not ctx.guild or not isinstance(ctx.author, discord.Member):
+            return
+
+        # Check that the user has the minigame role.
+        passed, msg = await check_minigame(self.bot, ctx.author, ctx.guild.id)
+        if not passed:
+            await ctx.reply(msg, delete_after=30)
+            return
+
+        # Prevent taunt spam.
+        user_l = users.Manager.get(ctx.author.id)
+        if datetime.now() - user_l.last_taunt < timedelta(minutes=15):
+            timediff = datetime.now() - user_l.last_taunt
+            minutes = (timedelta(minutes=15) - timediff) / timedelta(minutes=1)
+            await ctx.reply("You are tired and cannot taunt for another "
+                            f"{minutes:0.1f} minutes.",
+                            delete_after=30)
+            return
+
+        # Check if the user is in combat.
+        if user_l.incombat:
+            await ctx.reply("You are already in combat with another creature.",
+                            delete_after=30)
+            return
+
+        # Update with a new taunt attempt.
+        user_l.last_taunt = datetime.now()
+
+        # Check if we can spawn a mob.
+        if random.randint(0, 4) != 0:
+            await ctx.reply("No nearby enemies react to your taunt.",
+                            delete_after=30)
+            return
+
+        # Spawn the creature.
+        loc = user_l.c_location
+        difficulty = user_l.difficulty
+        entity = entities.Manager.spawn(loc, difficulty)
+        if entity:
+            await self.bot.add_entity(ctx.message, ctx.author, entity)
+
     @commands.command(name="locations", aliases=("location", "loc", "recall"))
     async def locations(self, ctx: commands.Context,
                         location: str = param(
@@ -179,6 +252,14 @@ class User(commands.Cog):
             (prefix)locations Sewers
         """
         user = ctx.author
+        if not ctx.guild or not isinstance(user, discord.Member):
+            return
+
+        # Check that the user has the minigame role.
+        passed, msg = await check_minigame(self.bot, user, ctx.guild.id)
+        if not passed:
+            await ctx.reply(msg, delete_after=30)
+            return
 
         # Get the local user.
         user_l = users.Manager.get(user.id)
@@ -252,6 +333,15 @@ class User(commands.Cog):
             (prefix)bank @Gatekeeper
             (prefix)bank 1044706648964472902
         """
+        if not ctx.guild or not isinstance(ctx.author, discord.Member):
+            return
+
+        # Check that the user has the minigame role.
+        passed, msg = await check_minigame(self.bot, ctx.author, ctx.guild.id)
+        if not passed:
+            await ctx.reply(msg, delete_after=30)
+            return
+
         category = Destructable.Category.OTHER
         await DestructableManager.remove_many(ctx.author.id, True, category)
 
@@ -278,6 +368,15 @@ class User(commands.Cog):
             (prefix)stats @Gatekeeper
             (prefix)stats 1044706648964472902
         """
+        if not ctx.guild or not isinstance(ctx.author, discord.Member):
+            return
+
+        # Check that the user has the minigame role.
+        passed, msg = await check_minigame(self.bot, ctx.author, ctx.guild.id)
+        if not passed:
+            await ctx.reply(msg, delete_after=30)
+            return
+
         category = Destructable.Category.OTHER
         await DestructableManager.remove_many(ctx.author.id, True, category)
 
@@ -343,6 +442,15 @@ class User(commands.Cog):
         example:
             (prefix)give @Gatekeeper 40
         """
+        if not ctx.guild or not isinstance(ctx.author, discord.Member):
+            return
+
+        # Check that the user has the minigame role.
+        passed, msg = await check_minigame(self.bot, ctx.author, ctx.guild.id)
+        if not passed:
+            await ctx.reply(msg, delete_after=30)
+            return
+
         from_user = users.Manager.get(ctx.author.id)
         if amount > from_user.gold:
             amount = from_user.gold
@@ -409,23 +517,9 @@ class User(commands.Cog):
         user = users.Manager.get(ctx.author.id)
 
         # Check that the user has the minigame role.
-        setting = settings.Manager.get(ctx.guild.id)
-        role_id = setting.minigame_role_id
-        minigame_role = await get_role(self.bot, ctx.guild.id, role_id)
-        if not minigame_role:
-            await ctx.reply("Minigame role may be current unset.",
-                            delete_after=30)
-            return
-
-        # User does not have the role and cannot play.
-        if minigame_role not in ctx.author.roles:
-            # Shows and optional text for easy role access.
-            in_channel: str = ""
-            if setting.react_role_channel_id > 0:
-                in_channel = f"\nGo to <#{setting.react_role_channel_id}> to get the"\
-                    " required role."
-            await ctx.reply(f"You need to select the **{minigame_role}** role "
-                            f"to do that. {in_channel}", delete_after=30)
+        passed, msg = await check_minigame(self.bot, ctx.author, ctx.guild.id)
+        if not passed:
+            await ctx.reply(msg, delete_after=30)
             return
 
         # Remove all 'DOUBLE OR NOTHING' buttons assigned to the user.
