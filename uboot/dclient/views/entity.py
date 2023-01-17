@@ -119,7 +119,7 @@ def loot_text(user: discord.Member, all_loot: list[Item], indent: int,
             name = f"NEW AREA FOUND: {area_name}"
 
         item_texts.append(f"> {spacer}{lfeed} **{name}**{amt_text}")
-        Log.action(f"{user} looted {name}{amt_text}",
+        Log.player(f"{user} looted {name}{amt_text}",
                    guild_id=user.guild.id, user_id=user.id)
 
         if item.type == Items.CHEST and isinstance(item, Chest):
@@ -142,7 +142,7 @@ def loot(party: Party) -> str:
     leader_user = party.leader.user
     leader = users.Manager.get(leader_user.id)
 
-    Log.action(f"{leader_user} slayed {entity.name}.",
+    Log.player(f"{leader_user} slayed {entity.name}.",
                guild_id=leader_user.guild.id, user_id=leader_user.id)
 
     # Check if the leader loses durability on their weapon.
@@ -299,7 +299,7 @@ class Dropdown(ui.Select):
             embed.description = loot(party)
             embed.set_footer(text=f"Current gold: {self.user_l.gold} gp")
         elif self.values[0].lower() == 'flee':
-            Log.action(f"{self.user} fled {self.entity.name}.",
+            Log.player(f"{self.user} fled {self.entity.name}.",
                        guild_id=guild_id, user_id=self.user.id)
         else:
             embed.color = discord.Colour.from_str("#F1C800")
@@ -391,7 +391,7 @@ class HelpMeView(ui.View):
 
         party = self.party
         leader = party.leader
-        Log.action(f"{leader.user} died to {party.entity.name}.",
+        Log.player(f"{leader.user} died to {party.entity.name}.",
                    guild_id=leader.user.guild.id,
                    user_id=leader.user.id)
 
@@ -513,7 +513,7 @@ class HelpMeView(ui.View):
         if self.entity.image:
             file = images.Manager.get(self.entity.image)
 
-        Log.action(f"{user} attacked {self.entity.name} for {amount} damage.",
+        Log.player(f"{user} attacked {self.entity.name} for {amount} damage.",
                    guild_id=user.guild.id, user_id=user.id)
 
         # Cannot do a final blow, so add them as a participant.

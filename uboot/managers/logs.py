@@ -15,6 +15,7 @@ class LogType(IntEnum):
     ERROR = auto()
     COMMAND = auto()
     ACTION = auto()
+    PLAYER = auto()
 
 
 def make_raw(guild_id: int, user_id: int,
@@ -97,20 +98,26 @@ class Log():
                       logtype=LogType.ACTION)
 
     @staticmethod
+    def player(msg: str, end: str = '\n',
+               guild_id: int = 0, user_id: int = 0) -> None:
+        """Creates an action log."""
+        return Log.do(msg, end=end,
+                      guild_id=guild_id, user_id=user_id,
+                      logtype=LogType.PLAYER)
+
+    @staticmethod
     def do(msg: str, end: str = '\n',
            guild_id: int = 0, user_id: int = 0,
            logtype: LogType = LogType.INFO) -> None:
         """Creates a log input, saving if it ends in a new line."""
         if logtype == LogType.INFO:
-            Log._print(f"[info] {msg}", end=end)
+            Log._print(f"[{logtype.name.lower()}] {msg}", end=end)
         if logtype == LogType.DEBUG:
-            Log._debug(f"[debug] {msg}", end=end)
+            Log._debug(f"[{logtype.name.lower()}] {msg}", end=end)
         if logtype == LogType.ERROR:
-            Log._error(f"[error] {msg}", end=end)
-        if logtype == LogType.COMMAND:
-            Log._print(f"[command] {msg}", end=end)
-        if logtype == LogType.ACTION:
-            Log._print(f"[action] {msg}", end=end)
+            Log._error(f"[{logtype.name.lower()}] {msg}", end=end)
+        if logtype >= LogType.COMMAND:
+            Log._print(f"[{logtype.name.lower()}] {msg}", end=end)
 
         # Ignore in-line messages.
         if end != '\n':
@@ -163,10 +170,20 @@ class Manager():
         Manager._db = LogDb(dbname)
 
     @staticmethod
-    def get_guild(guild_id: int, logtype: LogType, amount: int) -> list[Log]:
+    def get_guild_type(guild_id: int, logtype: LogType,
+                       amount: int) -> list[Log]:
         """Get logs based on its guild and type."""
         if not Manager._db:
             return []
-        raw_logs = Manager._db.find_guild(guild_id, int(logtype))
+        raw_logs = Manager._db.find_guild_type(guild_id, int(logtype))
+        logs = [Log(l) for l in raw_logs]
+        return logs[-amount:]
+
+    @staticmethod
+    def get_guild_user(guild_id: int, user_id: int, amount: int) -> list[Log]:
+        """Get logs based on its guild and user."""
+        if not Manager._db:
+            return []
+        raw_logs = Manager._db.find_guild_user(guild_id, user_id)
         logs = [Log(l) for l in raw_logs]
         return logs[-amount:]

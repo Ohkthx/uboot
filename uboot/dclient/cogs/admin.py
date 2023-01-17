@@ -117,13 +117,24 @@ class Admin(commands.Cog):
             Log.error(f"Error happened while performing SUDO, {err}",
                       guild_id=ctx.guild.id, user_id=user.id)
 
-    @server.command(name="log", aliases=("logs",))
-    async def log(self, ctx: commands.Context,
-                  logtype: int = param(
-                      description="Type of log to display."),
-                  amount: int = param(
-                      description="Amount of logs to display."),
-                  ) -> None:
+    @server.group(name="log", aliases=("logs",))
+    async def logs(self, ctx: commands.Context) -> None:
+        """Gets various logs based on its type or the user id provided.
+
+        examples:
+            (prefix)server logs type 1 20
+            (prefix)server logs user 123456789 20
+        """
+        if ctx.invoked_subcommand is None:
+            await ctx.send('invalid logs command.')
+
+    @logs.command(name="type")
+    async def logs_type(self, ctx: commands.Context,
+                        logtype: int = param(
+                            description="Type of log to display."),
+                        amount: int = param(
+                            description="Amount of logs to display."),
+                        ) -> None:
         """Shows logs for the server based on type.
         Types are numeric values:
             1: INFO
@@ -131,15 +142,23 @@ class Admin(commands.Cog):
             3: ERROR
             4: COMMAND
             5: ACTION
+            6: PLAYER
 
         example:
-            (prefix)server log 1 10
+            (prefix)server logs type 1 10
         """
-        if not ctx.guild:
+        if not ctx.guild or amount < 1:
             return
 
-        tlog = LogType(logtype)
-        logs = LogManager.get_guild(ctx.guild.id, tlog, amount)
+        tlog: LogType = LogType.INFO
+
+        try:
+            tlog = LogType(logtype)
+        except BaseException:
+            await ctx.send(f"Invalid log type of '{logtype}'", delete_after=30)
+            return
+
+        logs = LogManager.get_guild_type(ctx.guild.id, tlog, amount)
         log_res: list[str] = []
         for log in logs:
             log_res.append(f"> [{log.timestamp}] {log.message}")
@@ -154,6 +173,40 @@ class Admin(commands.Cog):
             return
 
         embed = discord.Embed(title=f"Server {tlog.name} Logs")
+        embed.color = discord.Colour.blurple()
+        embed.description = log_full
+        await ctx.send(embed=embed)
+
+    @logs.command(name="user")
+    async def logs_user(self, ctx: commands.Context,
+                        user_id: int = param(
+                            description="Id of the user to pull logs for."),
+                        amount: int = param(
+                            description="Amount of logs to display."),
+                        ) -> None:
+        """Shows logs for the server based on the user id provided.
+
+        example:
+            (prefix)server logs user 1234567890 10
+        """
+        if not ctx.guild or amount < 1:
+            return
+
+        logs = LogManager.get_guild_user(ctx.guild.id, user_id, amount)
+        log_res: list[str] = []
+        for log in logs:
+            log_res.append(f"> [{log.timestamp}] {log.message}")
+
+        log_full: str = "> none"
+        if len(log_res) > 0:
+            log_full = '\n'.join(log_res)
+
+        if len(log_full) > 2000:
+            await ctx.send("Too large of a request of logs.",
+                           delete_after=30)
+            return
+
+        embed = discord.Embed(title=f"Server Logs for User: {user_id}")
         embed.color = discord.Colour.blurple()
         embed.description = log_full
         await ctx.send(embed=embed)

@@ -125,7 +125,7 @@ class BankSellDropdown(ui.Select):
             user_l.bank.items = []
             user_l.bank.save()
 
-            Log.action(f"{user} sold all items for {total_value} gp!",
+            Log.player(f"{user} sold all items for {total_value} gp!",
                        guild_id=guild.id, user_id=user.id)
 
             # Update the view.
@@ -151,7 +151,7 @@ class BankSellDropdown(ui.Select):
             user_l.save()
             user_l.bank.save()
 
-            Log.action(f"{user} sold {item.name.title()} for {item.value} gp.",
+            Log.player(f"{user} sold {item.name.title()} for {item.value} gp.",
                        guild_id=guild.id, user_id=user.id)
 
         # Update the view.
@@ -234,7 +234,7 @@ class BankUseDropdown(ui.Select):
                 user_l.save()
             user_l.bank.save()
 
-            Log.action(f"{user} {use_text} {item.name.title()}, {granting}.",
+            Log.player(f"{user} {use_text} {item.name.title()}, {granting}.",
                        guild_id=guild.id, user_id=user.id)
 
             view = BankView(interaction.client)
@@ -255,7 +255,7 @@ class BankUseDropdown(ui.Select):
                 user_l.save()
             user_l.bank.save()
 
-        Log.action(f"{user} {use_text} {item.name.title()}",
+        Log.player(f"{user} {use_text} {item.name.title()}",
                    guild_id=guild.id, user_id=user.id)
 
         view = BankView(interaction.client)

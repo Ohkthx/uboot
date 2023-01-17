@@ -25,9 +25,14 @@ class LogDb(DbSocket):
             "VALUES(?, ?, ?, ?, ?)"
         self.query['find_many'] = "SELECT * FROM {table_name} WHERE "
 
-    def find_guild(self, guild_id: int, logtype: int) -> list[LogRaw]:
+    def find_guild_type(self, guild_id: int, logtype: int) -> list[LogRaw]:
         """Finds guild logs based on type."""
         where_key = f"guild_id = {guild_id} AND type = {logtype}"
+        return self._find_many(where_key)
+
+    def find_guild_user(self, guild_id: int, user_id: int) -> list[LogRaw]:
+        """Finds guild logs based on a user id."""
+        where_key = f"guild_id = {guild_id} AND user_id = {user_id}"
         return self._find_many(where_key)
 
     def find_one(self, guild_id: int) -> Optional[LogRaw]:
