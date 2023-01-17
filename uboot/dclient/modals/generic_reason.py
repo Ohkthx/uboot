@@ -6,6 +6,7 @@ import discord
 from discord import ui
 
 from dclient.views.dm import DMDeleteView
+from managers.logs import Log
 
 
 class ReasonModal(ui.Modal, title='Reason'):
@@ -53,12 +54,15 @@ class ReasonModal(ui.Modal, title='Reason'):
                 from_user = ""
                 if self.from_user:
                     from_user = str(self.from_user)
-                print(f"Could not send generic reason: {exc}")
-                print(f"Other details:\n"
-                      f"to: {self.to_user}\n"
-                      f"from: {from_user}\n"
-                      f"title: {self.text_title}\n"
-                      f"reason: {self.reason.value}")
+                Log.error(f"Could not send generic reason: {exc}",
+                          user_id=self.to_user.id)
+                Log.error(f"Other details:\n"
+                          f"to: {self.to_user}\n"
+                          f"from: {from_user}\n"
+                          f"title: {self.text_title}\n"
+                          f"reason: {self.reason.value}",
+                          user_id=self.to_user.id
+                          )
         await res.send_message(embed=embed)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:

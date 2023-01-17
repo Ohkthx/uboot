@@ -7,13 +7,13 @@ from discord.ext import commands
 from discord.ext.commands import param
 
 from managers import users, settings, react_roles, entities
+from managers.logs import Log
 from dclient import DiscordBot
 from dclient.destructable import DestructableManager, Destructable
 from dclient.helper import get_member, get_message, get_role, get_user
 from dclient.views.gamble import GambleView, gamble, ExtractedBet
 from dclient.views.dm import DMDeleteView
 from dclient.views.user import UserView, BankView
-from utils import Log
 
 
 async def check_minigame(client: discord.Client,
@@ -226,8 +226,13 @@ class User(commands.Cog):
         # Update with a new taunt attempt.
         user_l.last_taunt = datetime.now()
 
+        # Allow any powerhour to increase spawn chance.
+        spawn_value: int = 0
+        if user_l.powerhour or self.bot.powerhours.get(ctx.guild.id):
+            spawn_value = 1
+
         # Check if we can spawn a mob.
-        if random.randint(0, 4) != 0:
+        if random.randint(0, 4) <= spawn_value:
             await ctx.reply("No nearby enemies react to your taunt.",
                             delete_after=30)
             return
@@ -667,7 +672,8 @@ class User(commands.Cog):
             try:
                 await winner.edit(roles=roles)
             except BaseException as exc:
-                Log.print(f"Could not add {winner} to winning role.\n{exc}")
+                Log.error(f"Could not add {winner} to winning role.\n{exc}",
+                          guild_id=guild.id, user_id=winner.id)
 
         full_text = '\n'.join(winner_text)
         # Format and print winners.
@@ -692,8 +698,9 @@ class User(commands.Cog):
                 view = DMDeleteView(ctx.bot)
                 await winner.send(embed=embed, view=view)
             except BaseException as exc:
-                Log.print(f"Could not notify {winner} via DM of lotto win.\n"
-                          f"{exc}")
+                Log.error(f"Could not notify {winner} via DM of lotto win.\n"
+                          f"{exc}",
+                          guild_id=guild.id, user_id=winner.id)
 
     @commands.guild_only()
     @commands.has_guild_permissions(manage_messages=True)

@@ -217,6 +217,11 @@ class User():
         return min(total_offset, 5)
 
     @property
+    def gold_multiplier_powerhour(self) -> float:
+        """Get the users modified powerhour gold per message."""
+        return 2.0
+
+    @property
     def gold_multiplier(self) -> float:
         """Generates a gold multiplier based on the players level."""
         if self.isbot:
@@ -231,7 +236,7 @@ class User():
         if self.powerhour:
             time_diff = now - self.powerhour
             if time_diff < timedelta(hours=1):
-                multiplier = 3.0
+                multiplier += self.gold_multiplier_powerhour
             else:
                 self.powerhour = None
 
@@ -242,7 +247,7 @@ class User():
 
         # Gold is not on cooldown, add.
         total_multiplier = self.gold_multiplier
-        if multiplier > 0:
+        if multiplier >= 1.0:
             total_multiplier += (multiplier - 1)
         self.gold = self._gold + (1 * total_multiplier)
         self.last_message = now

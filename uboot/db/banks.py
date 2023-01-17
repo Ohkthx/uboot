@@ -4,7 +4,7 @@ from typing import Optional
 from .db_socket import DbSocket, clean_name
 
 # 0 : int - user_id
-# 1: str - items
+# 1 : str - items
 BankRaw = tuple[int, str]
 
 

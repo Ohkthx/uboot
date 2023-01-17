@@ -5,7 +5,7 @@ from enum import Enum
 
 import discord
 
-from utils import Log
+from managers.logs import Log
 
 DelCallback = Callable[[Optional[discord.Message]], Awaitable[Any]]
 

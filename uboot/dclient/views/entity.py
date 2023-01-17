@@ -8,8 +8,9 @@ from discord import ui
 from dclient.helper import get_role
 from dclient.destructable import DestructableManager
 from managers import users, entities, settings, images
-from managers.loot_tables import Chest, Items, Item, Material
+from managers.loot_tables import Chest, Items, Item
 from managers.locations import Area
+from managers.logs import Log
 
 # Flavour winning text.
 win_text: list[str] = ["slays", "defeats", "conquers", "strikes down", "kills",
@@ -94,7 +95,7 @@ class Party():
         return [u for u in list(self.helpers.values()) if u.total_damage() > 0]
 
 
-def loot_text(all_loot: list[Item], indent: int,
+def loot_text(user: discord.Member, all_loot: list[Item], indent: int,
               new_area: Optional[Area]) -> str:
     """Generates all of the text for the loot acquired."""
     spacer: str = "ㅤ" * indent
@@ -118,9 +119,11 @@ def loot_text(all_loot: list[Item], indent: int,
             name = f"NEW AREA FOUND: {area_name}"
 
         item_texts.append(f"> {spacer}{lfeed} **{name}**{amt_text}")
+        Log.action(f"{user} looted {name}{amt_text}",
+                   guild_id=user.guild.id, user_id=user.id)
 
         if item.type == Items.CHEST and isinstance(item, Chest):
-            tchest_text = loot_text(item.items, indent + 1, new_area)
+            tchest_text = loot_text(user, item.items, indent + 1, new_area)
             item_texts.append(tchest_text)
 
     # Combine the text.
@@ -138,6 +141,9 @@ def loot(party: Party) -> str:
     entity = party.entity
     leader_user = party.leader.user
     leader = users.Manager.get(leader_user.id)
+
+    Log.action(f"{leader_user} slayed {entity.name}.",
+               guild_id=leader_user.guild.id, user_id=leader_user.id)
 
     # Check if the leader loses durability on their weapon.
     loss_dur: bool = False
@@ -168,7 +174,7 @@ def loot(party: Party) -> str:
         all_loot = [l for l in all_loot if l.type != Items.LOCATION]
 
     # Creates the text for loot.
-    full_loot = loot_text(all_loot, 0, new_area)
+    full_loot = loot_text(leader_user, all_loot, 0, new_area)
 
     # Additional notes:
     notes_list: list[str] = []
@@ -247,9 +253,10 @@ class Dropdown(ui.Select):
                                    delete_after=30)
             return
 
+        guild_id: int = interaction.guild.id if interaction.guild else 0
         if not msg or not msg.reference or not msg.reference.cached_message:
-            print("Message cache failed on entity spawning.")
-            return
+            return Log.error("Message cache failed on entity spawning.",
+                             guild_id=guild_id, user_id=self.user.id)
 
         cached = msg.reference.cached_message
 
@@ -292,7 +299,8 @@ class Dropdown(ui.Select):
             embed.description = loot(party)
             embed.set_footer(text=f"Current gold: {self.user_l.gold} gp")
         elif self.values[0].lower() == 'flee':
-            pass
+            Log.action(f"{self.user} fled {self.entity.name}.",
+                       guild_id=guild_id, user_id=self.user.id)
         else:
             embed.color = discord.Colour.from_str("#F1C800")
             embed.description = "You perform some unknown action?! What a feat."
@@ -383,6 +391,9 @@ class HelpMeView(ui.View):
 
         party = self.party
         leader = party.leader
+        Log.action(f"{leader.user} died to {party.entity.name}.",
+                   guild_id=leader.user.guild.id,
+                   user_id=leader.user.id)
 
         # Generate all of the gold that was lost text.
         dead_text: list[str] = []
@@ -494,8 +505,16 @@ class HelpMeView(ui.View):
                                           ephemeral=True, delete_after=15)
 
         if not msg or not msg.reference or not msg.reference.cached_message:
-            print("Message cache failed on entity spawning.")
-            return
+            return Log.error("Message cache failed on entity spawning.",
+                             guild_id=guild.id, user_id=interaction.user.id)
+
+        # Attempt to get the image for the entity.
+        file: Optional[discord.File] = None
+        if self.entity.image:
+            file = images.Manager.get(self.entity.image)
+
+        Log.action(f"{user} attacked {self.entity.name} for {amount} damage.",
+                   guild_id=user.guild.id, user_id=user.id)
 
         # Cannot do a final blow, so add them as a participant.
         if amount < self.entity.health:
@@ -506,6 +525,9 @@ class HelpMeView(ui.View):
 
             self.party.add_damage(user, amount)
             help_embed = self.get_panel()
+            if file:
+                url = f"attachment://{self.entity.image}"
+                help_embed.set_thumbnail(url=url)
 
             await msg.edit(embed=help_embed)
             return await res.send_message(f"You deal {amount} damage.",
@@ -525,12 +547,9 @@ class HelpMeView(ui.View):
         embed.color = discord.Colour.from_str("#00ff08")
         embed.description = loot(self.party)
 
-        file: Optional[discord.File] = None
-        if self.entity.image:
-            file = images.Manager.get(self.entity.image)
-            if file:
-                url = f"attachment://{self.entity.image}"
-                embed.set_thumbnail(url=url)
+        if file:
+            url = f"attachment://{self.entity.image}"
+            embed.set_thumbnail(url=url)
 
         cached = msg.reference.cached_message
         # Delete the old destructable.

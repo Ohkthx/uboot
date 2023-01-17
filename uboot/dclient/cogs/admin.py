@@ -6,6 +6,7 @@ from discord.ext import commands
 from discord.ext.commands import param
 
 from managers import settings, react_roles
+from managers.logs import Log, LogType, Manager as LogManager
 from dclient import DiscordBot
 from dclient.helper import get_channel, get_message, get_member, get_role, get_role_by_name
 
@@ -113,7 +114,49 @@ class Admin(commands.Cog):
                     self.bot.set_sudoer(user, role, length * 60)
                     return
         except BaseException as err:
-            print(f"ERROR: {err}")
+            Log.error(f"Error happened while performing SUDO, {err}",
+                      guild_id=ctx.guild.id, user_id=user.id)
+
+    @server.command(name="log", aliases=("logs",))
+    async def log(self, ctx: commands.Context,
+                  logtype: int = param(
+                      description="Type of log to display."),
+                  amount: int = param(
+                      description="Amount of logs to display."),
+                  ) -> None:
+        """Shows logs for the server based on type.
+        Types are numeric values:
+            1: INFO
+            2: DEBUG
+            3: ERROR
+            4: COMMAND
+            5: ACTION
+
+        example:
+            (prefix)server log 1 10
+        """
+        if not ctx.guild:
+            return
+
+        tlog = LogType(logtype)
+        logs = LogManager.get_guild(ctx.guild.id, tlog, amount)
+        log_res: list[str] = []
+        for log in logs:
+            log_res.append(f"> [{log.timestamp}] {log.message}")
+
+        log_full: str = "> none"
+        if len(log_res) > 0:
+            log_full = '\n'.join(log_res)
+
+        if len(log_full) > 2000:
+            await ctx.send("Too large of a request of logs.",
+                           delete_after=30)
+            return
+
+        embed = discord.Embed(title=f"Server {tlog.name} Logs")
+        embed.color = discord.Colour.blurple()
+        embed.description = log_full
+        await ctx.send(embed=embed)
 
     @server.command(name='remove', aliases=("rm",))
     async def rm(self, ctx: commands.Context,
@@ -182,7 +225,7 @@ class Admin(commands.Cog):
             (prefix)settings upload [file]
         """
         for attachment in ctx.message.attachments:
-            print(f"{attachment.content_type} {attachment.filename}")
+            Log.debug(f"{attachment.content_type} {attachment.filename}")
         await ctx.send("Not implemented yet.")
 
     @settings.command(name='show')

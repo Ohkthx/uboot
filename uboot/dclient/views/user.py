@@ -7,7 +7,8 @@ from discord import ui
 
 from dclient.helper import get_user
 from managers import users
-from managers.loot_tables import Material, Items
+from managers.loot_tables import Items
+from managers.logs import Log
 
 
 async def extract_user(client: discord.Client,
@@ -69,7 +70,7 @@ class BankSellDropdown(ui.Select):
     def __init__(self, user: users.User) -> None:
         options: list[discord.SelectOption] = []
 
-        all_label = f"All, value: {user.bank.value} gp"
+        all_label = f"All Items, value: {user.bank.value} gp"
         options.append(discord.SelectOption(label=all_label, value='1:1:all'))
         for item in user.bank.items:
             label: str = f"{item.name.title()}, value: {item.value} gp"
@@ -77,16 +78,18 @@ class BankSellDropdown(ui.Select):
             options.append(discord.SelectOption(label=label, value=value))
         options.append(discord.SelectOption(label='None', value='1:0:none'))
         super().__init__(options=options,
-                         placeholder="Sell Items.",
+                         placeholder="Sell Items",
                          custom_id="user_bank_sell_dropdown")
 
     async def callback(self, interaction: discord.Interaction):
         """Called when the menu is selected."""
         res = interaction.response
-        if not interaction.message:
+        msg = interaction.message
+        guild = interaction.guild
+        if not msg or not guild:
             return
 
-        user = await extract_user(interaction.client, interaction.message)
+        user = await extract_user(interaction.client, msg)
         if not user:
             await res.send_message("User could not be identified.",
                                    ephemeral=True,
@@ -121,8 +124,17 @@ class BankSellDropdown(ui.Select):
 
             user_l.bank.items = []
             user_l.bank.save()
-            await res.send_message(f"Sold all items for **{total_value}** gp!")
-            return
+
+            Log.action(f"{user} sold all items for {total_value} gp!",
+                       guild_id=guild.id, user_id=user.id)
+
+            # Update the view.
+            view = BankView(interaction.client)
+            view.set_user(user)
+            await msg.edit(embed=BankView.get_panel(user), view=view)
+
+            return await res.send_message(f"{user} sold all items "
+                                          f"for **{total_value}** gp!")
 
         # Find the item.
         item = next((i for i in user_l.bank.items if i.type == itype and
@@ -139,8 +151,16 @@ class BankSellDropdown(ui.Select):
             user_l.save()
             user_l.bank.save()
 
-        await res.send_message(f"You sold **{item.name.title()}** for "
-                               f"value: {item.value} gp")
+            Log.action(f"{user} sold {item.name.title()} for {item.value} gp.",
+                       guild_id=guild.id, user_id=user.id)
+
+        # Update the view.
+        view = BankView(interaction.client)
+        view.set_user(user)
+        await msg.edit(embed=BankView.get_panel(user), view=view)
+
+        await res.send_message(f"{user} sold **{item.name.title()}** "
+                               f"for {item.value} gp.")
 
 
 class BankUseDropdown(ui.Select):
@@ -157,14 +177,15 @@ class BankUseDropdown(ui.Select):
             options.append(discord.SelectOption(label=label, value=value))
         options.append(discord.SelectOption(label='None', value='1:0:none'))
         super().__init__(options=options,
-                         placeholder="Use / Equip an Item.",
+                         placeholder="Use / Equip Item",
                          custom_id="user_bank_use_dropdown")
 
     async def callback(self, interaction: discord.Interaction):
         """Called when the menu is selected."""
         res = interaction.response
         msg = interaction.message
-        if not msg:
+        guild = interaction.guild
+        if not msg or not guild:
             return
 
         user = await extract_user(interaction.client, msg)
@@ -175,7 +196,7 @@ class BankUseDropdown(ui.Select):
             return
 
         if interaction.user != user:
-            await res.send_message("You cannot sell another users items.",
+            await res.send_message("You cannot use another users items.",
                                    ephemeral=True,
                                    delete_after=20)
             return
@@ -213,12 +234,15 @@ class BankUseDropdown(ui.Select):
                 user_l.save()
             user_l.bank.save()
 
+            Log.action(f"{user} {use_text} {item.name.title()}, {granting}.",
+                       guild_id=guild.id, user_id=user.id)
+
             view = BankView(interaction.client)
             view.set_user(user)
             await msg.edit(embed=BankView.get_panel(user), view=view)
-            await res.send_message(f"You {use_text} **{item.name.title()}**, "
-                                   f"{granting}.")
-            return
+            return await res.send_message(f"{user} {use_text} "
+                                          f"**{item.name.title()}**, "
+                                          f"{granting}.")
 
         # Remove the item from the user.
         if user_l.bank.remove_item(Items(itype), iname, ivalue):
@@ -231,10 +255,13 @@ class BankUseDropdown(ui.Select):
                 user_l.save()
             user_l.bank.save()
 
+        Log.action(f"{user} {use_text} {item.name.title()}",
+                   guild_id=guild.id, user_id=user.id)
+
         view = BankView(interaction.client)
         view.set_user(user)
         await msg.edit(embed=BankView.get_panel(user), view=view)
-        await res.send_message(f"You {use_text} **{item.name.title()}**")
+        await res.send_message(f"{user} {use_text} **{item.name.title()}**.")
 
 
 class UserView(ui.View):
@@ -350,7 +377,7 @@ class BankView(ui.View):
             lfeed = '└' if n + 1 == len(user_l.bank.items) else '├'
             left: str = ""
             if item.isconsumable:
-                left = "remaining: "
+                left = "charges: "
             elif item.isusable:
                 left = "durability: "
             uses = f" [{left}{item.uses} / {item.uses_max}]" if item.isusable else ""
@@ -362,6 +389,9 @@ class BankView(ui.View):
         if len(items) == 0:
             items_full = '> └ **none**'
 
+        # Users gold per message for a powerhour.
+        gpm_ph = user_l.gold_multiplier + user_l.gold_multiplier_powerhour
+
         # Build the embed.
         embed = discord.Embed()
         embed.color = discord.Colour.from_str("#00ff08")
@@ -370,8 +400,10 @@ class BankView(ui.View):
         embed.description = f"**{user}{title}**\n\n"\
             f"**id**: {user.id}\n"\
             f"**gold**: {user_l.gold} gp\n"\
-            f"**weapon**: {weapon_name.lower()}\n"\
-            f"**powerhour**: {powerhour_status}\n\n"\
+            f"**gold per message (gpm)**: {(user_l.gold_multiplier):0.2f}\n"\
+            f"**gpm (powerhour)**: {gpm_ph:0.2f}\n"\
+            f"**powerhour**: {powerhour_status}\n"\
+            f"**weapon**: {weapon_name.lower()}\n\n"\
             f"**Bank Capacity**: {user_l.bank.capacity}\n"\
             f"**Banked Items**: {len(user_l.bank.items)}\n"\
             f"**Banked Value**: {user_l.bank.value} gp\n\n"\

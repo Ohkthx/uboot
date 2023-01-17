@@ -9,12 +9,12 @@ import aiohttp
 import discord
 from discord import RawReactionActionEvent
 from discord.ext import commands, tasks
-from dclient.views.dm import DMResponseView, DMDeleteView
+from dclient.views.dm import DMDeleteView
 
-from utils import Log
 from config import DiscordConfig
 from managers import (settings, users, react_roles, tickets, subguilds,
                       entities, aliases, images, banks)
+from managers.logs import Log
 from .views.generic_panels import SuggestionView, BasicThreadView
 from .views.entity import EntityView, HelpMeView
 from .ccserver import CCServer
@@ -56,7 +56,7 @@ class Sudoer():
         try:
             await self.user.remove_roles(self.role)
         except BaseException:
-            Log.debug("Could not remove the role from the sudoer.")
+            Log.error("Could not remove the role from the sudoer.")
 
 
 class Powerhour():
@@ -197,6 +197,9 @@ class DiscordBot(commands.Bot):
 
         user_l.monsters += 1
         user_l.save()
+
+        Log.info(f"Spawned {mob.name} on {user}.",
+                 guild_id=user.guild.id, user_id=user.id)
 
     async def setup_hook(self) -> None:
         """Overrides the setup hook, loading all extensions (views/cogs) and
@@ -371,16 +374,20 @@ class DiscordBot(commands.Bot):
         """Triggered on 'on_message' event. Used to process commands and
         add message and gold to users. Also logs DMs sent to the bot.
         """
-        # Process the commands if it is a command message.
-        await self.process_commands(msg)
-
         # Do not add messages or gold if the user is the bot.
         if not self.user or msg.author == self.user or msg.author.bot:
             return
 
-        # Do not process if it is a command.
-        if self.user in msg.mentions or msg.content.startswith(self.prefix):
-            return
+        # Process if it is a command.
+        ctx = await self.get_context(msg)
+        if ctx.command:
+            await self.invoke(ctx)
+
+            result: str = "failed" if ctx.command_failed else "called"
+            guild_id = 0 if not msg.guild else msg.guild.id
+            cmd = ctx.command.qualified_name
+            return Log.command(f"{msg.author} {result} the ({cmd}) command.",
+                               guild_id=guild_id, user_id=msg.author.id)
 
         # Set the 'owner' for the bot.
         if not self.owner_id:
@@ -390,8 +397,8 @@ class DiscordBot(commands.Bot):
 
         # Log all DMs sent to the bot.
         if self.ccserver and self.ccserver.is_dm(msg):
-            # if not self.owner_id or user.id == self.owner_id:
-            #    return
+            if not self.owner_id or user.id == self.owner_id:
+                return
 
             return await self.ccserver.dmlog(msg)
 
@@ -419,6 +426,7 @@ class DiscordBot(commands.Bot):
 
         if user.incombat:
             return
+
         # Try to spawn an entity to attack the player.
         loc = user.c_location
         difficulty = user.difficulty
@@ -499,12 +507,18 @@ class DiscordBot(commands.Bot):
 
         try:
             if reverse:
+                Log.action(f"Removing {role.name} role from {user}.",
+                           guild_id=role.guild.id, user_id=user.id)
                 await user.remove_roles(role)
             else:
+                Log.action(f"Adding {role.name} role to {user}.",
+                           guild_id=role.guild.id, user_id=user.id)
                 await user.add_roles(role)
         except BaseException as exc:
             action = 'add' if not reverse else 'remove'
-            Log.print(f"Could not {action} {role.name} to {str(user)}.\n{exc}")
+            Log.error(f"Could not {action} {role.name} role to {str(user)}.\n"
+                      f"{exc}",
+                      guild_id=role.guild.id, user_id=user.id)
 
     async def on_raw_reaction_remove(self, payload: RawReactionActionEvent):
         """Triggered on 'on_raw_reaction_remove' event. If is a bound Reaction
@@ -519,12 +533,18 @@ class DiscordBot(commands.Bot):
 
         try:
             if reverse:
+                Log.action(f"Adding {role.name} role to {user}.",
+                           guild_id=role.guild.id, user_id=user.id)
                 await user.add_roles(role)
             else:
+                Log.action(f"Removing {role.name} role from {user}.",
+                           guild_id=role.guild.id, user_id=user.id)
                 await user.remove_roles(role)
         except BaseException as exc:
             action = 'add' if not reverse else 'remove'
-            Log.print(f"Could not {action} {role.name} to {str(user)}.\n{exc}")
+            Log.error(f"Could not {action} {role.name} role to {str(user)}.\n"
+                      f"{exc}",
+                      guild_id=role.guild.id, user_id=user.id)
 
     @staticmethod
     def init_run(config: DiscordConfig) -> None:
@@ -540,4 +560,4 @@ class DiscordBot(commands.Bot):
             dbot.run(config.token, log_handler=handler,
                      log_level=logging.DEBUG)
         except KeyboardInterrupt:
-            Log.print("Discord Bot killing self globally.")
+            Log.debug("Discord Bot killing self globally.")

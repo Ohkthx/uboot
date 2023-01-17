@@ -4,7 +4,6 @@ from typing import Optional
 import discord
 from discord import ForumChannel, TextChannel
 
-from utils import Log
 from managers import react_roles
 
 
