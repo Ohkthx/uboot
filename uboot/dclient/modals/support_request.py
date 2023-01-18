@@ -42,7 +42,7 @@ class SupportRequestModal(ui.Modal, title='Support Request'):
         setting = settings.Manager.get(guild.id)
 
         # Make sure the support channel exists.
-        channel = await get_channel(client, setting.support_channel_id)
+        channel = await get_channel(client, setting.support.channel_id)
         if not channel:
             return await res.send_message("Support channel may be unset.",
                                           ephemeral=True,
@@ -55,7 +55,7 @@ class SupportRequestModal(ui.Modal, title='Support Request'):
                                           delete_after=60)
 
         # Get the role that will have access to give assistance.
-        role = guild.get_role(setting.support_role_id)
+        role = guild.get_role(setting.support.role_id)
         if not role:
             return await res.send_message("Support role may be unset.",
                                           ephemeral=True,

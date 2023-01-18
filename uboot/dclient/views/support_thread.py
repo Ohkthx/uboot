@@ -91,7 +91,7 @@ class SupportThreadView(ui.View):
             return
 
         # Get the support role required to perform the close.
-        role_id = settings.Manager.get(guild.id).support_role_id
+        role_id = settings.Manager.get(guild.id).support.role_id
         role = await get_role(self.bot, guild.id, role_id)
         if not role:
             return

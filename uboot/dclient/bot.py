@@ -132,7 +132,6 @@ class DiscordBot(commands.Bot):
         tickets.Manager.init("uboot.sqlite3")
         banks.Manager.init("uboot.sqlite3")
         users.Manager.init("uboot.sqlite3")
-        settings.Manager.init("uboot.sqlite3", prefix)
         react_roles.Manager.init("uboot.sqlite3")
         subguilds.Manager.init("uboot.sqlite3")
         aliases.Manager.init("uboot.sqlite3")
@@ -212,6 +211,9 @@ class DiscordBot(commands.Bot):
 
         if self.owner_id:
             self.owner = await get_user(self, self.owner_id)
+
+        for guild in self.guilds:
+            settings.Manager.init(guild.id)
 
         # Set up the CCServer
         if self.owner:
@@ -324,11 +326,11 @@ class DiscordBot(commands.Bot):
         """
         for guild in self.guilds:
             setting = settings.Manager.get(guild.id)
-            if 0 in (setting.market_channel_id, setting.expiration_days):
+            if 0 in (setting.market.channel_id, setting.market.expiration):
                 continue
 
             # Get the market channel and make sure it is a forum channel.
-            market_ch = await get_channel(self, setting.market_channel_id)
+            market_ch = await get_channel(self, setting.market.channel_id)
             if not market_ch or not isinstance(
                     market_ch, discord.ForumChannel):
                 return
@@ -341,7 +343,7 @@ class DiscordBot(commands.Bot):
 
                 # Calculate if it is expired.
                 elapsed = datetime.now(timezone.utc) - thread.created_at
-                if elapsed < timedelta(days=setting.expiration_days):
+                if elapsed < timedelta(days=setting.market.expiration):
                     # Not expired, continue.
                     continue
 
@@ -419,7 +421,7 @@ class DiscordBot(commands.Bot):
         user.save()
 
         # Check that the user has the minigame role.
-        role_id = settings.Manager.get(msg.guild.id).minigame_role_id
+        role_id = settings.Manager.get(msg.guild.id).minigame.role_id
         minigame_role = await get_role(self, msg.guild.id, role_id)
         if not minigame_role or minigame_role not in msg.author.roles:
             return
@@ -454,7 +456,7 @@ class DiscordBot(commands.Bot):
         setting = settings.Manager.get(thread.guild.id)
 
         # If it is a suggestion channel... add the panel.
-        c_id = setting.suggestion_channel_id
+        c_id = setting.suggestion.channel_id
         if c_id != 0 and c_id == thread.parent.id:
             time.sleep(1)
             # Send the view for a suggestion channel.

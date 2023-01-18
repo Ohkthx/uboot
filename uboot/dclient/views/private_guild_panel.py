@@ -38,7 +38,7 @@ async def create_subguild(bot: DiscordBot,
     res = interaction.response
 
     # Validate the sub guild channel exists (used for signups and promotions.)
-    channel = await get_channel(bot, setting.sub_guild_channel_id)
+    channel = await get_channel(bot, setting.subguild.channel_id)
     if not channel:
         await res.send_message("Guild channel may be unset.",
                                ephemeral=True,
@@ -131,7 +131,7 @@ class GuildManagerView(ui.View):
         setting = settings.Manager.get(guild.id)
 
         # Validate the channels that all private threads exist in.
-        channel = await get_channel(self.bot, setting.sub_guild_channel_id)
+        channel = await get_channel(self.bot, setting.subguild.channel_id)
         if not channel:
             return await res.send_message("Guild channel may be unset.",
                                           ephemeral=True,
@@ -224,7 +224,7 @@ class GuildManagerView(ui.View):
         setting = settings.Manager.get(guild.id)
 
         # Validate the channel that all sub guilds exist in.
-        channel = await get_channel(self.bot, setting.sub_guild_channel_id)
+        channel = await get_channel(self.bot, setting.subguild.channel_id)
         if not channel:
             return await res.send_message("Guild channel may be unset.",
                                           ephemeral=True,
@@ -406,7 +406,7 @@ class GuildPromotionView(ui.View):
         setting = settings.Manager.get(interaction.guild.id)
 
         # Validate the channels.
-        channel = await get_channel(self.bot, setting.sub_guild_channel_id)
+        channel = await get_channel(self.bot, setting.subguild.channel_id)
         if not channel:
             return await res.send_message("Guild channel may be unset.",
                                           ephemeral=True,

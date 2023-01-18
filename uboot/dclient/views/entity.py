@@ -475,7 +475,7 @@ class HelpMeView(ui.View):
 
         # Check that the user has the minigame role.
         setting = settings.Manager.get(guild.id)
-        role_id = setting.minigame_role_id
+        role_id = setting.minigame.role_id
         minigame_role: Optional[discord.Role] = None
 
         # Validate the role is set to play.
@@ -490,8 +490,8 @@ class HelpMeView(ui.View):
         if minigame_role not in user.roles:
             # Shows and optional text for easy role access.
             in_channel: str = ""
-            if setting.react_role_channel_id > 0:
-                in_channel = f"\nGo to <#{setting.react_role_channel_id}> to get the"\
+            if setting.reactrole.channel_id > 0:
+                in_channel = f"\nGo to <#{setting.reactrole.channel_id}> to get the"\
                     " required role."
             await res.send_message(f"You need to select the "
                                    f"**{minigame_role}** role to do that. "

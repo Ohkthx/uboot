@@ -1,4 +1,5 @@
 """Admin and Staff commands for managing the server."""
+import os
 from datetime import datetime, timezone
 
 import discord
@@ -277,9 +278,27 @@ class Admin(commands.Cog):
         example:
             (prefix)settings upload [file]
         """
+        guild = ctx.guild
+        if not guild:
+            return
+
+        if len(ctx.message.attachments) == 0:
+            await ctx.send("No file attached.", delete_after=30)
+            return
+
         for attachment in ctx.message.attachments:
-            Log.debug(f"{attachment.content_type} {attachment.filename}")
-        await ctx.send("Not implemented yet.")
+            if not os.path.exists("configs"):
+                os.makedirs("configs")
+
+            try:
+                with open(f"configs/temp_{guild.id}.ini", mode='wb') as bfile:
+                    bfile.write(await attachment.read())
+                settings.Manager.get(guild.id).update_config()
+            except BaseException as exc:
+                msg = f"Could not complete upload command, {exc}"
+                await ctx.send(msg, delete_after=30)
+                return Log.error(msg, guild_id=guild.id)
+        await ctx.send("Guild settings updated successfully.")
 
     @settings.command(name='show')
     async def settings_show(self, ctx: commands.Context) -> None:
@@ -288,414 +307,9 @@ class Admin(commands.Cog):
             return
         setting = settings.Manager.get(ctx.guild.id)
 
-        # combines all of the server settings into a single message.
-        items: list[str] = []
-        for key, value in setting.__dict__.items():
-            if value == 0:
-                value = "unset"
-            key = key.replace('_', ' ').title()
-            items.append(f"{key}: {value}")
-        msg = '\n'.join(items)
-        await ctx.send(f"```{msg}```")
-
-    @settings.command(name='market-channel')
-    async def market_channel(self, ctx: commands.Context,
-                             channel: discord.abc.GuildChannel = param(
-                                 description="Market channel",
-                                 default=None)) -> None:
-        """Sets the channel id for the current market channel.
-        Channel must be a Forum Channel.
-        example:
-            (prefix)server settings market-channel #market
-        """
-        if not ctx.guild:
-            return
-
-        channel_id = 0
-        channel_str = "unset"
-        if channel:
-            # Make sure the channel is the correct type.
-            if not isinstance(channel, discord.ForumChannel):
-                await ctx.send("Channel is not a 'Forum Channel'")
-                return
-            channel_id = channel.id
-            channel_str = f"<#{channel.id}>"
-
-        # Save the settings for the guild.
-        setting = settings.Manager.get(ctx.guild.id)
-        setting.market_channel_id = channel_id
-        setting.save()
-        await ctx.send(f"Market channel updated to: {channel_str}")
-
-    @settings.command(name='react-role-channel')
-    async def react_role_channel(self, ctx: commands.Context,
-                                 channel: discord.abc.GuildChannel = param(
-                                     description="Channel for Emoji "
-                                     "Reaction Roles.",
-                                     default=None)) -> None:
-        """Sets the channel id for the emoji reaction roles.
-        Channel must be a Text Channel.
-        example:
-            (prefix)server settings react-role-channel #role-selection
-        """
-        if not ctx.guild:
-            return
-
-        channel_id = 0
-        channel_str = "unset"
-        if channel:
-            # Make sure the channel is the correct type.
-            if not isinstance(channel, discord.TextChannel):
-                await ctx.send("Channel is not a basic 'Text Channel'")
-                return
-            channel_id = channel.id
-            channel_str = f"<#{channel.id}>"
-
-        # Save the settings for the guild.
-        setting = settings.Manager.get(ctx.guild.id)
-        setting.react_role_channel_id = channel_id
-        setting.save()
-        await ctx.send(f"React-Role channel updated to: {channel_str}")
-
-    @settings.command(name='react-role-msg')
-    async def react_role_msg(self, ctx: commands.Context,
-                             message_id: int = param(
-                                 description="Message Id for Emoji Reaction Roles.")):
-        """Sets the message id for emoji reaction roles.
-        example:
-            (prefix)server settings react-role-msg 1234567890
-        """
-        if not ctx.guild:
-            return
-        if message_id < 0:
-            await ctx.send("Message Id must be >= 0. Disable by setting to 0.")
-            return
-
-        # Make sure the channel has been set already.
-        setting = settings.Manager.get(ctx.guild.id)
-        channel_id = setting.react_role_channel_id
-        if channel_id <= 0 and message_id != 0:
-            await ctx.send("Please the the react-role channel id first.")
-            return
-
-        # Check if channel exists.
-        msg_str = "unset"
-        if message_id != 0:
-            msg_str = f"'{message_id}'"
-            channel = await get_channel(self.bot, channel_id)
-            if not channel:
-                return
-
-            # Make sure the channel is the correct type.
-            if not isinstance(channel, discord.TextChannel):
-                await ctx.send("React-Role Channel is not a basic 'Text Channel'")
-                return
-
-            # Validate that the message exists.
-            msg = await get_message(self.bot, channel_id, message_id)
-            if not msg:
-                await ctx.send(f"Could not discover message '{message_id}', "
-                               "settings were not applied.")
-                return
-
-        # Save the settings for the guild.
-        setting.react_role_msg_id = message_id
-        setting.save()
-        await ctx.send(f"React-Role Message Id updated to: {msg_str}")
-
-    @settings.command(name='expiration')
-    async def market_expiration(self, ctx: commands.Context,
-                                days: int = param(
-                                    description="Amount of days till "
-                                    "market posts expire.")):
-        """Sets the amount of days until market posts are set to expire.
-        example:
-            (prefix)server settings expiration 15
-        """
-        if not ctx.guild:
-            return
-        if days < 0:
-            await ctx.send("Days must be >= 0. Disable by setting to 0.")
-            return
-
-        # Save the settings for the guild.
-        setting = settings.Manager.get(ctx.guild.id)
-        setting.expiration_days = days
-        setting.save()
-
-        days_str = "unset"
-        if days > 0:
-            days_str = f"{days}"
-        await ctx.send(f"Expiration Days updated to: {days_str}")
-
-    @settings.command(name='support-channel')
-    async def support_channel(self, ctx: commands.Context,
-                              channel: discord.abc.GuildChannel = param(
-                                  description="Channel Id of the Support.",
-                                  default=None)) -> None:
-        """Sets the channel id for the current support channel.
-        Channel must be a Text Channel.
-        example:
-            (prefix)server settings support-channel #support
-        """
-        if not ctx.guild:
-            return
-
-        channel_id = 0
-        channel_str = "unset"
-        if channel:
-            # Make sure the channel is the correct type.
-            if not isinstance(channel, discord.TextChannel):
-                await ctx.send("Channel is not a basic 'Text Channel'")
-                return
-            channel_id = channel.id
-            channel_str = f"<#{channel.id}>"
-
-        # Save the settings for the guild.
-        setting = settings.Manager.get(ctx.guild.id)
-        setting.support_channel_id = channel_id
-        setting.save()
-        await ctx.send(f"Support channel updated to: {channel_str}")
-
-    @settings.command(name='support-role')
-    async def support_role(self, ctx: commands.Context,
-                           role: discord.Role = param(
-                               description="Role of the Support.",
-                               default=None)) -> None:
-        """Sets the role id for the current support role.
-        example:
-            (prefix)server settings support-role @admins
-        """
-        if not ctx.guild:
-            return
-
-        role_id = 0
-        role_str = "unset"
-        if role:
-            role_id = role.id
-            role_str = f"<@&{role.id}>"
-
-        # Save the settings for the guild.
-        setting = settings.Manager.get(ctx.guild.id)
-        setting.support_role_id = role_id
-        setting.save()
-        await ctx.send(f"Support Role updated to: {role_str}")
-
-    @settings.command(name='suggestion-channel')
-    async def suggestion_channel(self, ctx: commands.Context,
-                                 channel: discord.abc.GuildChannel = param(
-                                     description="Channel Id of the Suggesitons.",
-                                     default=None)) -> None:
-        """Sets the channel id for the current suggestion channel.
-        Channel must be a Forum Channel.
-        example:
-            (prefix)server settings suggestion-channel #suggestion-forum
-        """
-        if not ctx.guild:
-            return
-
-        channel_id = 0
-        channel_str = "unset"
-        if channel:
-            # Make sure the channel is the correct type.
-            if not isinstance(channel, discord.ForumChannel):
-                await ctx.send("Channel is not a 'Forum Channel'")
-                return
-            channel_id = channel.id
-            channel_str = f"<#{channel.id}>"
-
-        # Save the settings for the guild.
-        setting = settings.Manager.get(ctx.guild.id)
-        setting.suggestion_channel_id = channel_id
-        setting.save()
-        await ctx.send(f"Suggestion channel updated to: {channel_str}")
-
-    @settings.command(name='suggestion-reviewer-role')
-    async def suggestion_reviewer_role(self, ctx: commands.Context,
-                                       role: discord.Role = param(
-                                           description="Role of the Suggestion Reviewer.",
-                                           default=None)) -> None:
-        """Sets the role id for the current suggestion reviewer role.
-        example:
-            (prefix)server settings suggestion-reviewer-role @reviewers
-        """
-        if not ctx.guild:
-            return
-
-        role_id = 0
-        role_str = "unset"
-        if role:
-            role_id = role.id
-            role_str = f"<@&{role.id}>"
-
-        # Save the settings for the guild.
-        setting = settings.Manager.get(ctx.guild.id)
-        setting.suggestion_reviewer_role_id = role_id
-        setting.save()
-        await ctx.send(f"Suggestion Reviwer Role updated to: {role_str}")
-
-    @settings.command(name='request-review-channel')
-    async def request_review_channel(self, ctx: commands.Context,
-                                     channel: discord.abc.GuildChannel = param(
-                                         description="Channel Id of the Requests.",
-                                         default=None)) -> None:
-        """Sets the channel id for the request review channel.
-        Channel must be a Text Channel.
-        example:
-            (prefix)server settings request-review-channel #requests
-        """
-        if not ctx.guild:
-            return
-
-        channel_id = 0
-        channel_str = "unset"
-        if channel:
-            # Make sure the channel is the correct type.
-            if not isinstance(channel, discord.TextChannel):
-                await ctx.send("Channel is not a 'Text Channel'")
-                return
-            channel_id = channel.id
-            channel_str = f"<#{channel.id}>"
-
-        # Save the settings for the guild.
-        setting = settings.Manager.get(ctx.guild.id)
-        setting.request_review_channel_id = channel_id
-        setting.save()
-        await ctx.send(f"Request Review channel updated to: {channel_str}")
-
-    @settings.command(name='sub-guild-channel')
-    async def sub_guild_channel(self, ctx: commands.Context,
-                                channel: discord.abc.GuildChannel = param(
-                                    description="Channel Id of the "
-                                    "Sub-Guilds.",
-                                    default=None)) -> None:
-        """Sets the channel id for the sub-guild channel.
-        Channel must be a Text Channel.
-        example:
-            (prefix)server settings sub-guild-channel #guild-requests
-        """
-        if not ctx.guild:
-            return
-
-        channel_id = 0
-        channel_str = "unset"
-        if channel:
-            # Make sure the channel is the correct type.
-            if not isinstance(channel, discord.TextChannel):
-                await ctx.send("Channel is not a 'Text Channel'")
-                return
-            channel_id = channel.id
-            channel_str = f"<#{channel.id}>"
-
-        # Save the settings for the guild.
-        setting = settings.Manager.get(ctx.guild.id)
-        setting.sub_guild_channel_id = channel_id
-        setting.save()
-        await ctx.send(f"Sub-Guild channel updated to: {channel_str}")
-
-    @settings.command(name='lotto-role')
-    async def lotto_role(self, ctx: commands.Context,
-                         role: discord.Role = param(
-                             description="Role of the Lotto players.",
-                             default=None)) -> None:
-        """Sets the role id for the current lotto role.
-        example:
-            (prefix)server settings lotto-role @lotto
-        """
-        if not ctx.guild:
-            return
-
-        role_id = 0
-        role_str = "unset"
-        if role:
-            role_id = role.id
-            role_str = f"<@&{role.id}>"
-
-        # Save the settings for the guild.
-        setting = settings.Manager.get(ctx.guild.id)
-        setting.lotto_role_id = role_id
-        setting.save()
-        await ctx.send(f"Lotto Role updated to: {role_str}")
-
-    @settings.command(name='lotto-winner-role')
-    async def lotto_winner_role(self, ctx: commands.Context,
-                                role: discord.Role = param(
-                                    description="Role of the Winning Lotto players.",
-                                    default=None)) -> None:
-        """Sets the role id for the current winning lotto role.
-        example:
-            (prefix)server settings lotto-winner-role @lotto-winner
-        """
-        if not ctx.guild:
-            return
-
-        role_id = 0
-        role_str = "unset"
-        if role:
-            role_id = role.id
-            role_str = f"<@&{role.id}>"
-
-        # Save the settings for the guild.
-        setting = settings.Manager.get(ctx.guild.id)
-        setting.lotto_winner_role_id = role_id
-        setting.save()
-        await ctx.send(f"Lotto Winner Role updated to: {role_str}")
-
-    @settings.command(name='minigame-role')
-    async def minigame_role(self, ctx: commands.Context,
-                            role: discord.Role = param(
-                                description="Role to participate in minigames.",
-                                default=None)) -> None:
-        """Sets the role id for the current minigame role. This allows for
-        monster combat and gambling.
-
-        example:
-            (prefix)server settings minigame-role @combatant
-        """
-        if not ctx.guild:
-            return
-
-        role_id = 0
-        role_str = "unset"
-        if role:
-            role_id = role.id
-            role_str = f"<@&{role.id}>"
-
-        # Save the settings for the guild.
-        setting = settings.Manager.get(ctx.guild.id)
-        setting.minigame_role_id = role_id
-        setting.save()
-        await ctx.send(f"MiniGame Role updated to: {role_str}")
-
-    @settings.command(name='embed-bank-channel')
-    async def embed_bank_channel(self, ctx: commands.Context,
-                                 channel: discord.abc.GuildChannel = param(
-                                     description="Channel Id of the "
-                                     "Embed Bank.",
-                                     default=None)) -> None:
-        """Sets the channel id for the banked embeds channel.
-        Channel must be a Text Channel.
-        example:
-            (prefix)server settings embed-bank-channel #embed-bank
-        """
-        if not ctx.guild:
-            return
-
-        channel_id = 0
-        channel_str = "unset"
-        if channel:
-            # Make sure the channel is the correct type.
-            if not isinstance(channel, discord.TextChannel):
-                await ctx.send("Channel is not a 'Text Channel'")
-                return
-            channel_id = channel.id
-            channel_str = f"<#{channel.id}>"
-
-        # Save the settings for the guild.
-        setting = settings.Manager.get(ctx.guild.id)
-        setting.embed_bank_channel_id = channel_id
-        setting.save()
-        await ctx.send(f"Embed Bank channel updated to: {channel_str}")
+        file = discord.File(setting.filename, f"{setting.guild_id}.ini")
+        # url = f"attachment://{setting.filename}"
+        await ctx.send(file=file)
 
     @server.group(name="react-role")
     async def react_role(self, ctx: commands.Context) -> None:
@@ -724,8 +338,8 @@ class Admin(commands.Cog):
 
         # Get the settings for the server.
         setting = settings.Manager.get(ctx.guild.id)
-        channel_id = setting.react_role_channel_id
-        message_id = setting.react_role_msg_id
+        channel_id = setting.reactrole.channel_id
+        message_id = setting.reactrole.msg_id
 
         if channel_id <= 0:
             await ctx.send("react-role channel id is unset, please set it "
@@ -823,8 +437,8 @@ class Admin(commands.Cog):
 
         # Get the settings for the server.
         setting = settings.Manager.get(ctx.guild.id)
-        channel_id = setting.react_role_channel_id
-        message_id = setting.react_role_msg_id
+        channel_id = setting.reactrole.channel_id
+        message_id = setting.reactrole.msg_id
 
         if channel_id <= 0:
             await ctx.send("react-role channel id is unset, please set it "
@@ -879,8 +493,8 @@ class Admin(commands.Cog):
             return
 
         setting = settings.Manager.get(ctx.guild.id)
-        channel_id = setting.react_role_channel_id
-        message_id = setting.react_role_msg_id
+        channel_id = setting.reactrole.channel_id
+        message_id = setting.reactrole.msg_id
 
         # Get the message the reactions are attached to.
         react_msg = await get_message(self.bot, channel_id, message_id)

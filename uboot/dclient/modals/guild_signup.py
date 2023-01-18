@@ -53,7 +53,7 @@ class GuildSignupModal(ui.Modal, title='Guild Request'):
 
         # Validate the settings.
         setting = settings.Manager.get(interaction.guild.id)
-        channel = await get_channel(self.bot, setting.request_review_channel_id)
+        channel = await get_channel(self.bot, setting.subguild.review_channel_id)
         if not channel:
             return await res.send_message("Request Review channel may be unset.",
                                           ephemeral=True,

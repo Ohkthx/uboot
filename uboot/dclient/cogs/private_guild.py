@@ -196,7 +196,7 @@ class Guild(commands.Cog):
         setting = settings.Manager.get(ctx.guild.id)
 
         # Validate the channels and get the thread.
-        channel = await get_channel(self.bot, setting.sub_guild_channel_id)
+        channel = await get_channel(self.bot, setting.subguild.channel_id)
         if not channel:
             return await ctx.send("Guild channel may be unset.", delete_after=60)
         if not isinstance(channel, discord.TextChannel):

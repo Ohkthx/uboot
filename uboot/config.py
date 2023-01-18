@@ -2,8 +2,8 @@
 the applications configuration file name is 'config.int'.
 Performs basic error checking on the configuration file as well.
 """
-import configparser
 import pathlib
+import configparser
 from typing import Optional
 
 CONFIG_FILENAME = 'config.ini'

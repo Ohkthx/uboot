@@ -29,7 +29,7 @@ async def get_alias_embed(client: discord.Client,
                           alias: aliases.Alias) -> Optional[discord.Embed]:
     """Attempts to get the embed from the message bank."""
     # Get the message the reactions are attached to.
-    bank_id = settings.Manager.get(alias.guild_id).embed_bank_channel_id
+    bank_id = settings.Manager.get(alias.guild_id).alias.channel_id
     msg = await get_message(client, bank_id, alias.msg_id)
     if not msg:
         return
@@ -254,7 +254,7 @@ class General(commands.Cog):
             return
 
         setting = settings.Manager.get(ctx.guild.id)
-        bank_id = setting.embed_bank_channel_id
+        bank_id = setting.alias.channel_id
         if bank_id <= 0:
             await ctx.send("embed bank channel id is unset, please set it "
                            "with settings command.")

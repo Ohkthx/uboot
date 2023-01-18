@@ -22,7 +22,7 @@ async def check_minigame(client: discord.Client,
     """Verifies the user has the minigame role."""
     # Check that the user has the minigame role.
     setting = settings.Manager.get(guild_id)
-    role_id = setting.minigame_role_id
+    role_id = setting.minigame.role_id
     minigame_role = await get_role(client, guild_id, role_id)
     if not minigame_role:
         return (False, "Minigame role may be current unset.")
@@ -31,8 +31,8 @@ async def check_minigame(client: discord.Client,
     if minigame_role not in user.roles:
         # Shows and optional text for easy role access.
         in_channel: str = ""
-        if setting.react_role_channel_id > 0:
-            in_channel = f"\nGo to <#{setting.react_role_channel_id}> to get the"\
+        if setting.reactrole.channel_id > 0:
+            in_channel = f"\nGo to <#{setting.reactrole.channel_id}> to get the"\
                 " required role."
         return (False, f"You need to select the **{minigame_role}** role "
                 f"to do that. {in_channel}")
@@ -609,13 +609,13 @@ class User(commands.Cog):
         setting = settings.Manager.get(guild.id)
 
         # Get the role that lotto members belong to.
-        lotto_role = guild.get_role(setting.lotto_role_id)
+        lotto_role = guild.get_role(setting.lotto.role_id)
         if not lotto_role:
             await ctx.send("Lotto role could not be found.")
             return
 
         # Get the role to assign to all winners of the lott.
-        winner_role = guild.get_role(setting.lotto_winner_role_id)
+        winner_role = guild.get_role(setting.lotto.winner_role_id)
         if not winner_role:
             await ctx.send("Winner role could not be found.")
             return
@@ -718,8 +718,8 @@ class User(commands.Cog):
 
         # Get the settings for the server.
         setting = settings.Manager.get(guild.id)
-        lotto_id = setting.lotto_role_id
-        winner_id = setting.lotto_winner_role_id
+        lotto_id = setting.lotto.role_id
+        winner_id = setting.lotto.winner_role_id
 
         if lotto_id <= 0:
             await ctx.send("lotto role is unset, please set it "
@@ -743,8 +743,8 @@ class User(commands.Cog):
             return
 
         # Get the list of opt-in users.
-        channel_id = setting.react_role_channel_id
-        msg_id = setting.react_role_msg_id
+        channel_id = setting.reactrole.channel_id
+        msg_id = setting.reactrole.msg_id
         react_msg = await get_message(self.bot, channel_id, msg_id)
         if not react_msg:
             await ctx.send("could not identify the reaction-role message.")

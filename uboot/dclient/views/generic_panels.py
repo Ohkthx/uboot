@@ -64,7 +64,7 @@ class BasicThreadView(ui.View):
 
         # Extract the exact role name, attempting to first get a mentionable.
         setting = settings.Manager.get(guild_id)
-        role_id = setting.support_role_id
+        role_id = setting.support.role_id
         guild = await get_guild(bot, guild_id)
         if guild:
             role = next((r for r in guild.roles if r.id == role_id), None)
@@ -99,7 +99,7 @@ class BasicThreadView(ui.View):
 
         # Validate the user can perform the action.
         setting = settings.Manager.get(interaction.guild.id)
-        role_id = setting.support_role_id
+        role_id = setting.support.role_id
         role = await validate_user(interaction, interaction.guild, role_id)
         if not role:
             return
@@ -138,7 +138,7 @@ class BasicThreadView(ui.View):
 
         # Validate the user can perform the action.
         setting = settings.Manager.get(interaction.guild.id)
-        role_id = setting.support_role_id
+        role_id = setting.support.role_id
         role = await validate_user(interaction, interaction.guild, role_id)
         if not role:
             return
@@ -184,7 +184,7 @@ class SuggestionView(ui.View):
 
         # Attempt to extract the real role name or mentionable.
         setting = settings.Manager.get(guild_id)
-        role_id = setting.suggestion_reviewer_role_id
+        role_id = setting.suggestion.role_id
         guild = await get_guild(bot, guild_id)
         if guild:
             role = next((r for r in guild.roles if r.id == role_id), None)
@@ -216,7 +216,7 @@ class SuggestionView(ui.View):
 
         # Validate that the user can perform the action.
         setting = settings.Manager.get(interaction.guild.id)
-        role_id = setting.suggestion_reviewer_role_id
+        role_id = setting.suggestion.role_id
         role = await validate_user(interaction, interaction.guild, role_id)
         if not role:
             return
@@ -253,7 +253,7 @@ class SuggestionView(ui.View):
 
         # Validate that the user can perform the action.
         setting = settings.Manager.get(interaction.guild.id)
-        role_id = setting.suggestion_reviewer_role_id
+        role_id = setting.suggestion.role_id
         role = await validate_user(interaction, interaction.guild, role_id)
         if not role:
             return
@@ -301,7 +301,7 @@ class SuggestionView(ui.View):
 
         # Validate that the user can perform that action.
         setting = settings.Manager.get(guild.id)
-        role_id = setting.suggestion_reviewer_role_id
+        role_id = setting.suggestion.role_id
         role = await validate_user(interaction, guild, role_id)
         if not role:
             return
