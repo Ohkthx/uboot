@@ -94,14 +94,24 @@ class Item():
         return f'{rarity}{self._name}'
 
     @property
-    def value(self) -> int:
-        """Gets the value of the item based on its type."""
+    def base_value(self) -> int:
+        """Base unmodified value of the item."""
         if self.type not in (Items.WEAPON, Items.POWERHOUR):
             return self._value
         if self.type == Items.POWERHOUR:
-            return 20 * self.uses
+            return 20
 
-        base_value = 150
+        return 150
+
+    @property
+    def value(self) -> int:
+        """Gets the value of the item based on its type."""
+        base_value = self.base_value
+
+        if self.type not in (Items.WEAPON, Items.POWERHOUR):
+            return base_value
+        if self.type == Items.POWERHOUR:
+            return base_value * self.uses
 
         # 0 - 0.5
         material_mod: float = (max(self.material, Material.NONE) - 1) / 5

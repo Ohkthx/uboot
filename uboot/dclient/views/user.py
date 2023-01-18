@@ -11,23 +11,29 @@ from managers.loot_tables import Items
 from managers.logs import Log
 
 
-async def extract_user(client: discord.Client,
-                       message: discord.Message) -> Optional[discord.User]:
+async def extract_users(client: discord.Client,
+                        message: discord.Message) -> list[discord.User]:
     """Attempt to get the user from a message with an embed."""
-    # Get the embed to extract the user id.
+    # Get the embed to extract the user ids.
     if len(message.embeds) == 0:
-        return None
+        return []
 
-    # Extract the user id from the footer.
-    user_id: int = 0
+    # Extract the user ids from the footer.
+    user_ids: list[int] = []
     try:
         if message.embeds[0].footer.text:
-            user_id = int(message.embeds[0].footer.text)
+            raw_ids = message.embeds[0].footer.text.split(':')
+            user_ids = [int(user_id) for user_id in raw_ids]
     except BaseException:
         pass
 
-    # Lookup the user
-    return await get_user(client, user_id)
+    # Lookup the users
+    extracted_users: list[discord.User] = []
+    for user_id in user_ids:
+        user = await get_user(client, user_id)
+        if user:
+            extracted_users.append(user)
+    return extracted_users
 
 
 class LocationDropdown(ui.Select):
@@ -89,13 +95,14 @@ class BankSellDropdown(ui.Select):
         if not msg or not guild:
             return
 
-        user = await extract_user(interaction.client, msg)
-        if not user:
+        extracted_users = await extract_users(interaction.client, msg)
+        if len(extracted_users) == 0:
             await res.send_message("User could not be identified.",
                                    ephemeral=True,
                                    delete_after=20)
             return
 
+        user = extracted_users[0]
         if interaction.user != user:
             await res.send_message("You cannot sell another users items.",
                                    ephemeral=True,
@@ -145,22 +152,37 @@ class BankSellDropdown(ui.Select):
                                    delete_after=20)
             return
 
-        # Remove the item from the user.
-        if user_l.bank.remove_item(Items(itype), iname, ivalue):
-            user_l.gold += ivalue
-            user_l.save()
-            user_l.bank.save()
+        quantity: str = ""
+        value: int = 0
+        if item.isconsumable:
+            # Remove a single use of a consumable.
+            if item.uses > 0:
+                quantity = "one use of "
+                value = item.base_value
+                user_l.bank.use_consumable(item)
 
-            Log.player(f"{user} sold {item.name.title()} for {item.value} gp.",
-                       guild_id=guild.id, user_id=user.id)
+            if item.uses == 0:
+                user_l.bank.remove_item(item.type, item.name, item.value)
+                user_l.save()
+            user_l.bank.save()
+        else:
+            value = item.value
+            # Remove the item from the user.
+            if user_l.bank.remove_item(Items(itype), iname, ivalue):
+                user_l.gold += ivalue
+                user_l.save()
+                user_l.bank.save()
+
+        Log.player(f"{user} sold {quantity}{item.name.title()} for {value} gp.",
+                   guild_id=guild.id, user_id=user.id)
 
         # Update the view.
         view = BankView(interaction.client)
         view.set_user(user)
         await msg.edit(embed=BankView.get_panel(user), view=view)
 
-        await res.send_message(f"{user} sold **{item.name.title()}** "
-                               f"for {item.value} gp.")
+        await res.send_message(f"{user} sold {quantity}**{item.name.title()}** "
+                               f"for {value} gp.")
 
 
 class BankUseDropdown(ui.Select):
@@ -188,13 +210,14 @@ class BankUseDropdown(ui.Select):
         if not msg or not guild:
             return
 
-        user = await extract_user(interaction.client, msg)
-        if not user:
+        extracted_users = await extract_users(interaction.client, msg)
+        if len(extracted_users) == 0:
             await res.send_message("User could not be identified.",
                                    ephemeral=True,
                                    delete_after=20)
             return
 
+        user = extracted_users[0]
         if interaction.user != user:
             await res.send_message("You cannot use another users items.",
                                    ephemeral=True,
@@ -262,6 +285,104 @@ class BankUseDropdown(ui.Select):
         view.set_user(user)
         await msg.edit(embed=BankView.get_panel(user), view=view)
         await res.send_message(f"{user} {use_text} **{item.name.title()}**.")
+
+
+class TradeDropdown(ui.Select):
+    """Allows the user to select an item to trade."""
+
+    def __init__(self, user: users.User) -> None:
+        options: list[discord.SelectOption] = []
+
+        for item in user.bank.items:
+            ivalue: int = item.value
+            if item.isconsumable:
+                ivalue = item.base_value
+            label: str = f"{item.name.title()}, value: {ivalue} gp"
+            value: str = f"{item.type}:{item.value}:{item.name}"
+            options.append(discord.SelectOption(label=label, value=value))
+        options.append(discord.SelectOption(label='None', value='1:0:none'))
+        super().__init__(options=options,
+                         placeholder="Give / Trade Item",
+                         custom_id="user_trade_dropdown")
+
+    async def callback(self, interaction: discord.Interaction):
+        """Called when the menu is selected."""
+        res = interaction.response
+        msg = interaction.message
+        guild = interaction.guild
+        if not msg or not guild:
+            return
+
+        extracted_users = await extract_users(interaction.client, msg)
+        if len(extracted_users) <= 1:
+            await res.send_message("Users could not be identified.",
+                                   ephemeral=True,
+                                   delete_after=20)
+            return
+
+        if interaction.user != extracted_users[0]:
+            await res.send_message("You cannot use another users items.",
+                                   ephemeral=True,
+                                   delete_after=20)
+            return
+
+        # Extract the item.
+        user_l = users.Manager.get(interaction.user.id)
+        item_parse = self.values[0].split(':')
+        itype = int(item_parse[0])
+        ivalue = int(item_parse[1])
+        iname = item_parse[2]
+
+        # None selected.
+        if Items(itype) == Items.NONE and ivalue == 0:
+            await res.send_message("No item given.",
+                                   ephemeral=True,
+                                   delete_after=20)
+            return
+
+        # Find the item.
+        item = user_l.bank.get_item(Items(itype), iname, ivalue)
+        if not item:
+            await res.send_message("Could not find item. Do you still own it?",
+                                   ephemeral=True,
+                                   delete_after=20)
+            return
+
+        user = extracted_users[0]
+        to_user = users.Manager.get(extracted_users[1].id)
+
+        quantity: str = ""
+        if item.isconsumable:
+            # Remove a single use of a consumable.
+            if item.uses > 0:
+                quantity = "one use of "
+                user_l.bank.use_consumable(item)
+                to_user.bank.add_item(item, uses_override=1, max_override=True)
+
+            if item.uses == 0:
+                user_l.bank.remove_item(item.type, item.name, item.value)
+            user_l.bank.save()
+            to_user.bank.save()
+        else:
+            # Remove the item from the user.
+            if user_l.bank.remove_item(Items(itype), iname, ivalue):
+                user_l.bank.save()
+                to_user.bank.add_item(item, max_override=True)
+                to_user.bank.save()
+
+        logtxt = f"{user} gave {quantity}**{item.name.title()}** to "\
+            f"{extracted_users[1]}."
+        Log.player(logtxt.replace('*', ''), guild_id=guild.id, user_id=user.id)
+        Log.player(f"{extracted_users[1]} received {quantity}"
+                   f"{item.name.title()} from {user}.",
+                   guild_id=guild.id, user_id=extracted_users[1].id)
+
+        view = TradeView(interaction.client)
+        view.set_user(user)
+        embed = BankView.get_panel(user)
+        embed.set_footer(text=f"{user_l.id}:{to_user.id}")
+        await msg.edit(embed=embed, view=view)
+        await res.send_message(logtxt)
 
 
 class UserView(ui.View):
@@ -382,7 +503,7 @@ class BankView(ui.View):
                 left = "durability: "
             uses = f" [{left}{item.uses} / {item.uses_max}]" if item.isusable else ""
             items.append(f"> {lfeed} **{item.name.title()}**{uses}, "
-                         f"value: {item.value} gp")
+                         f"{item.value} gp")
 
         # If none, print none.
         items_full = '\n'.join(items)
@@ -412,7 +533,23 @@ class BankView(ui.View):
         return embed
 
 
+class TradeView(ui.View):
+    """Trade View that can be interacted with to give items to others."""
+
+    def __init__(self, bot: discord.Client) -> None:
+        self.bot = bot
+        self.user: Optional[Union[discord.User, discord.Member]] = None
+        super().__init__(timeout=None)
+
+    def set_user(self, user: Union[discord.User, discord.Member]) -> None:
+        """Sets the users involved in the trade."""
+        self.user = user
+        user_l = users.Manager.get(user.id)
+        self.add_item(TradeDropdown(user_l))
+
+
 async def setup(bot: discord.Client) -> None:
     """This is called by process that loads extensions."""
     bot.add_view(UserView(bot))
     bot.add_view(BankView(bot))
+    bot.add_view(TradeView(bot))

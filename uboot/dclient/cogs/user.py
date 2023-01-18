@@ -13,7 +13,7 @@ from dclient.destructable import DestructableManager, Destructable
 from dclient.helper import get_member, get_message, get_role, get_user
 from dclient.views.gamble import GambleView, gamble, ExtractedBet
 from dclient.views.dm import DMDeleteView
-from dclient.views.user import UserView, BankView
+from dclient.views.user import TradeView, UserView, BankView
 
 
 async def check_minigame(client: discord.Client,
@@ -439,13 +439,24 @@ class User(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.guild_only()
-    @commands.command(name="give", aliases=("trade",))
-    async def give(self, ctx: commands.Context,
-                   to: discord.Member = param(description="Recipient"),
-                   amount: int = param(description="Amount to give.")) -> None:
+    @commands.group(name="give", aliases=("trade",))
+    async def give(self, ctx: commands.Context) -> None:
+        """Give another player either gold or items.
+
+        examples:
+            (prefix)give gold @Gatekeeper 100
+            (prefix)give item @Gatekeeper
+        """
+        if not ctx.invoked_subcommand:
+            await ctx.send('invalid give command.')
+
+    @give.command(name="gold", aliases=("gp",))
+    async def give_gold(self, ctx: commands.Context,
+                        to: discord.Member = param(description="Recipient"),
+                        amount: int = param(description="Amount to give.")) -> None:
         """Give gold from yourself to another user.
         example:
-            (prefix)give @Gatekeeper 40
+            (prefix)give gold @Gatekeeper 40
         """
         if not ctx.guild or not isinstance(ctx.author, discord.Member):
             return
@@ -496,6 +507,45 @@ class User(commands.Cog):
         embed.set_footer(text="transaction type: give")
 
         await ctx.send(embed=embed)
+
+    @give.command(name="item", aliases=("items",))
+    async def give_item(self, ctx: commands.Context,
+                        to: discord.Member = param(description="Recipient"),
+                        ) -> None:
+        """Give an item from yourself to another user.
+        example:
+            (prefix)give item @Gatekeeper
+        """
+        if not ctx.guild or not isinstance(ctx.author, discord.Member):
+            return
+
+        # Check that the user has the minigame role.
+        passed, msg = await check_minigame(self.bot, ctx.author, ctx.guild.id)
+        if not passed:
+            await ctx.reply(msg, delete_after=30)
+            return
+
+        from_user = users.Manager.get(ctx.author.id)
+
+        # Prevent giving items to self.
+        to_user = users.Manager.get(to.id)
+        if from_user.id == to_user.id:
+            msg = "What would be the purpose in sending an item to yourself?"
+            await ctx.send(msg)
+            return
+
+        # Remove all buttons. Prevents item duping.
+        category = Destructable.Category.OTHER
+        await DestructableManager.remove_many(from_user.id, True, category)
+
+        # Get the 'give' view.
+        view = TradeView(self.bot)
+        view.set_user(ctx.author)
+
+        # Reuse the bank / item panel, modify the user ids on the bottom.
+        embed = BankView.get_panel(ctx.author)
+        embed.set_footer(text=f"{from_user.id}:{to_user.id}")
+        await ctx.send(embed=embed, view=view)
 
     @commands.guild_only()
     @commands.command(name="bet")

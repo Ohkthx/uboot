@@ -51,11 +51,12 @@ class Bank():
         return next((i for i in self.items if i.type == item_type and
                      i.value == value and i.name == name), None)
 
-    def add_item(self, item: Item) -> None:
+    def add_item(self, item: Item, uses_override: int = -1,
+                 max_override=False) -> None:
         """Add an item to the users bank, ignoring if bank is full."""
         # If uses are not added.
         if not item.isconsumable:
-            if len(self.items) >= self.capacity:
+            if not max_override and len(self.items) >= self.capacity:
                 return
             self.items.append(item)
             return
@@ -63,11 +64,15 @@ class Bank():
         owned = next((i for i in self.items if i.type == item.type), None)
         if not owned:
             if len(self.items) < self.capacity:
+                if uses_override > 0:
+                    item.uses = uses_override
                 self.items.append(item)
             return
 
         # Add the uses.
-        owned.add_use(item.uses)
+        if uses_override < 0:
+            uses_override = item.uses
+        owned.add_use(uses_override)
 
     def use_consumable(self, item: Item) -> bool:
         """Uses a consumable item."""

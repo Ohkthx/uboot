@@ -181,7 +181,8 @@ class Alias():
 class Settings():
     """Representation of a guilds settings."""
 
-    def __init__(self, config: configparser.ConfigParser) -> None:
+    def __init__(self, config: configparser.ConfigParser, guild_id: int) -> None:
+        self.guild_id = guild_id
         self._update(config)
 
     def _update(self, config: configparser.ConfigParser) -> None:
@@ -202,11 +203,6 @@ class Settings():
         self.lotto = Lotto(config['LOTTO'])
         self.minigame = MiniGame(config['MINIGAME'])
         self.alias = Alias(config['ALIAS'])
-
-    @property
-    def guild_id(self) -> int:
-        """Guild Id belonging to the discord server."""
-        return self._config.getint('DEFAULT', 'GUILDID', fallback=False)
 
     @property
     def filename(self) -> str:
@@ -243,7 +239,7 @@ class Settings():
         if pathlib.Path(filename).is_file():
             config = configparser.ConfigParser(inline_comment_prefixes=';')
             config.read(filename)
-            return Settings(config)
+            return Settings(config, guild_id)
 
         # Initialize each category and the default values.
         config = configparser.ConfigParser(inline_comment_prefixes=';')
@@ -283,7 +279,7 @@ class Settings():
         # Save it locally.
         with open(filename, 'w', encoding='utf-8') as configfile:
             config.write(configfile)
-        return Settings(config)
+        return Settings(config, guild_id)
 
     @staticmethod
     def load_config(guild_id: int) -> Optional['Settings']:
@@ -306,7 +302,7 @@ class Settings():
                 raise ValueError(
                     f"'{section}' is unset in configuration file.")
 
-        return Settings(config)
+        return Settings(config, guild_id)
 
 
 class Manager():
