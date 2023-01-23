@@ -10,6 +10,8 @@ from discord.ext.commands import param
 from dclient import DiscordBot
 from dclient.helper import get_message, get_channel
 from dclient.views.embeds import EmbedView
+from dclient.views.user import RockPaperScissorsView
+from dclient.destructable import Destructable
 from managers import aliases, settings
 
 # All standard magic 8 ball options.
@@ -137,6 +139,21 @@ class General(commands.Cog):
             return
         synced = await ctx.bot.tree.sync()
         await ctx.send(f"Synced {len(synced)} commands to the current guild.")
+
+    @commands.command(name="rps")
+    async def rps(self, ctx: commands.Context) -> None:
+        """Play a game of rock, paper, and scissors!"""
+        if not ctx.guild:
+            return
+
+        embed = RockPaperScissorsView.get_panel()
+        view = RockPaperScissorsView(self.bot)
+        message = await ctx.send(embed=embed, view=view)
+        if view and message and self.bot.user:
+            category = Destructable.Category.OTHER
+            destruct = Destructable(category, self.bot.user.id, 30)
+            destruct.set_message(message=message)
+            destruct.set_callback(view.callback)
 
     @commands.dm_only()
     @commands.command(name='remove', aliases=("rm",))

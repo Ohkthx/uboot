@@ -413,10 +413,9 @@ class DiscordBot(commands.Bot):
         if not msg.guild or not isinstance(msg.author, discord.Member):
             return
 
+        last_message: datetime = user.last_message
         powerhour = self.powerhours.get(msg.guild.id)
-        multiplier: float = 1.0
-        if powerhour:
-            multiplier = powerhour.multiplier
+        multiplier: float = 1.0 if not powerhour else powerhour.multiplier
         user.add_message(multiplier)
         user.save()
 
@@ -429,12 +428,20 @@ class DiscordBot(commands.Bot):
         if user.incombat:
             return
 
-        # Try to spawn an entity to attack the player.
         loc = user.c_location
         difficulty = user.difficulty
-        entity = entities.Manager.check_spawn(loc, difficulty,
-                                              powerhour is not None,
-                                              user.powerhour is not None)
+
+        # Check passive taunt.
+        entity: Optional[entities.Entity] = None
+        if datetime.now() - last_message >= timedelta(hours=12):
+            entity = entities.Manager.check_spawn(loc, difficulty,
+                                                  False, False, True)
+        else:
+            # Try to spawn natural entity..
+            entity = entities.Manager.check_spawn(loc, difficulty,
+                                                  powerhour is not None,
+                                                  user.powerhour is not None,
+                                                  False)
         if entity:
             await self.add_entity(msg, msg.author, entity)
 

@@ -181,7 +181,8 @@ class Alias():
 class Settings():
     """Representation of a guilds settings."""
 
-    def __init__(self, config: configparser.ConfigParser, guild_id: int) -> None:
+    def __init__(self, config: configparser.ConfigParser,
+                 guild_id: int) -> None:
         self.guild_id = guild_id
         self._update(config)
 

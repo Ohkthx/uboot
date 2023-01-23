@@ -209,9 +209,9 @@ class User(commands.Cog):
 
         # Prevent taunt spam.
         user_l = users.Manager.get(ctx.author.id)
-        if datetime.now() - user_l.last_taunt < timedelta(minutes=15):
+        if datetime.now() - user_l.last_taunt < timedelta(minutes=12):
             timediff = datetime.now() - user_l.last_taunt
-            minutes = (timedelta(minutes=15) - timediff) / timedelta(minutes=1)
+            minutes = (timedelta(minutes=12) - timediff) / timedelta(minutes=1)
             await ctx.reply("You are tired and cannot taunt for another "
                             f"{minutes:0.1f} minutes.",
                             delete_after=30)
@@ -226,23 +226,20 @@ class User(commands.Cog):
         # Update with a new taunt attempt.
         user_l.last_taunt = datetime.now()
 
-        # Allow any powerhour to increase spawn chance.
-        spawn_value: int = 0
-        if user_l.powerhour or self.bot.powerhours.get(ctx.guild.id):
-            spawn_value = 1
-
-        # Check if we can spawn a mob.
-        if random.randint(0, 4) <= spawn_value:
+        # Spawn the creature.
+        loc = user_l.c_location
+        difficulty = user_l.difficulty
+        inpowerhour = self.bot.powerhours.get(ctx.guild.id)
+        entity = entities.Manager.check_spawn(loc, difficulty,
+                                              inpowerhour is not None,
+                                              user_l.powerhour is not None,
+                                              True)
+        if not entity:
             await ctx.reply("No nearby enemies react to your taunt.",
                             delete_after=30)
             return
 
-        # Spawn the creature.
-        loc = user_l.c_location
-        difficulty = user_l.difficulty
-        entity = entities.Manager.spawn(loc, difficulty)
-        if entity:
-            await self.bot.add_entity(ctx.message, ctx.author, entity)
+        await self.bot.add_entity(ctx.message, ctx.author, entity)
 
     @commands.command(name="locations", aliases=("location", "loc", "recall"))
     async def locations(self, ctx: commands.Context,

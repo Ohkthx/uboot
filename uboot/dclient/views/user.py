@@ -1,4 +1,5 @@
 """User based views."""
+from enum import Enum
 from typing import Optional, Union
 from datetime import datetime, timezone
 
@@ -370,11 +371,13 @@ class TradeDropdown(ui.Select):
                 to_user.bank.add_item(item, max_override=True)
                 to_user.bank.save()
 
-        logtxt = f"{user} gave {quantity}**{item.name.title()}** to "\
-            f"{extracted_users[1]}."
+        value = item.base_value if item.isconsumable else item.value
+
+        logtxt = f"{user} gave {quantity}**{item.name.title()}** "\
+            f"(value: {value} gp) to {extracted_users[1]}."
         Log.player(logtxt.replace('*', ''), guild_id=guild.id, user_id=user.id)
         Log.player(f"{extracted_users[1]} received {quantity}"
-                   f"{item.name.title()} from {user}.",
+                   f"{item.name.title()} (value: {value} gp) from {user}.",
                    guild_id=guild.id, user_id=extracted_users[1].id)
 
         view = TradeView(interaction.client)
@@ -548,8 +551,88 @@ class TradeView(ui.View):
         self.add_item(TradeDropdown(user_l))
 
 
+class RPS(Enum):
+    ROCK = 'rock'
+    PAPER = 'paper'
+    SCISSORS = 'scissors'
+
+
+class RockPaperScissorsView(ui.View):
+    """Allows you to play Rock, Paper, and Scissors."""
+
+    def __init__(self, bot: discord.Client) -> None:
+        self.bot = bot
+        self.players: dict[int, RPS] = {}
+        super().__init__(timeout=None)
+
+    @staticmethod
+    def get_panel() -> discord.Embed:
+        embed = discord.Embed(title="Make your pick!")
+        embed.color = discord.Colour.from_str("#00ff08")
+        embed.description = "You have 30 seconds to pick.\n\n"\
+            f"__**Options**__:\n"\
+            f"> ├ Rock\n"\
+            f"> ├ Paper\n"\
+            f"> └ Scissors\n"\
+            "Make your pick now!"
+
+        return embed
+
+    async def callback(self, msg: Optional[discord.Message]):
+        """Called when the message is getting destroyed."""
+        if not msg:
+            return
+
+        res_listed: list[str] = []
+        embed = discord.Embed(title="Results of Rock, Paper, and Scissors")
+        embed.color = discord.Colour.from_str("#00ff08")
+
+        if len(self.players.keys()) <= 1:
+            await msg.delete()
+            return
+
+        for user, choice in self.players.items():
+            res_listed.append(f"<@{user}> picked **{choice.value}**.")
+
+        res_full = '\n'.join(res_listed)
+        embed.description = res_full
+
+        await msg.edit(embed=embed, view=None)
+
+    @ui.button(label='🪨 Rock', style=discord.ButtonStyle.grey,
+               custom_id='rps_view:rock')
+    async def rock(self, interaction: discord.Interaction, button: ui.Button):
+        """User picked ROCK."""
+        res = interaction.response
+        self.players[interaction.user.id] = RPS.ROCK
+        await res.send_message("You have chosen 'rock'",
+                               ephemeral=True,
+                               delete_after=20)
+
+    @ui.button(label='📰 Paper', style=discord.ButtonStyle.grey,
+               custom_id='rps_view:paper')
+    async def paper(self, interaction: discord.Interaction, button: ui.Button):
+        """User picked PAPER."""
+        res = interaction.response
+        self.players[interaction.user.id] = RPS.PAPER
+        await res.send_message("You have chosen 'paper'",
+                               ephemeral=True,
+                               delete_after=20)
+
+    @ui.button(label='✂️ Scissors', style=discord.ButtonStyle.grey,
+               custom_id='rps_view:scissors')
+    async def scissors(self, interaction: discord.Interaction, button: ui.Button):
+        """User picked SCISSORS."""
+        res = interaction.response
+        self.players[interaction.user.id] = RPS.SCISSORS
+        await res.send_message("You have chosen 'scissors'",
+                               ephemeral=True,
+                               delete_after=20)
+
+
 async def setup(bot: discord.Client) -> None:
     """This is called by process that loads extensions."""
     bot.add_view(UserView(bot))
     bot.add_view(BankView(bot))
     bot.add_view(TradeView(bot))
+    bot.add_view(RockPaperScissorsView(bot))

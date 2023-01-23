@@ -244,25 +244,30 @@ class Manager():
 
     @staticmethod
     def check_spawn(area: Area, difficulty: float,
-                    powerhour: bool, user_powerhour: bool) -> Optional[Entity]:
+                    powerhour: bool, user_powerhour: bool,
+                    istaunt: bool) -> Optional[Entity]:
         """Check if an entity should be spawned, if so- does."""
-        modifier: float = 1
-        if powerhour:
-            modifier *= 1.5
+        max_range: int = 1000
 
+        multiplier: float = 1.5 if powerhour else 1.0
         if user_powerhour:
-            modifier += 0.5
+            multiplier += 0.5
 
         if area in (Area.SEWERS, Area.DESPISE, Area.FIRE):
-            modifier *= 1.5
+            multiplier *= 1.5
 
-        chest_base = 5
-        chest_range = float(chest_base * modifier)
+        # Put a hard limit on taunts
+        taunt_multiplier = 2.0 if powerhour or user_powerhour else 1.0
+        multiplier = taunt_multiplier if istaunt else multiplier
 
-        entity_base = 10
-        entity_range = float(entity_base * modifier) + chest_range
+        chest_base = 5 if not istaunt else 0
+        chest_range = float(chest_base * multiplier)
 
-        val = random.randint(0, 100000) / 100
+        entity_base = 10 if not istaunt else int(max_range / 5)
+        entity_range = float(entity_base * multiplier) + chest_range
+
+        # Gets a decimal value.
+        val = random.randint(0, max_range * 100) / 100
         if val <= chest_range:
             # Chest spawned.
             return Chest(area, difficulty)
