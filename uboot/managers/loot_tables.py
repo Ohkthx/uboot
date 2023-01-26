@@ -179,7 +179,8 @@ class ItemCreator():
     def __init__(self, item_type: Items,
                  stacks: int,
                  min_count: int = 1,
-                 max_count: int = 1) -> None:
+                 max_count: int = 1,
+                 modifier: float = 1.0) -> None:
         # Ensure the min is the smallest value.
         if min_count > max_count:
             min_count, max_count = max_count, min_count
@@ -188,6 +189,7 @@ class ItemCreator():
         self.stacks = stacks
         self.min = min_count
         self.max = max_count
+        self.modifier = modifier
 
     @property
     def isunique(self) -> bool:
@@ -213,6 +215,7 @@ class ItemCreator():
                         uses=uses, uses_max=uses)
         if self.type == Items.TRASH:
             name = rand_name(TRASH_NAMES)
+            value = int(value * self.modifier)
 
         return Item(self.type, name=name, value=value)
 
@@ -421,7 +424,7 @@ class CommonLoot(LootTable):
         self.add_item(ItemCreator(Items.GOLD, 1, 22, 40), 4)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
         self.add_item(ItemCreator(Items.LOCATION, 1), 3)
-        self.add_item(ItemCreator(Items.TRASH, 1, 22, 40), 1)
+        self.add_item(ItemCreator(Items.TRASH, 1, 22, 40, 0.75), 1)
 
         worst, best = Material.WOOD, Material.DULL_COPPER
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
@@ -442,7 +445,7 @@ class UncommonLoot(LootTable):
         self.add_item(ItemCreator(Items.GOLD, 1, 44, 80), 4)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
         self.add_item(ItemCreator(Items.LOCATION, 1), 3)
-        self.add_item(ItemCreator(Items.TRASH, 1, 44, 80), 1)
+        self.add_item(ItemCreator(Items.TRASH, 1, 44, 80, 0.75), 1)
 
         worst, best = Material.IRON, Material.SHADOW_IRON
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
@@ -463,7 +466,7 @@ class RareLoot(LootTable):
         self.add_item(ItemCreator(Items.GOLD, 1, 108, 240), 4)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
         self.add_item(ItemCreator(Items.LOCATION, 1), 3)
-        self.add_item(ItemCreator(Items.TRASH, 1, 108, 240), 1)
+        self.add_item(ItemCreator(Items.TRASH, 1, 108, 240, 0.75), 1)
 
         worst, best = Material.DULL_COPPER, Material.BRONZE
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
@@ -484,7 +487,7 @@ class EpicLoot(LootTable):
         self.add_item(ItemCreator(Items.GOLD, 1, 303, 580), 4)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
         self.add_item(ItemCreator(Items.LOCATION, 1), 3)
-        self.add_item(ItemCreator(Items.TRASH, 1, 303, 580), 1)
+        self.add_item(ItemCreator(Items.TRASH, 1, 303, 580, 0.75), 1)
 
         worst, best = Material.COPPER, Material.AGAPITE
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
@@ -505,7 +508,7 @@ class LegendaryLoot(LootTable):
         self.add_item(ItemCreator(Items.GOLD, 1, 606, 1200), 4)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
         self.add_item(ItemCreator(Items.LOCATION, 1), 3)
-        self.add_item(ItemCreator(Items.TRASH, 1, 606, 1200), 1)
+        self.add_item(ItemCreator(Items.TRASH, 1, 606, 1200, 0.75), 1)
 
         worst, best = Material.GOLD, Material.VERITE
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
@@ -526,7 +529,7 @@ class MythicalLoot(LootTable):
         self.add_item(ItemCreator(Items.GOLD, 1, 810, 1800), 4)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
         self.add_item(ItemCreator(Items.LOCATION, 1), 3)
-        self.add_item(ItemCreator(Items.TRASH, 1, 810, 1800), 1)
+        self.add_item(ItemCreator(Items.TRASH, 1, 810, 1800, 0.75), 1)
 
         worst, best = Material.VERITE, Material.VALORITE
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)

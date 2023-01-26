@@ -161,6 +161,11 @@ class MiniGame():
         """Role Id that allows users to play the minigames."""
         return self._config.getint('ROLEID', 0)
 
+    @property
+    def channel_id(self) -> int:
+        """Channel Id where the minigames will be hosted."""
+        return self._config.getint('CHANNELID', 0)
+
 
 class Alias():
     """Settings for the alias system."""
@@ -273,6 +278,7 @@ class Settings():
 
         config['MINIGAME'] = {}
         config['MINIGAME']['ROLEID'] = '0 ; role id to allow minigame playing'
+        config['MINIGAME']['CHANNELID'] = '0 ; channel id for minigame shortcuts'
 
         config['ALIAS'] = {}
         config['ALIAS']['CHANNELID'] = '0 ; channel id hosting alias embeds'
@@ -280,6 +286,15 @@ class Settings():
         # Save it locally.
         with open(filename, 'w', encoding='utf-8') as configfile:
             config.write(configfile)
+
+        # Make sure the file was created.
+        if not pathlib.Path(filename).is_file():
+            raise BaseException("Could not create the configuration "
+                                f"file for: {guild_id}.")
+
+        # Read the file, parse the configuration.
+        config = configparser.ConfigParser(inline_comment_prefixes=';')
+        config.read(filename)
         return Settings(config, guild_id)
 
     @staticmethod

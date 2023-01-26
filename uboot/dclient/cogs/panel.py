@@ -3,10 +3,13 @@ from discord.ext import commands
 from discord.ext.commands import param
 
 from dclient import DiscordBot
+from dclient.helper import get_channel
 from dclient.views.dm import DMDeleteView, DMResponseView
+from dclient.views.minigame import TauntView, UserActionView
 from dclient.views.support_request import SupportRequestView
 from dclient.views.private_guild_signup import GuildSignupView
 from dclient.views.private_guild_panel import GuildManagerView
+from managers import settings
 
 
 class Panel(commands.Cog):
@@ -207,6 +210,67 @@ class Panel(commands.Cog):
 
         # Add the view.
         await msg.edit(view=GuildManagerView(self.bot))
+
+    @commands.guild_only()
+    @panel.group(name="minigame")
+    async def minigame(self, ctx: commands.Context) -> None:
+        """Controls minigame related panels. These are just buttons that get
+        attached to a forum thread.
+
+        examples:
+            [panel minigame taunt
+        """
+        if not ctx.invoked_subcommand:
+            await ctx.send("Invalid minigame panel command.", delete_after=30)
+
+    @minigame.command(name="user-actions")
+    async def user_actions(self, ctx: commands.Context) -> None:
+        """Creates a panel for various user actions (stats, bank, recall).
+
+        examples:
+            [panel minigame user-actions
+        """
+        guild = ctx.guild
+        if not guild:
+            return
+
+        setting = settings.Manager.get(guild.id)
+        thread_ch = await get_channel(self.bot, setting.minigame.channel_id)
+        if not thread_ch or not isinstance(thread_ch, discord.ForumChannel):
+            await ctx.send("Invalid minigame thread channel, could be unset.",
+                           delete_after=30)
+            return
+
+        embed = UserActionView.get_panel()
+        view = UserActionView(self.bot)
+
+        # Create a new thread for the buttons.
+        await thread_ch.create_thread(name="User Management",
+                                      view=view, embed=embed)
+
+    @minigame.command(name="taunt")
+    async def taunt(self, ctx: commands.Context) -> None:
+        """Creates a panel for the taunt button.
+
+        examples:
+            [panel minigame taunt
+        """
+        guild = ctx.guild
+        if not guild:
+            return
+
+        setting = settings.Manager.get(guild.id)
+        thread_ch = await get_channel(self.bot, setting.minigame.channel_id)
+        if not thread_ch or not isinstance(thread_ch, discord.ForumChannel):
+            await ctx.send("Invalid minigame thread channel, could be unset.",
+                           delete_after=30)
+            return
+
+        embed = TauntView.get_panel()
+        view = TauntView(self.bot)
+
+        # Create a new thread for the taunt button.
+        await thread_ch.create_thread(name="Taunt Panel", view=view, embed=embed)
 
 
 async def setup(bot: DiscordBot) -> None:

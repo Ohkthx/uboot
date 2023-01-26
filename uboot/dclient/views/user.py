@@ -98,17 +98,15 @@ class BankSellDropdown(ui.Select):
 
         extracted_users = await extract_users(interaction.client, msg)
         if len(extracted_users) == 0:
-            await res.send_message("User could not be identified.",
-                                   ephemeral=True,
-                                   delete_after=20)
-            return
+            return await res.send_message("User could not be identified.",
+                                          ephemeral=True,
+                                          delete_after=20)
 
         user = extracted_users[0]
         if interaction.user != user:
-            await res.send_message("You cannot sell another users items.",
-                                   ephemeral=True,
-                                   delete_after=20)
-            return
+            return await res.send_message("You cannot sell another users items.",
+                                          ephemeral=True,
+                                          delete_after=20)
 
         # Extract the item.
         user_l = users.Manager.get(interaction.user.id)
@@ -119,10 +117,9 @@ class BankSellDropdown(ui.Select):
 
         # None selected.
         if Items(itype) == Items.NONE and ivalue == 0:
-            await res.send_message("Transaction cancelled.",
-                                   ephemeral=True,
-                                   delete_after=20)
-            return
+            return await res.send_message("Transaction cancelled.",
+                                          ephemeral=True,
+                                          delete_after=20)
 
         # Check if we are selling all items.
         if Items(itype) == Items.NONE and ivalue > 0:
@@ -139,10 +136,20 @@ class BankSellDropdown(ui.Select):
             # Update the view.
             view = BankView(interaction.client)
             view.set_user(user)
-            await msg.edit(embed=BankView.get_panel(user), view=view)
+
+            ephemeral: bool = True
+            delete_after: Optional[int] = 30
+            try:
+                await msg.edit(embed=BankView.get_panel(user), view=view)
+                ephemeral = False
+                delete_after = None
+            except BaseException as exc:
+                pass
 
             return await res.send_message(f"{user} sold all items "
-                                          f"for **{total_value}** gp!")
+                                          f"for **{total_value}** gp!",
+                                          ephemeral=ephemeral,
+                                          delete_after=delete_after)
 
         # Find the item.
         item = next((i for i in user_l.bank.items if i.type == itype and
@@ -180,10 +187,19 @@ class BankSellDropdown(ui.Select):
         # Update the view.
         view = BankView(interaction.client)
         view.set_user(user)
-        await msg.edit(embed=BankView.get_panel(user), view=view)
+
+        ephemeral: bool = True
+        delete_after: Optional[int] = 30
+        try:
+            await msg.edit(embed=BankView.get_panel(user), view=view)
+            ephemeral = False
+            delete_after = None
+        except BaseException:
+            pass
 
         await res.send_message(f"{user} sold {quantity}**{item.name.title()}** "
-                               f"for {value} gp.")
+                               f"for {value} gp.", ephemeral=ephemeral,
+                               delete_after=delete_after)
 
 
 class BankUseDropdown(ui.Select):
@@ -213,17 +229,15 @@ class BankUseDropdown(ui.Select):
 
         extracted_users = await extract_users(interaction.client, msg)
         if len(extracted_users) == 0:
-            await res.send_message("User could not be identified.",
-                                   ephemeral=True,
-                                   delete_after=20)
-            return
+            return await res.send_message("User could not be identified.",
+                                          ephemeral=True,
+                                          delete_after=20)
 
         user = extracted_users[0]
         if interaction.user != user:
-            await res.send_message("You cannot use another users items.",
-                                   ephemeral=True,
-                                   delete_after=20)
-            return
+            return await res.send_message("You cannot use another users items.",
+                                          ephemeral=True,
+                                          delete_after=20)
 
         # Extract the item.
         user_l = users.Manager.get(interaction.user.id)
@@ -234,18 +248,17 @@ class BankUseDropdown(ui.Select):
 
         # None selected.
         if Items(itype) == Items.NONE and ivalue == 0:
-            await res.send_message("No item used.",
-                                   ephemeral=True,
-                                   delete_after=20)
-            return
+            return await res.send_message("No item used.",
+                                          ephemeral=True,
+                                          delete_after=20)
 
         # Find the item.
         item = user_l.bank.get_item(Items(itype), iname, ivalue)
         if not item:
-            await res.send_message("Could not find item. Do you still own it?",
-                                   ephemeral=True,
-                                   delete_after=20)
-            return
+            return await res.send_message("Could not find item. Do you still "
+                                          "own it?",
+                                          ephemeral=True,
+                                          delete_after=20)
 
         use_text = "used"
 
@@ -263,10 +276,20 @@ class BankUseDropdown(ui.Select):
 
             view = BankView(interaction.client)
             view.set_user(user)
-            await msg.edit(embed=BankView.get_panel(user), view=view)
+
+            ephemeral: bool = True
+            delete_after: Optional[int] = 30
+            try:
+                await msg.edit(embed=BankView.get_panel(user), view=view)
+                ephemeral = False
+                delete_after = None
+            except BaseException:
+                pass
             return await res.send_message(f"{user} {use_text} "
                                           f"**{item.name.title()}**, "
-                                          f"{granting}.")
+                                          f"{granting}.",
+                                          ephemeral=ephemeral,
+                                          delete_after=delete_after)
 
         # Remove the item from the user.
         if user_l.bank.remove_item(Items(itype), iname, ivalue):
@@ -284,8 +307,17 @@ class BankUseDropdown(ui.Select):
 
         view = BankView(interaction.client)
         view.set_user(user)
-        await msg.edit(embed=BankView.get_panel(user), view=view)
-        await res.send_message(f"{user} {use_text} **{item.name.title()}**.")
+
+        ephemeral: bool = True
+        delete_after: Optional[int] = 30
+        try:
+            await msg.edit(embed=BankView.get_panel(user), view=view)
+            ephemeral = False
+            delete_after = None
+        except BaseException:
+            pass
+        await res.send_message(f"{user} {use_text} **{item.name.title()}**.",
+                               ephemeral=ephemeral, delete_after=delete_after)
 
 
 class TradeDropdown(ui.Select):
@@ -388,15 +420,76 @@ class TradeDropdown(ui.Select):
         await res.send_message(logtxt)
 
 
+class LocationView(ui.View):
+    """User View that can be interacted with to make location."""
+
+    def __init__(self, bot: discord.Client) -> None:
+        self.bot = bot
+        self.user: Optional[Union[discord.User, discord.Member]] = None
+        super().__init__(timeout=None)
+
+    def set_user(self, user: Union[discord.User, discord.Member]) -> None:
+        """Sets the user so their locations can be used in the dropdown."""
+        self.user = user
+        user_l = users.Manager.get(user.id)
+        self.add_item(LocationDropdown(user_l))
+
+    @staticmethod
+    def get_panel(user: Union[discord.User, discord.Member]) -> discord.Embed:
+        """Gets the user stats for the user provided."""
+        # Get the local user.
+        user_l = users.Manager.get(user.id)
+        c_location: str = 'Unknown'
+        if user_l.c_location.name:
+            c_location = user_l.c_location.name.title()
+
+        # Build list of discovered locations.
+        loc_text: list[str] = []
+        locations = user_l.locations.get_unlocks()
+        for n, loc in enumerate(locations):
+            lfeed = '└' if n + 1 == len(locations) else '├'
+            current = ""
+            if loc == c_location.lower():
+                current = " (Current)"
+            loc_text.append(f"> {lfeed} {loc.title()}{current}")
+        full_text = '\n'.join(loc_text)
+
+        # Get the list of connections.
+        conn_text: list[str] = []
+        conns = user_l.locations.connections(user_l.c_location)
+        for n, loc in enumerate(conns):
+            lfeed = '└' if n + 1 == len(conns) else '├'
+            name = "Unknown"
+            if loc.name:
+                name = loc.name.title()
+            conn_text.append(f"> {lfeed} {name}")
+        conn_full = '\n'.join(conn_text)
+
+        color = discord.Colour.from_str("#00ff08")
+        desc = f"**{user}**\n\n"\
+            f"**id**: {user.id}\n"\
+            f"**level**: {user_l.level}\n"\
+            f"**messages**: {user_l.msg_count}\n\n"\
+            "> __**Areas Unlocked**__:\n"\
+            f"**{full_text}**\n\n"\
+            "> __**Area Connections**__:\n"\
+            f"**{conn_full}**\n"
+
+        embed = discord.Embed(description=desc, color=color)
+        embed.set_footer(text=f"Current Location: {c_location}")
+        embed.set_thumbnail(url=user.display_avatar.url)
+        return embed
+
+
 class UserView(ui.View):
     """User View that can be interacted with to make user changes."""
 
     def __init__(self, bot: discord.Client) -> None:
         self.bot = bot
-        self.user: Optional[discord.User] = None
+        self.user: Optional[Union[discord.User, discord.Member]] = None
         super().__init__(timeout=None)
 
-    def set_user(self, user: discord.User) -> None:
+    def set_user(self, user: Union[discord.User, discord.Member]) -> None:
         """Sets the user so their locations can be used in the dropdown."""
         self.user = user
         user_l = users.Manager.get(user.id)

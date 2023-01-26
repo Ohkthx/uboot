@@ -10,34 +10,11 @@ from managers import users, settings, react_roles, entities
 from managers.logs import Log
 from dclient import DiscordBot
 from dclient.destructable import DestructableManager, Destructable
-from dclient.helper import get_member, get_message, get_role, get_user
 from dclient.views.gamble import GambleView, gamble, ExtractedBet
 from dclient.views.dm import DMDeleteView
 from dclient.views.user import TradeView, UserView, BankView
-
-
-async def check_minigame(client: discord.Client,
-                         user: discord.Member,
-                         guild_id: int) -> tuple[bool, str]:
-    """Verifies the user has the minigame role."""
-    # Check that the user has the minigame role.
-    setting = settings.Manager.get(guild_id)
-    role_id = setting.minigame.role_id
-    minigame_role = await get_role(client, guild_id, role_id)
-    if not minigame_role:
-        return (False, "Minigame role may be current unset.")
-
-    # User does not have the role and cannot play.
-    if minigame_role not in user.roles:
-        # Shows and optional text for easy role access.
-        in_channel: str = ""
-        if setting.reactrole.channel_id > 0:
-            in_channel = f"\nGo to <#{setting.reactrole.channel_id}> to get the"\
-                " required role."
-        return (False, f"You need to select the **{minigame_role}** role "
-                f"to do that. {in_channel}")
-
-    return (True, "")
+from dclient.helper import (get_member, get_message,
+                            get_role, get_user, check_minigame)
 
 
 def parse_amount(amount: str) -> int:

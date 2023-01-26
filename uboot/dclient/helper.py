@@ -4,7 +4,31 @@ from typing import Optional
 import discord
 from discord import ForumChannel, TextChannel
 
-from managers import react_roles
+from managers import react_roles, settings
+
+
+async def check_minigame(client: discord.Client,
+                         user: discord.Member,
+                         guild_id: int) -> tuple[bool, str]:
+    """Verifies the user has the minigame role."""
+    # Check that the user has the minigame role.
+    setting = settings.Manager.get(guild_id)
+    role_id = setting.minigame.role_id
+    minigame_role = await get_role(client, guild_id, role_id)
+    if not minigame_role:
+        return (False, "Minigame role may be current unset.")
+
+    # User does not have the role and cannot play.
+    if minigame_role not in user.roles:
+        # Shows and optional text for easy role access.
+        in_channel: str = ""
+        if setting.reactrole.channel_id > 0:
+            in_channel = f"\nGo to <#{setting.reactrole.channel_id}> to get the"\
+                " required role."
+        return (False, f"You need to select the **{minigame_role}** role "
+                f"to do that. {in_channel}")
+
+    return (True, "")
 
 
 def find_tag(tag: str, channel: ForumChannel) -> Optional[discord.ForumTag]:
