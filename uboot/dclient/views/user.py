@@ -265,7 +265,7 @@ class BankUseDropdown(ui.Select):
         if item.isconsumable and user_l.bank.use_consumable(item):
             granting: str = "granting a powerhour"
             if item.type == Items.POWERHOUR:
-                user_l.powerhour = datetime.now()
+                user_l.mark_cooldown(users.Cooldown.POWERHOUR)
             if item.uses == 0:
                 user_l.bank.remove_item(item.type, item.name, item.value)
                 user_l.save()
@@ -511,7 +511,7 @@ class UserView(ui.View):
         day_str = '' if age.days % 365 == 0 else f"{int(age.days%365)} day(s)"
 
         powerhour_text = ""
-        if user_l.powerhour:
+        if user_l.ispowerhour:
             powerhour_text = "**powerhour**: enabled\n"
 
         weapon_name = "unarmed"
@@ -578,7 +578,7 @@ class BankView(ui.View):
             title = ', the Scholar'
 
         powerhour_status = "off"
-        if user_l.powerhour:
+        if user_l.ispowerhour:
             powerhour_status = "enabled"
 
         weapon_name = "unarmed"
@@ -593,11 +593,16 @@ class BankView(ui.View):
         for n, item in enumerate(user_l.bank.items):
             lfeed = '└' if n + 1 == len(user_l.bank.items) else '├'
             left: str = ""
-            if item.isconsumable:
+            if item.type in (Items.REAGENT, Items.ORE):
+                left = "count: "
+            elif item.isconsumable:
                 left = "charges: "
             elif item.isusable:
                 left = "durability: "
-            uses = f" [{left}{item.uses} / {item.uses_max}]" if item.isusable else ""
+
+            uses = ""
+            if left != "":
+                uses = f" [{left}{item.uses} / {item.uses_max}]"
             items.append(f"> {lfeed} **{item.name.title()}**{uses}, "
                          f"{item.value} gp")
 

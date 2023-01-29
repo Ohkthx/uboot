@@ -21,7 +21,7 @@ class Bank():
     def __init__(self, raw: BankRaw) -> None:
         self.user_id = raw[0]
         self.items: list[Item] = []
-        self.capacity = 4
+        self.capacity = 8
 
         # Load the items.
         raw_items = json.loads(raw[1].replace("'", ''))
@@ -55,15 +55,21 @@ class Bank():
                  max_override=False) -> None:
         """Add an item to the users bank, ignoring if bank is full."""
         # If uses are not added.
-        if not item.isconsumable:
+        if not item.isstackable:
             if not max_override and len(self.items) >= self.capacity:
                 return
             self.items.append(item)
             return
 
-        owned = next((i for i in self.items if i.type == item.type), None)
+        # Attempt to add stacks or uses.
+        owned: Optional[Item] = None
+        for i in self.items:
+            if i.type == item.type and int(i.material) == int(item.material):
+                owned = i
+                break
+
         if not owned:
-            if len(self.items) < self.capacity:
+            if len(self.items) < self.capacity or max_override:
                 if uses_override > 0:
                     item.uses = uses_override
                 self.items.append(item)

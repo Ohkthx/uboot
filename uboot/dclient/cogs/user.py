@@ -186,8 +186,8 @@ class User(commands.Cog):
 
         # Prevent taunt spam.
         user_l = users.Manager.get(ctx.author.id)
-        if datetime.now() - user_l.last_taunt < timedelta(minutes=12):
-            timediff = datetime.now() - user_l.last_taunt
+        if not user_l.timer_expired(users.Cooldown.TAUNT):
+            timediff = datetime.now() - user_l.cooldown(users.Cooldown.TAUNT)
             minutes = (timedelta(minutes=12) - timediff) / timedelta(minutes=1)
             await ctx.reply("You are tired and cannot taunt for another "
                             f"{minutes:0.1f} minutes.",
@@ -201,7 +201,7 @@ class User(commands.Cog):
             return
 
         # Update with a new taunt attempt.
-        user_l.last_taunt = datetime.now()
+        user_l.mark_cooldown(users.Cooldown.TAUNT)
 
         # Spawn the creature.
         loc = user_l.c_location
@@ -209,7 +209,7 @@ class User(commands.Cog):
         inpowerhour = self.bot.powerhours.get(ctx.guild.id)
         entity = entities.Manager.check_spawn(loc, difficulty,
                                               inpowerhour is not None,
-                                              user_l.powerhour is not None,
+                                              user_l.ispowerhour,
                                               True)
         if not entity:
             await ctx.reply("No nearby enemies react to your taunt.",

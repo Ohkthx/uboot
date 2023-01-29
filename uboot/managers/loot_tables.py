@@ -2,7 +2,7 @@
 
 import random
 from enum import IntEnum, auto
-from typing import Optional
+from typing import Optional, Union
 
 WEAPON_NAMES: list[str] = ["sword", "longsword", "bardiche", "cleaver",
                            "cutlass", "katana", "scimitar", "scythe",
@@ -15,9 +15,7 @@ TRASH_NAMES: list[str] = ["vase", "trinket", "necklace", "ring", "earrings",
                           "gloves", "bones", "spell scrolls", "silver",
                           "statue", "dye tub", "shield", "buckler",
                           "heater shield", "ringmail tunic",
-                          "ringmail leggings", "copper ore", "shadow iron ore",
-                          "agapite ore", "dull copper ore", "verite ore",
-                          "valorite ore"]
+                          "ringmail leggings"]
 
 
 def rand_name(names: list[str]) -> str:
@@ -33,6 +31,8 @@ class Items(IntEnum):
     LOCATION = auto()
     WEAPON = auto()
     TRASH = auto()
+    REAGENT = auto()
+    ORE = auto()
     CHEST = auto()
 
 
@@ -44,6 +44,30 @@ class Rarity(IntEnum):
     EPIC = auto()
     LEGENDARY = auto()
     MYTHICAL = auto()
+
+
+class Potion(IntEnum):
+    """Types of Potions"""
+    POWERHOUR = auto()
+    HEAL = auto()
+    CURE = auto()
+    NIGHTSIGHT = auto()
+    RESURRECTION = auto()
+
+
+class Reagent(IntEnum):
+    """Types of reagents."""
+    NONE = auto()
+    BONE = auto()
+    DAEMON_BONE = auto()
+    BLACK_PEARL = auto()
+    BLOOD_MOSS = auto()
+    GARLIC = auto()
+    GINSENG = auto()
+    MANDRAKE_ROOT = auto()
+    NIGHTSHADE = auto()
+    SPIDERS_SILK = auto()
+    SULFUROUS_ASH = auto()
 
 
 class Material(IntEnum):
@@ -70,7 +94,7 @@ class Item():
     def __init__(self, item_type: Items,
                  name: Optional[str] = None,
                  rarity: Rarity = Rarity.COMMON,
-                 material: Material = Material.NONE,
+                 material: Union[Material, Reagent] = Material.NONE,
                  value: int = 1,
                  uses: int = 1,
                  uses_max: int = 1):
@@ -85,6 +109,9 @@ class Item():
     @property
     def name(self) -> str:
         """Gets the name of the item based on its type."""
+        if self.type == Items.REAGENT:
+            return Reagent(self.material.value).name.replace("_", ' ')
+
         rarity: str = ""
         if self.material != Material.NONE:
             rarity = f"{self.material.name.title().replace('_', ' ')} "
@@ -108,10 +135,10 @@ class Item():
         """Gets the value of the item based on its type."""
         base_value = self.base_value
 
-        if self.type not in (Items.WEAPON, Items.POWERHOUR):
-            return base_value
-        if self.type == Items.POWERHOUR:
+        if self.isstackable:
             return base_value * self.uses
+        if self.type not in (Items.WEAPON,):
+            return base_value
 
         # 0 - 0.5
         material_mod: float = (max(self.material, Material.NONE) - 1) / 5
@@ -124,6 +151,11 @@ class Item():
         """Gets the raw value of the item, used for database storage."""
         return (int(self.type), self._name, int(self.rarity),
                 int(self.material), self._value, self.uses, self.uses_max)
+
+    @property
+    def isstackable(self) -> bool:
+        """Checks if an item can be stacked."""
+        return self.type in (Items.POWERHOUR, Items.REAGENT, Items.ORE)
 
     @property
     def isusable(self) -> bool:

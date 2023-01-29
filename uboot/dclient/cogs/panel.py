@@ -5,7 +5,7 @@ from discord.ext.commands import param
 from dclient import DiscordBot
 from dclient.helper import get_channel
 from dclient.views.dm import DMDeleteView, DMResponseView
-from dclient.views.minigame import TauntView, UserActionView
+from dclient.views.minigame import ResourceView, UserActionView
 from dclient.views.support_request import SupportRequestView
 from dclient.views.private_guild_signup import GuildSignupView
 from dclient.views.private_guild_panel import GuildManagerView
@@ -248,12 +248,12 @@ class Panel(commands.Cog):
         await thread_ch.create_thread(name="User Management",
                                       view=view, embed=embed)
 
-    @minigame.command(name="taunt")
+    @minigame.command(name="resource")
     async def taunt(self, ctx: commands.Context) -> None:
-        """Creates a panel for the taunt button.
+        """Creates a panel for the resource buttons.
 
         examples:
-            [panel minigame taunt
+            [panel minigame resource
         """
         guild = ctx.guild
         if not guild:
@@ -266,11 +266,13 @@ class Panel(commands.Cog):
                            delete_after=30)
             return
 
-        embed = TauntView.get_panel()
-        view = TauntView(self.bot)
+        embed = ResourceView.get_panel()
+        view = ResourceView(self.bot)
 
-        # Create a new thread for the taunt button.
-        await thread_ch.create_thread(name="Taunt Panel", view=view, embed=embed)
+        # Create a new thread for the resource buttons.
+        await thread_ch.create_thread(name="Combat and Collection",
+                                      view=view,
+                                      embed=embed)
 
 
 async def setup(bot: DiscordBot) -> None:

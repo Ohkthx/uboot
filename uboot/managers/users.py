@@ -4,6 +4,7 @@ connection between database and memory.
 import json
 import math
 import random
+from enum import Enum, auto
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -19,6 +20,15 @@ def make_raw(user_id: int) -> UserRaw:
     """
     return (user_id, 100, 0, 0, 0, 0, 0, 0, 0,
             Area.SEWERS.value, Area.SEWERS.value, 0, "''")
+
+
+class Cooldown(Enum):
+    """Various cooldowns that a user can have."""
+    GOLD = auto()
+    POWERHOUR = auto()
+    TAUNT = auto()
+    FORAGE = auto()
+    MINING = auto()
 
 
 class User():
@@ -47,10 +57,8 @@ class User():
 
         self.isbot = False
         self._incombat = False
-        self.powerhour: Optional[datetime] = None
-        self.last_message = datetime.now() - timedelta(hours=6)
-        self.last_taunt = self.last_message
 
+        self._cooldowns: dict[Cooldown, datetime] = {}
         self.bank = BankManager.get(self.id)
 
     def __str__(self) -> str:
@@ -73,6 +81,27 @@ class User():
                 self.locations.raw, self.c_location.value,
                 self._deaths, weapon)
 
+    def timer_expired(self, cooldown: Cooldown) -> bool:
+        """Checks if a specific timer is off of cooldown."""
+        time_diff = datetime.now() - self.cooldown(cooldown)
+
+        if cooldown == Cooldown.GOLD and time_diff < timedelta(seconds=15):
+            return False
+        if cooldown == Cooldown.POWERHOUR and time_diff < timedelta(hours=1):
+            return False
+        if cooldown == Cooldown.TAUNT and time_diff < timedelta(minutes=12):
+            return False
+        if cooldown == Cooldown.FORAGE and time_diff < timedelta(minutes=5):
+            return False
+        if cooldown == Cooldown.MINING and time_diff < timedelta(minutes=6):
+            return False
+        return True
+
+    @property
+    def ispowerhour(self) -> bool:
+        """Checks if the user is in powerhour or not."""
+        return not self.timer_expired(Cooldown.POWERHOUR)
+
     @property
     def incombat(self) -> bool:
         """Checks if the user is in combat or not."""
@@ -92,6 +121,18 @@ class User():
     def set_combat(self, value: bool) -> None:
         """Set the user to be in combat."""
         self._incombat = value
+
+    def cooldown(self, cooldown: Cooldown) -> datetime:
+        """Obtains a cooldowns status."""
+        cd_timer = self._cooldowns.get(cooldown)
+        if not cd_timer:
+            cd_timer = datetime.now() - timedelta(hours=6)
+            self._cooldowns[cooldown] = cd_timer
+        return cd_timer
+
+    def mark_cooldown(self, cooldown: Cooldown) -> None:
+        """Sets the cooldown to the current time."""
+        self._cooldowns[cooldown] = datetime.now()
 
     @property
     def gold(self) -> int:
@@ -232,17 +273,11 @@ class User():
         """Adds a message to the user. Rewards with gold if off cooldown."""
         self.msg_count += 1
 
-        now = datetime.now()
-        if self.powerhour:
-            time_diff = now - self.powerhour
-            if time_diff < timedelta(hours=1):
-                multiplier += self.gold_multiplier_powerhour
-            else:
-                self.powerhour = None
+        if self.ispowerhour:
+            multiplier += self.gold_multiplier_powerhour
 
         # Check if it adding gold is off of cooldown.
-        time_diff = now - self.last_message
-        if time_diff < timedelta(seconds=15):
+        if not self.timer_expired(Cooldown.GOLD):
             return
 
         # Gold is not on cooldown, add.
@@ -250,7 +285,7 @@ class User():
         if multiplier >= 1.0:
             total_multiplier += (multiplier - 1)
         self.gold = self._gold + (1 * total_multiplier)
-        self.last_message = now
+        self.mark_cooldown(Cooldown.GOLD)
 
     def win_rate(self) -> float:
         """Calculate the win-rate percentage for gambling."""
