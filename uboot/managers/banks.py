@@ -1,8 +1,9 @@
 """Representation of a bank. Keeps track of several items and manages the
 connection between database and memory.
 """
-from typing import Optional
 import json
+from enum import IntEnum, auto
+from typing import Optional
 
 from db.banks import BankDb, BankRaw
 from .loot_tables import Item, Material, Items, ItemRaw
@@ -15,23 +16,24 @@ def make_raw(user_id: int) -> BankRaw:
     return (user_id, '[]')
 
 
-class Bank():
-    """Representation of a bank. Initialized with BankRaw."""
+class Inventory():
+    """Represents an inventory that can store items."""
 
-    def __init__(self, raw: BankRaw) -> None:
-        self.user_id = raw[0]
-        self.items: list[Item] = []
-        self.capacity = 8
+    class Type(IntEnum):
+        BASE = auto()
+        BANK = auto()
+        RESOURCES = auto()
+        BAG = auto()
 
-        # Load the items.
-        raw_items = json.loads(raw[1].replace("'", ''))
-        for item in raw_items:
-            self.items.append(Item.from_raw(item))
-
-    @property
-    def _raw(self) -> BankRaw:
-        """Converts the Bank back into a BankRaw."""
-        return (self.user_id, f"'{json.dumps(self.raw_items())}'")
+    def __init__(self, inventory_type: Type = Type.BASE,
+                 name: str = "Inventory",
+                 capacity: int = 4, items: list[Item] = [],
+                 parent: Optional['Inventory'] = None) -> None:
+        self.type = inventory_type
+        self.capacity = capacity
+        self.items = items
+        self.name = name
+        self.parent = parent
 
     @property
     def value(self) -> int:
@@ -50,6 +52,18 @@ class Bank():
         """Attempts to get an item based on some values."""
         return next((i for i in self.items if i.type == item_type and
                      i.value == value and i.name == name), None)
+
+    def use_consumable(self, item: Item) -> bool:
+        """Uses a consumable item."""
+        if not item.isconsumable:
+            return False
+
+        owned = next((i for i in self.items if i.type == item.type), None)
+        if not owned:
+            return False
+
+        owned.remove_use(1)
+        return True
 
     def add_item(self, item: Item, uses_override: int = -1,
                  max_override=False) -> None:
@@ -80,18 +94,6 @@ class Bank():
             uses_override = item.uses
         owned.add_use(uses_override)
 
-    def use_consumable(self, item: Item) -> bool:
-        """Uses a consumable item."""
-        if not item.isconsumable:
-            return False
-
-        owned = next((i for i in self.items if i.type == item.type), None)
-        if not owned:
-            return False
-
-        owned.remove_use(1)
-        return True
-
     def remove_item(self, item_type: Items, name: str, value: int) -> bool:
         """Remove an item from the users bank."""
         new_items: list[Item] = []
@@ -103,6 +105,77 @@ class Bank():
         old_count = len(self.items)
         self.items = new_items
         return old_count != new_items
+
+
+class ResourceBag(Inventory):
+    """Representation of a bag containing resources."""
+
+    def __init__(self, items: list[Item], parent: Inventory) -> None:
+        items = [item for item in items if item.isresource]
+        super().__init__(inventory_type=Inventory.Type.RESOURCES,
+                         name="Resource Pouch",
+                         capacity=16,
+                         items=items,
+                         parent=parent)
+
+
+class Bank(Inventory):
+    """Representation of a bank. Initialized with BankRaw."""
+
+    def __init__(self, raw: BankRaw) -> None:
+        # Load the items.
+        raw_items = json.loads(raw[1].replace("'", ''))
+
+        # Convert the items.
+        items = [Item.from_raw(item) for item in raw_items]
+        resources = [item for item in items if item.isresource]
+        bankable = [item for item in items if not item.isresource]
+        super().__init__(inventory_type=Inventory.Type.BANK,
+                         name="Bank Box",
+                         capacity=8,
+                         items=bankable)
+
+        self.user_id = raw[0]
+        self.bags: list[Inventory] = [ResourceBag(resources, self)]
+
+    @property
+    def _raw(self) -> BankRaw:
+        """Converts the Bank back into a BankRaw."""
+        items = [*self.raw_items(), *self.resources.raw_items()]
+        return (self.user_id, f"'{json.dumps(items)}'")
+
+    @property
+    def resources(self) -> ResourceBag:
+        """Gets the resource bag for the users bank"""
+        resource_bag: Optional[ResourceBag] = None
+        for b in self.bags:
+            if b.type == Inventory.Type.RESOURCES and isinstance(
+                    b, ResourceBag):
+                resource_bag = b
+                break
+
+        # Create the resource bag if it is missing somehow.
+        if not resource_bag:
+            resource_bag = ResourceBag([], self)
+            self.bags.append(resource_bag)
+
+        return resource_bag
+
+    def add_item(self, item: Item, uses_override: int = -1,
+                 max_override=False) -> None:
+        """Add an item to the users bank or resource bag."""
+        if item.isresource:
+            self.resources.add_item(item, uses_override, max_override)
+            return
+
+        super().add_item(item, uses_override, max_override)
+
+    def remove_item(self, item_type: Items, name: str, value: int) -> bool:
+        """Removes an item from bank or resource bag."""
+        if super().remove_item(item_type, name, value):
+            return True
+
+        return self.resources.remove_item(item_type, name, value)
 
     def save(self) -> None:
         """Stores the bank into the database, saving or updating as necesarry."""

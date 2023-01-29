@@ -12,7 +12,7 @@ from dclient import DiscordBot
 from dclient.destructable import DestructableManager, Destructable
 from dclient.views.gamble import GambleView, gamble, ExtractedBet
 from dclient.views.dm import DMDeleteView
-from dclient.views.user import TradeView, UserView, BankView
+from dclient.views.user import TradeView, UserStatsView, InventoryView
 from dclient.helper import (get_member, get_message,
                             get_role, get_user, check_minigame)
 
@@ -324,10 +324,12 @@ class User(commands.Cog):
         category = Destructable.Category.OTHER
         await DestructableManager.remove_many(ctx.author.id, True, category)
 
-        view = BankView(self.bot)
-        view.set_user(user)
+        user_l = users.Manager.get(user.id)
 
-        embed = BankView.get_panel(user)
+        view = InventoryView(self.bot)
+        view.set_user(user, user_l.bank)
+
+        embed = InventoryView.get_panel(user, user_l.bank)
         message = await ctx.send(embed=embed, view=view)
 
         # Create the destructable.
@@ -372,9 +374,9 @@ class User(commands.Cog):
             if thread_user:
                 user = thread_user
 
-        view = UserView(self.bot)
+        view = UserStatsView(self.bot)
         view.set_user(user)
-        embed = UserView.get_panel(user)
+        embed = UserStatsView.get_panel(user)
         message = await ctx.send(embed=embed, view=view)
 
         # Create the destructable.
@@ -517,7 +519,7 @@ class User(commands.Cog):
         view.set_user(ctx.author)
 
         # Reuse the bank / item panel, modify the user ids on the bottom.
-        embed = BankView.get_panel(ctx.author)
+        embed = InventoryView.get_panel(ctx.author, from_user.bank)
         embed.set_footer(text=f"{from_user.id}:{to_user.id}")
         await ctx.send(embed=embed, view=view)
 

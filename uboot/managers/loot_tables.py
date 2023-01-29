@@ -158,6 +158,11 @@ class Item():
         return self.type in (Items.POWERHOUR, Items.REAGENT, Items.ORE)
 
     @property
+    def isresource(self) -> bool:
+        """Checks if an item can be stacked."""
+        return self.type in (Items.REAGENT, Items.ORE)
+
+    @property
     def isusable(self) -> bool:
         """Checks if the item can be used."""
         return self.type in (Items.POWERHOUR, Items.WEAPON)

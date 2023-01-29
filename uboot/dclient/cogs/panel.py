@@ -5,7 +5,7 @@ from discord.ext.commands import param
 from dclient import DiscordBot
 from dclient.helper import get_channel
 from dclient.views.dm import DMDeleteView, DMResponseView
-from dclient.views.minigame import ResourceView, UserActionView
+from dclient.views.minigame import ResourceView, UserManagementView
 from dclient.views.support_request import SupportRequestView
 from dclient.views.private_guild_signup import GuildSignupView
 from dclient.views.private_guild_panel import GuildManagerView
@@ -218,17 +218,19 @@ class Panel(commands.Cog):
         attached to a forum thread.
 
         examples:
-            [panel minigame taunt
+            [panel minigame manager
+            [panel minigame resource
         """
         if not ctx.invoked_subcommand:
             await ctx.send("Invalid minigame panel command.", delete_after=30)
 
-    @minigame.command(name="user-actions")
-    async def user_actions(self, ctx: commands.Context) -> None:
-        """Creates a panel for various user actions (stats, bank, recall).
+    @minigame.command(name="manager")
+    async def user_manager(self, ctx: commands.Context) -> None:
+        """Creates a panel for various user actions, such as:
+        stats,bank, resources, and recall
 
         examples:
-            [panel minigame user-actions
+            [panel minigame manager
         """
         guild = ctx.guild
         if not guild:
@@ -241,8 +243,8 @@ class Panel(commands.Cog):
                            delete_after=30)
             return
 
-        embed = UserActionView.get_panel()
-        view = UserActionView(self.bot)
+        embed = UserManagementView.get_panel()
+        view = UserManagementView(self.bot)
 
         # Create a new thread for the buttons.
         await thread_ch.create_thread(name="User Management",

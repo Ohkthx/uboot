@@ -1,6 +1,8 @@
 """User based views."""
 from datetime import datetime, timedelta
 from random import choice, randint
+from enum import Enum
+from typing import Optional
 
 import discord
 from discord import ui
@@ -8,7 +10,7 @@ from discord import ui
 from dclient import DiscordBot
 from dclient.helper import get_user, check_minigame
 from dclient.destructable import Destructable, DestructableManager
-from dclient.views.user import BankView, LocationView, UserView
+from dclient.views.user import (InventoryView, LocationView, UserStatsView)
 from managers import users, entities
 from managers.logs import Log
 from managers.loot_tables import Item, Items, Material, Reagent
@@ -56,12 +58,95 @@ async def extract_users(client: discord.Client,
     return extracted_users
 
 
-class UserActionView(ui.View):
+class ManageOptions(Enum):
+    STATS = "view STATS"
+    BANK = "check BANK"
+    RESOURCES = "check RESOURCES"
+    RECALL = "perform RECALL"
+
+
+class ManagementDropdown(ui.Select):
+    """Allows the user to select an item to manage."""
+
+    def __init__(self) -> None:
+        options: list[discord.SelectOption] = []
+
+        for opt in ManageOptions:
+            options.append(discord.SelectOption(
+                label=opt.value, value=opt.name))
+
+        super().__init__(options=options,
+                         placeholder="Pick an action to perform.",
+                         custom_id="management_dropdown")
+
+    async def callback(self, interaction: discord.Interaction):
+        """Called when the menu is selected."""
+        res = interaction.response
+        guild = interaction.guild
+        user = interaction.user
+        message = interaction.message
+        if not guild or not isinstance(user, discord.Member) or not message:
+            return
+
+        thread = interaction.channel
+        if not thread or not isinstance(thread, discord.Thread):
+            return
+
+        # Check that the user has the minigame role.
+        passed, msg = await check_minigame(interaction.client, user, guild.id)
+        if not passed:
+            return await res.send_message(msg, ephemeral=True, delete_after=30)
+
+        # Remove the old views.
+        category = Destructable.Category.OTHER
+        await DestructableManager.remove_many(user.id, True, category)
+
+        option: ManageOptions = ManageOptions.STATS
+        for opt in ManageOptions:
+            if opt.name.upper() == self.values[0].upper():
+                option = opt
+
+        user_l = users.Manager.get(user.id)
+        stats = extract_ints(message)
+
+        # Get the proper view for the sub menu.
+        view: Optional[ui.View] = None
+        embed: Optional[discord.Embed] = None
+        if option == ManageOptions.BANK:
+            stats[1] += 1
+            view = InventoryView(interaction.client)
+            view.set_user(user, user_l.bank)
+            embed = InventoryView.get_panel(user, user_l.bank)
+        elif option == ManageOptions.RESOURCES:
+            stats[2] += 1
+            view = InventoryView(interaction.client)
+            view.set_user(user, user_l.bank.resources)
+            embed = InventoryView.get_panel(user, user_l.bank.resources)
+        elif option == ManageOptions.RECALL:
+            stats[3] += 1
+            view = LocationView(interaction.client)
+            view.set_user(user)
+            embed = LocationView.get_panel(user)
+        else:
+            stats[0] += 1
+            view = UserStatsView(interaction.client)
+            view.set_user(user)
+            embed = UserStatsView.get_panel(user)
+
+        # Submit the changes.
+        stats_changes = ':'.join([str(i) for i in stats])
+        await update_footer(message, stats_changes)
+        await res.send_message(embed=embed, view=view, ephemeral=True,
+                               delete_after=60)
+
+
+class UserManagementView(ui.View):
     """Basic user actions for managing their character."""
 
     def __init__(self, bot: discord.Client) -> None:
         self.bot = bot
         super().__init__(timeout=None)
+        self.add_item(ManagementDropdown())
 
     @staticmethod
     def get_panel() -> discord.Embed:
@@ -70,123 +155,13 @@ class UserActionView(ui.View):
         embed.color = discord.Colour.from_str("#00ff08")
         embed.description = "Manage your user account below.\n\n"\
             f"__**Options**__:\n"\
-            f"> ├ **Stats**, check your player status.\n"\
-            f"> ├ **Bank**, manage your bank and sell items.\n"\
-            f"> └ **Recall**, travel to a new location.\n"
-        embed.set_footer(text="0:0:0")
+            f"> ├ **STATS**, check your player status.\n"\
+            f"> ├ **BANK**, manage your bank and sell items.\n"\
+            f"> ├ **RESOURCES**, manage your resources.\n"\
+            f"> └ **RECALL**, travel to a new location.\n"
+        embed.set_footer(text="0:0:0:0")
 
         return embed
-
-    @ui.button(label='Stats', style=discord.ButtonStyle.blurple,
-               custom_id='user_action_view:stats')
-    async def stats(self, interaction: discord.Interaction, button: ui.Button):
-        """Displays the players stats."""
-        res = interaction.response
-        guild = interaction.guild
-        user = interaction.user
-        message = interaction.message
-        if not guild or not isinstance(user, discord.Member) or not message:
-            return
-
-        thread = interaction.channel
-        if not thread or not isinstance(thread, discord.Thread):
-            return
-
-        # Check that the user has the minigame role.
-        passed, msg = await check_minigame(self.bot, user, guild.id)
-        if not passed:
-            return await res.send_message(msg, ephemeral=True, delete_after=30)
-
-        # Remove the old views.
-        category = Destructable.Category.OTHER
-        await DestructableManager.remove_many(user.id, True, category)
-
-        stats = extract_ints(message)
-        stats[0] += 1
-        stats_changes = ':'.join([str(i) for i in stats])
-        await update_footer(message, stats_changes)
-
-        # Create the stats view.
-        view = UserView(self.bot)
-        view.set_user(user)
-        embed = UserView.get_panel(user)
-        await res.send_message(embed=embed, view=view, ephemeral=True,
-                               delete_after=60)
-
-    @ui.button(label='Bank', style=discord.ButtonStyle.green,
-               custom_id='user_action_view:bank')
-    async def bank(self, interaction: discord.Interaction, button: ui.Button):
-        """Displays the players bank."""
-        res = interaction.response
-        guild = interaction.guild
-        user = interaction.user
-        message = interaction.message
-        if not guild or not isinstance(user, discord.Member) or not message:
-            return
-
-        thread = interaction.channel
-        if not thread or not isinstance(thread, discord.Thread):
-            return
-
-        # Check that the user has the minigame role.
-        passed, msg = await check_minigame(self.bot, user, guild.id)
-        if not passed:
-            return await res.send_message(msg, ephemeral=True, delete_after=30)
-
-        # Remove the old views.
-        category = Destructable.Category.OTHER
-        await DestructableManager.remove_many(user.id, True, category)
-
-        stats = extract_ints(message)
-        stats[1] += 1
-        stats_changes = ':'.join([str(i) for i in stats])
-        await update_footer(message, stats_changes)
-
-        view = BankView(self.bot)
-        view.set_user(user)
-
-        embed = BankView.get_panel(user)
-        try:
-            await res.send_message(embed=embed, view=view, ephemeral=True,
-                                   delete_after=60)
-        except BaseException as exc:
-            print(exc)
-
-    @ui.button(label='Recall', style=discord.ButtonStyle.gray,
-               custom_id='user_action_view:recall')
-    async def Recall(self, interaction: discord.Interaction, button: ui.Button):
-        """Displays the players location and recall areas."""
-        res = interaction.response
-        guild = interaction.guild
-        user = interaction.user
-        message = interaction.message
-        if not guild or not isinstance(user, discord.Member) or not message:
-            return
-
-        thread = interaction.channel
-        if not thread or not isinstance(thread, discord.Thread):
-            return
-
-        # Check that the user has the minigame role.
-        passed, msg = await check_minigame(self.bot, user, guild.id)
-        if not passed:
-            return await res.send_message(msg, ephemeral=True, delete_after=30)
-
-        # Remove the old views.
-        category = Destructable.Category.OTHER
-        await DestructableManager.remove_many(user.id, True, category)
-
-        stats = extract_ints(message)
-        stats[2] += 1
-        stats_changes = ':'.join([str(i) for i in stats])
-        await update_footer(message, stats_changes)
-
-        view = LocationView(self.bot)
-        view.set_user(user)
-
-        embed = LocationView.get_panel(user)
-        await res.send_message(embed=embed, view=view, ephemeral=True,
-                               delete_after=60)
 
 
 class ResourceView(ui.View):
@@ -356,16 +331,20 @@ class ResourceView(ui.View):
                     material=reagent,
                     value=5,
                     uses=count,
-                    uses_max=5)
+                    uses_max=6)
 
-        user_l.bank.add_item(item, max_override=True)
+        user_l.bank.add_item(item)
         user_l.bank.save()
 
-        return await res.send_message(f"You found {count} "
-                                      f"**{item.name.lower()}** while "
-                                      "foraging!",
-                                      ephemeral=True,
-                                      delete_after=30)
+        try:
+            return await res.send_message(f"You found **{count} "
+                                          f"{item.name.lower()}** while "
+                                          "foraging!",
+                                          ephemeral=True,
+                                          delete_after=30)
+        except BaseException as exc:
+            Log.player(f"{author} could not complete foraging order, {exc}",
+                       guild_id=guild.id, user_id=author.id)
 
     @ui.button(label='⛏️ MINE', style=discord.ButtonStyle.blurple,
                custom_id='resource_view:mine')
@@ -415,7 +394,7 @@ class ResourceView(ui.View):
         if count == 0:
             stats_changes = ':'.join([str(i) for i in stats])
             await update_footer(message, stats_changes)
-            return await res.send_message(f"You struck a **{vein_name}** vein "
+            return await res.send_message(f"You struck a **{vein_name} vein** "
                                           "but fail to extract any ore.",
                                           ephemeral=True,
                                           delete_after=30)
@@ -427,18 +406,22 @@ class ResourceView(ui.View):
                     material=material,
                     value=10,
                     uses=count,
-                    uses_max=5)
+                    uses_max=6)
 
-        user_l.bank.add_item(item, max_override=True)
+        user_l.bank.add_item(item)
         user_l.bank.save()
 
-        return await res.send_message(f"You struck a **{vein_name}** vein "
-                                      f"and extract {count} ore!",
-                                      ephemeral=True,
-                                      delete_after=30)
+        try:
+            return await res.send_message(f"You struck a **{vein_name} vein** "
+                                          f"and extracted **{count} ore**!",
+                                          ephemeral=True,
+                                          delete_after=30)
+        except BaseException as exc:
+            Log.player(f"{author} could not complete mining order, {exc}",
+                       guild_id=guild.id, user_id=author.id)
 
 
 async def setup(bot: discord.Client) -> None:
     """This is called by process that loads extensions."""
-    bot.add_view(UserActionView(bot))
+    bot.add_view(UserManagementView(bot))
     bot.add_view(ResourceView(bot))
