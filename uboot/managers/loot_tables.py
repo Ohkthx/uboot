@@ -12,7 +12,7 @@ WEAPON_NAMES: list[str] = ["sword", "longsword", "bardiche", "cleaver",
                            "dagger", "kryss", "pike", "spear", "war fork"]
 TRASH_NAMES: list[str] = ["vase", "trinket", "necklace", "ring", "earrings",
                           "sandals", "cloth", "tunic", "gorget", "leggings",
-                          "gloves", "bones", "spell scrolls", "silver",
+                          "gloves", "spell scrolls", "silver",
                           "statue", "dye tub", "shield", "buckler",
                           "heater shield", "ringmail tunic",
                           "ringmail leggings"]
@@ -33,6 +33,7 @@ class Items(IntEnum):
     TRASH = auto()
     REAGENT = auto()
     ORE = auto()
+    BAG = auto()
     CHEST = auto()
 
 
@@ -111,6 +112,8 @@ class Item():
         """Gets the name of the item based on its type."""
         if self.type == Items.REAGENT:
             return Reagent(self.material.value).name.replace("_", ' ')
+        elif self.type == Items.BAG:
+            return self._name
 
         rarity: str = ""
         if self.material != Material.NONE:
@@ -123,12 +126,13 @@ class Item():
     @property
     def base_value(self) -> int:
         """Base unmodified value of the item."""
-        if self.type not in (Items.WEAPON, Items.POWERHOUR):
-            return self._value
         if self.type == Items.POWERHOUR:
             return 20
-
-        return 150
+        if self.type == Items.BAG:
+            return 100
+        if self.type == Items.WEAPON:
+            return 150
+        return self._value
 
     @property
     def value(self) -> int:
@@ -155,7 +159,8 @@ class Item():
     @property
     def isstackable(self) -> bool:
         """Checks if an item can be stacked."""
-        return self.type in (Items.POWERHOUR, Items.REAGENT, Items.ORE)
+        return self.type in (Items.POWERHOUR, Items.REAGENT, Items.ORE,
+                             Items.BAG)
 
     @property
     def isresource(self) -> bool:
@@ -231,7 +236,8 @@ class ItemCreator():
     @property
     def isunique(self) -> bool:
         """Checks if only 1 of the type of item is valid for looting."""
-        uniques = (Items.POWERHOUR, Items.LOCATION, Items.CHEST, Items.WEAPON)
+        uniques = (Items.POWERHOUR, Items.LOCATION,
+                   Items.CHEST, Items.WEAPON, Items.BAG)
         return self.type in uniques
 
     def generate(self) -> Item:
@@ -250,6 +256,12 @@ class ItemCreator():
             uses = material * 2
             return Item(self.type, name=name, material=material,
                         uses=uses, uses_max=uses)
+        if self.type == Items.BAG:
+            name = "bag"
+            return Item(self.type, name=name,
+                        uses=min(value, 8),
+                        uses_max=8)
+
         if self.type == Items.TRASH:
             name = rand_name(TRASH_NAMES)
             value = int(value * self.modifier)
@@ -367,13 +379,14 @@ class CommonChest(ChestCreator):
 
     def __init__(self) -> None:
         super().__init__(2, Rarity.COMMON)
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 4)
-        self.add_item(ItemCreator(Items.GOLD, 2, 22, 40), 9)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 5)
-        self.add_item(ItemCreator(Items.TRASH, 1, 22, 40), 1)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 20)
+        self.add_item(ItemCreator(Items.GOLD, 2, 22, 40), 35)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 30)
+        self.add_item(ItemCreator(Items.TRASH, 1, 22, 40), 10)
 
         worst, best = Material.WOOD, Material.DULL_COPPER
-        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
+        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 4)
+        self.add_item(ItemCreator(Items.BAG, 1, 1, 1), 1)
 
 
 class UncommonChest(ChestCreator):
@@ -381,13 +394,14 @@ class UncommonChest(ChestCreator):
 
     def __init__(self) -> None:
         super().__init__(2, Rarity.UNCOMMON)
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 4)
-        self.add_item(ItemCreator(Items.GOLD, 2, 44, 80), 9)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 5)
-        self.add_item(ItemCreator(Items.TRASH, 1, 44, 80), 1)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 20)
+        self.add_item(ItemCreator(Items.GOLD, 2, 44, 80), 35)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 30)
+        self.add_item(ItemCreator(Items.TRASH, 1, 44, 80), 10)
 
         worst, best = Material.IRON, Material.SHADOW_IRON
-        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
+        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 4)
+        self.add_item(ItemCreator(Items.BAG, 1, 1, 1), 1)
 
 
 class RareChest(ChestCreator):
@@ -395,13 +409,14 @@ class RareChest(ChestCreator):
 
     def __init__(self) -> None:
         super().__init__(2, Rarity.RARE)
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 4)
-        self.add_item(ItemCreator(Items.GOLD, 2, 108, 240), 9)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 5)
-        self.add_item(ItemCreator(Items.TRASH, 1, 108, 240), 1)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 20)
+        self.add_item(ItemCreator(Items.GOLD, 2, 108, 240), 35)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 30)
+        self.add_item(ItemCreator(Items.TRASH, 1, 108, 240), 10)
 
         worst, best = Material.DULL_COPPER, Material.BRONZE
-        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
+        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 4)
+        self.add_item(ItemCreator(Items.BAG, 1, 1, 2), 1)
 
 
 class EpicChest(ChestCreator):
@@ -409,13 +424,14 @@ class EpicChest(ChestCreator):
 
     def __init__(self) -> None:
         super().__init__(3, Rarity.EPIC)
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 4)
-        self.add_item(ItemCreator(Items.GOLD, 3, 303, 580), 9)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 5)
-        self.add_item(ItemCreator(Items.TRASH, 1, 303, 580), 1)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 10)
+        self.add_item(ItemCreator(Items.GOLD, 3, 303, 580), 35)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 30)
+        self.add_item(ItemCreator(Items.TRASH, 1, 303, 580), 10)
 
         worst, best = Material.COPPER, Material.AGAPITE
-        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
+        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 9)
+        self.add_item(ItemCreator(Items.BAG, 1, 2, 3), 6)
 
 
 class LegendaryChest(ChestCreator):
@@ -423,13 +439,14 @@ class LegendaryChest(ChestCreator):
 
     def __init__(self) -> None:
         super().__init__(4, Rarity.LEGENDARY)
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 4)
-        self.add_item(ItemCreator(Items.GOLD, 4, 606, 1200), 9)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 5)
-        self.add_item(ItemCreator(Items.TRASH, 1, 606, 1200), 1)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 10)
+        self.add_item(ItemCreator(Items.GOLD, 4, 606, 1200), 35)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 30)
+        self.add_item(ItemCreator(Items.TRASH, 1, 606, 1200), 10)
 
         worst, best = Material.GOLD, Material.VERITE
-        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
+        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 9)
+        self.add_item(ItemCreator(Items.BAG, 1, 2, 4), 6)
 
 
 class MythicalChest(ChestCreator):
@@ -437,13 +454,14 @@ class MythicalChest(ChestCreator):
 
     def __init__(self) -> None:
         super().__init__(5, Rarity.MYTHICAL)
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 4)
-        self.add_item(ItemCreator(Items.GOLD, 5, 810, 1800), 9)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 5)
-        self.add_item(ItemCreator(Items.TRASH, 1, 810, 1800), 1)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 10)
+        self.add_item(ItemCreator(Items.GOLD, 5, 810, 1800), 35)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 30)
+        self.add_item(ItemCreator(Items.TRASH, 1, 810, 1800), 10)
 
         worst, best = Material.VERITE, Material.VALORITE
-        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
+        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 9)
+        self.add_item(ItemCreator(Items.BAG, 1, 3, 5), 6)
 
 
 class CommonLoot(LootTable):
@@ -453,18 +471,19 @@ class CommonLoot(LootTable):
         super().__init__(2)
         self.rarity = Rarity.COMMON
 
-        self.add_item(CommonChest(), 21 if isparagon else 1)
+        self.add_item(CommonChest(), 105 if isparagon else 5)
         if ischest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 6)
-        self.add_item(ItemCreator(Items.GOLD, 1, 22, 40), 4)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
-        self.add_item(ItemCreator(Items.LOCATION, 1), 3)
-        self.add_item(ItemCreator(Items.TRASH, 1, 22, 40, 0.75), 1)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 25)
+        self.add_item(ItemCreator(Items.GOLD, 1, 22, 40), 20)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 15)
+        self.add_item(ItemCreator(Items.LOCATION, 1), 25)
+        self.add_item(ItemCreator(Items.TRASH, 1, 22, 40, 0.75), 7)
 
         worst, best = Material.WOOD, Material.DULL_COPPER
-        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
+        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 2)
+        self.add_item(ItemCreator(Items.BAG, 1, 1, 1), 1)
 
 
 class UncommonLoot(LootTable):
@@ -474,18 +493,19 @@ class UncommonLoot(LootTable):
         super().__init__(2)
         self.rarity = Rarity.UNCOMMON
 
-        self.add_item(UncommonChest(), 21 if isparagon else 1)
+        self.add_item(UncommonChest(), 105 if isparagon else 5)
         if ischest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 6)
-        self.add_item(ItemCreator(Items.GOLD, 1, 44, 80), 4)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
-        self.add_item(ItemCreator(Items.LOCATION, 1), 3)
-        self.add_item(ItemCreator(Items.TRASH, 1, 44, 80, 0.75), 1)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 25)
+        self.add_item(ItemCreator(Items.GOLD, 1, 44, 80), 20)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 15)
+        self.add_item(ItemCreator(Items.LOCATION, 1), 25)
+        self.add_item(ItemCreator(Items.TRASH, 1, 44, 80, 0.75), 7)
 
         worst, best = Material.IRON, Material.SHADOW_IRON
-        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
+        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 2)
+        self.add_item(ItemCreator(Items.BAG, 1, 1, 1), 1)
 
 
 class RareLoot(LootTable):
@@ -495,18 +515,19 @@ class RareLoot(LootTable):
         super().__init__(3)
         self.rarity = Rarity.RARE
 
-        self.add_item(RareChest(), 21 if isparagon else 1)
+        self.add_item(RareChest(), 105 if isparagon else 5)
         if ischest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 6)
-        self.add_item(ItemCreator(Items.GOLD, 1, 108, 240), 4)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
-        self.add_item(ItemCreator(Items.LOCATION, 1), 3)
-        self.add_item(ItemCreator(Items.TRASH, 1, 108, 240, 0.75), 1)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 25)
+        self.add_item(ItemCreator(Items.GOLD, 1, 108, 240), 20)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 15)
+        self.add_item(ItemCreator(Items.LOCATION, 1), 25)
+        self.add_item(ItemCreator(Items.TRASH, 1, 108, 240, 0.75), 7)
 
         worst, best = Material.DULL_COPPER, Material.BRONZE
-        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
+        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 2)
+        self.add_item(ItemCreator(Items.BAG, 1, 1, 2), 1)
 
 
 class EpicLoot(LootTable):
@@ -516,18 +537,19 @@ class EpicLoot(LootTable):
         super().__init__(3)
         self.rarity = Rarity.EPIC
 
-        self.add_item(EpicChest(), 21 if isparagon else 1)
+        self.add_item(EpicChest(), 105 if isparagon else 5)
         if ischest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 6)
-        self.add_item(ItemCreator(Items.GOLD, 1, 303, 580), 4)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
-        self.add_item(ItemCreator(Items.LOCATION, 1), 3)
-        self.add_item(ItemCreator(Items.TRASH, 1, 303, 580, 0.75), 1)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 23)
+        self.add_item(ItemCreator(Items.GOLD, 1, 303, 580), 20)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 15)
+        self.add_item(ItemCreator(Items.LOCATION, 1), 25)
+        self.add_item(ItemCreator(Items.TRASH, 1, 303, 580, 0.75), 7)
 
         worst, best = Material.COPPER, Material.AGAPITE
-        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
+        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 3)
+        self.add_item(ItemCreator(Items.BAG, 1, 2, 3), 2)
 
 
 class LegendaryLoot(LootTable):
@@ -537,18 +559,19 @@ class LegendaryLoot(LootTable):
         super().__init__(4)
         self.rarity = Rarity.LEGENDARY
 
-        self.add_item(LegendaryChest(), 21 if isparagon else 1)
+        self.add_item(LegendaryChest(), 105 if isparagon else 5)
         if ischest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 6)
-        self.add_item(ItemCreator(Items.GOLD, 1, 606, 1200), 4)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
-        self.add_item(ItemCreator(Items.LOCATION, 1), 3)
-        self.add_item(ItemCreator(Items.TRASH, 1, 606, 1200, 0.75), 1)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 20)
+        self.add_item(ItemCreator(Items.GOLD, 1, 606, 1200), 20)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 15)
+        self.add_item(ItemCreator(Items.LOCATION, 1), 25)
+        self.add_item(ItemCreator(Items.TRASH, 1, 606, 1200, 0.75), 7)
 
         worst, best = Material.GOLD, Material.VERITE
-        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
+        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 5)
+        self.add_item(ItemCreator(Items.BAG, 1, 2, 4), 3)
 
 
 class MythicalLoot(LootTable):
@@ -558,15 +581,16 @@ class MythicalLoot(LootTable):
         super().__init__(5)
         self.rarity = Rarity.MYTHICAL
 
-        self.add_item(MythicalChest(), 21 if isparagon else 1)
+        self.add_item(MythicalChest(), 105 if isparagon else 5)
         if ischest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 6)
-        self.add_item(ItemCreator(Items.GOLD, 1, 810, 1800), 4)
-        self.add_item(ItemCreator(Items.POWERHOUR, 1), 4)
-        self.add_item(ItemCreator(Items.LOCATION, 1), 3)
-        self.add_item(ItemCreator(Items.TRASH, 1, 810, 1800, 0.75), 1)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 20)
+        self.add_item(ItemCreator(Items.GOLD, 1, 810, 1800), 20)
+        self.add_item(ItemCreator(Items.POWERHOUR, 1), 15)
+        self.add_item(ItemCreator(Items.LOCATION, 1), 25)
+        self.add_item(ItemCreator(Items.TRASH, 1, 810, 1800, 0.75), 7)
 
         worst, best = Material.VERITE, Material.VALORITE
-        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 1)
+        self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 5)
+        self.add_item(ItemCreator(Items.BAG, 1, 3, 5), 3)

@@ -213,9 +213,6 @@ class User():
                 self.gold += item.value
             elif item.type == Items.CHEST and isinstance(item, Chest):
                 self.apply_loot(item.items, allow_area)
-            elif item.type in (Items.POWERHOUR, Items.WEAPON, Items.TRASH):
-                self.bank.add_item(item)
-                self.bank.save()
             elif item.type == Items.LOCATION and allow_area:
                 # Get all connections, removing the ones already discovered.
                 conn = self.locations.connections(self.c_location)
@@ -225,6 +222,9 @@ class User():
 
                 new_area = conn[random.randrange(0, len(conn))]
                 self.locations.unlock(new_area)
+            else:
+                self.bank.add_item(item)
+                self.bank.save()
         return new_area
 
     @property

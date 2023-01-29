@@ -47,6 +47,8 @@ def show_inventory(inventory: Inventory) -> str:
         left: str = ""
         if item.type in (Items.REAGENT, Items.ORE):
             left = "count: "
+        elif item.type == Items.BAG:
+            left = "slots: "
         elif item.isconsumable:
             left = "charges: "
         elif item.isusable:
@@ -257,12 +259,12 @@ class InventorySellDropdown(ui.Select):
 
         quantity: str = ""
         value: int = 0
-        if item.isconsumable:
+        if item.isstackable:
             # Remove a single use of a consumable.
             if item.uses > 0:
-                quantity = "one use of "
+                quantity = "one use of " if item.isconsumable else "one "
                 value = item.base_value
-                self.inventory.use_consumable(item)
+                self.inventory.use_stackable(item)
 
             if item.uses == 0:
                 self.inventory.remove_item(item.type, item.name, item.value)
@@ -359,7 +361,7 @@ class InventoryUseDropdown(ui.Select):
 
         use_text = "used"
 
-        if item.isconsumable and self.inventory.use_consumable(item):
+        if item.isconsumable and self.inventory.use_stackable(item):
             granting: str = "granting a powerhour"
             if item.type == Items.POWERHOUR:
                 user_l.mark_cooldown(users.Cooldown.POWERHOUR)
@@ -483,7 +485,7 @@ class TradeDropdown(ui.Select):
             # Remove a single use of a consumable.
             if item.uses > 0:
                 quantity = "one use of "
-                self.inventory.use_consumable(item)
+                self.inventory.use_stackable(item)
                 to_user.bank.add_item(item, uses_override=1, max_override=True)
 
             if item.uses == 0:
@@ -710,7 +712,9 @@ class InventoryView(ui.View):
             f"**gpm (powerhour)**: {gpm_ph:0.2f}\n"\
             f"**powerhour**: {powerhour_status}\n"\
             f"**weapon**: {weapon_name.lower()}\n\n"\
-            f"**Bag Capacity**: {inventory.capacity}\n"\
+            f"**Bag Location**: {tree}\n"\
+            f"**Bag Capacity(Base)**: {inventory.base_capacity}\n"\
+            f"**Bag Capacity(Max)**: {inventory.max_capacity}\n"\
             f"**Stored Items**: {len(inventory.items)}\n"\
             f"**Stored Value**: {inventory.value} gp\n\n"\
             f"__**Items**__:\n"\

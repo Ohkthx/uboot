@@ -6,7 +6,7 @@ from enum import IntEnum, auto
 from typing import Optional
 
 from db.banks import BankDb, BankRaw
-from .loot_tables import Item, Material, Items, ItemRaw
+from .loot_tables import Item, Items, ItemRaw
 
 
 def make_raw(user_id: int) -> BankRaw:
@@ -30,7 +30,7 @@ class Inventory():
                  capacity: int = 4, items: list[Item] = [],
                  parent: Optional['Inventory'] = None) -> None:
         self.type = inventory_type
-        self.capacity = capacity
+        self._capacity = capacity
         self.items = items
         self.name = name
         self.parent = parent
@@ -43,6 +43,20 @@ class Inventory():
             total_value += item.value
         return total_value
 
+    @property
+    def base_capacity(self) -> int:
+        """Gets the unmodified capacity of a container."""
+        return self._capacity
+
+    @property
+    def max_capacity(self) -> int:
+        """Gets the custom capacity of the users bank."""
+        c_capacity: int = self.base_capacity
+        for item in self.items:
+            if item.type == Items.BAG:
+                c_capacity += item.uses
+        return c_capacity
+
     def raw_items(self) -> list[ItemRaw]:
         """Converts items into a raw value for database storage."""
         return [item._raw for item in self.items]
@@ -53,9 +67,9 @@ class Inventory():
         return next((i for i in self.items if i.type == item_type and
                      i.value == value and i.name == name), None)
 
-    def use_consumable(self, item: Item) -> bool:
+    def use_stackable(self, item: Item) -> bool:
         """Uses a consumable item."""
-        if not item.isconsumable:
+        if not item.isstackable:
             return False
 
         owned = next((i for i in self.items if i.type == item.type), None)
@@ -70,7 +84,7 @@ class Inventory():
         """Add an item to the users bank, ignoring if bank is full."""
         # If uses are not added.
         if not item.isstackable:
-            if not max_override and len(self.items) >= self.capacity:
+            if not max_override and len(self.items) >= self.max_capacity:
                 return
             self.items.append(item)
             return
@@ -83,7 +97,7 @@ class Inventory():
                 break
 
         if not owned:
-            if len(self.items) < self.capacity or max_override:
+            if len(self.items) < self.max_capacity or max_override:
                 if uses_override > 0:
                     item.uses = uses_override
                 self.items.append(item)

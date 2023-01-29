@@ -105,9 +105,11 @@ def loot_text(user: discord.Member, all_loot: list[Item], indent: int,
     for n, item in enumerate(all_loot):
         lfeed = '└' if n + 1 == len(all_loot) else '├'
         amt_text: str = ''
-        if item.value > 1 and item.type not in (Items.WEAPON, Items.TRASH):
+        if item.value > 1 and item.type == Items.BAG:
+            amt_text = f" [slots: {item.uses} / {item.uses_max}]"
+        elif item.value > 1 and item.type not in (Items.WEAPON, Items.TRASH):
             amt_text = f" [{item.value}]"
-        if item.type == Items.TRASH or item.isusable:
+        elif item.type == Items.TRASH or item.isusable:
             amt_text = f" [value: {item.value} gp]"
 
         name = item.name.title()
@@ -188,7 +190,7 @@ def loot(party: Party) -> str:
     for helper in party.get_all():
         huser = helper.user
         huser_l = helper.user_l
-        if len(huser_l.bank.items) >= huser_l.bank.capacity:
+        if len(huser_l.bank.items) >= huser_l.bank.max_capacity:
             discarded_items += 1
             notes_list.append(f"{huser} has a __**full bank**__.")
 
