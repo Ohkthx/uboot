@@ -208,6 +208,10 @@ class User():
         return the new area.
         """
         new_area: Optional[Area] = None
+        loot = [l for l in loot if l.type != Items.NONE]
+        if len(loot) == 0:
+            return
+
         for item in loot:
             if item.type == Items.GOLD:
                 self.gold += item.value
@@ -224,7 +228,7 @@ class User():
                 self.locations.unlock(new_area)
             else:
                 self.bank.add_item(item)
-                self.bank.save()
+        self.bank.save()
         return new_area
 
     @property

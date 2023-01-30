@@ -27,11 +27,12 @@ class Inventory():
 
     def __init__(self, inventory_type: Type = Type.BASE,
                  name: str = "Inventory",
-                 capacity: int = 4, items: list[Item] = [],
+                 capacity: int = 4,
+                 items: list[Item] = [],
                  parent: Optional['Inventory'] = None) -> None:
         self.type = inventory_type
         self._capacity = capacity
-        self.items = items
+        self.items = [item for item in items if item.isreal]
         self.name = name
         self.parent = parent
 
@@ -59,7 +60,7 @@ class Inventory():
 
     def raw_items(self) -> list[ItemRaw]:
         """Converts items into a raw value for database storage."""
-        return [item._raw for item in self.items]
+        return [item._raw for item in self.items if item.isreal]
 
     def get_item(self, item_type: Items, name: str,
                  value: int) -> Optional[Item]:
@@ -82,6 +83,9 @@ class Inventory():
     def add_item(self, item: Item, uses_override: int = -1,
                  max_override=False) -> None:
         """Add an item to the users bank, ignoring if bank is full."""
+        if not item.isreal:
+            return
+
         # If uses are not added.
         if not item.isstackable:
             if not max_override and len(self.items) >= self.max_capacity:
@@ -146,7 +150,7 @@ class Bank(Inventory):
         bankable = [item for item in items if not item.isresource]
         super().__init__(inventory_type=Inventory.Type.BANK,
                          name="Bank Box",
-                         capacity=8,
+                         capacity=4,
                          items=bankable)
 
         self.user_id = raw[0]

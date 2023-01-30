@@ -45,10 +45,13 @@ def show_inventory(inventory: Inventory) -> str:
     for n, item in enumerate(inventory.items):
         lfeed = '└' if n + 1 == len(inventory.items) else '├'
         left: str = ""
-        if item.type in (Items.REAGENT, Items.ORE):
+        value: str = f", {item.value} gp"
+        if item.isresource:
             left = "count: "
+            value = ""
         elif item.type == Items.BAG:
             left = "slots: "
+            value = ""
         elif item.isconsumable:
             left = "charges: "
         elif item.isusable:
@@ -57,8 +60,7 @@ def show_inventory(inventory: Inventory) -> str:
         uses = ""
         if left != "":
             uses = f" [{left}{item.uses} / {item.uses_max}]"
-        items.append(f"> {lfeed} **{item.name.title()}**{uses}, "
-                     f"{item.value} gp")
+        items.append(f"> {lfeed} **{item.name.title()}**{uses}{value}")
 
     # If none, print none.
     items_full = '\n'.join(items)
@@ -249,7 +251,7 @@ class InventorySellDropdown(ui.Select):
                                           delete_after=delete_after)
 
         # Find the item.
-        item = next((i for i in user_l.bank.items if i.type == itype and
+        item = next((i for i in self.inventory.items if i.type == itype and
                      i.value == ivalue and i.name == iname), None)
         if not item:
             await res.send_message("Could not find item. Do you still own it?",
@@ -702,6 +704,10 @@ class InventoryView(ui.View):
         tree_list.reverse()
         tree = ' > '.join(tree_list)
 
+        capacity_diff: int = inventory.max_capacity - inventory.base_capacity
+        capacity_str: str = f"{inventory.max_capacity} "\
+            f"({inventory.base_capacity} +{capacity_diff})"
+
         # Build the embed.
         embed = discord.Embed(title=tree)
         embed.color = discord.Colour.from_str("#00ff08")
@@ -712,9 +718,8 @@ class InventoryView(ui.View):
             f"**gpm (powerhour)**: {gpm_ph:0.2f}\n"\
             f"**powerhour**: {powerhour_status}\n"\
             f"**weapon**: {weapon_name.lower()}\n\n"\
-            f"**Bag Location**: {tree}\n"\
-            f"**Bag Capacity(Base)**: {inventory.base_capacity}\n"\
-            f"**Bag Capacity(Max)**: {inventory.max_capacity}\n"\
+            f"**Bag**: {tree}\n"\
+            f"**Bag Capacity**: {capacity_str}\n"\
             f"**Stored Items**: {len(inventory.items)}\n"\
             f"**Stored Value**: {inventory.value} gp\n\n"\
             f"__**Items**__:\n"\

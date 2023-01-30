@@ -177,6 +177,12 @@ class Item():
         """Checks if the item can be consumed."""
         return self.type in (Items.POWERHOUR,)
 
+    @property
+    def isreal(self) -> bool:
+        """Checks if the item is real or just imaginary item."""
+        return self.type not in (Items.NONE, Items.GOLD, Items.LOCATION,
+                                 Items.CHEST)
+
     @staticmethod
     def from_raw(raw: ItemRaw) -> 'Item':
         """Creates an item from a raw value."""
