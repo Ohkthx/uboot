@@ -13,14 +13,14 @@ from dclient.views.dm import DMDeleteView
 
 from config import DiscordConfig
 from managers import (settings, users, react_roles, tickets, subguilds,
-                      entities, aliases, images, banks)
+                      entities, aliases, images, banks, locations)
 from managers.logs import Log
 from .views.generic_panels import SuggestionView, BasicThreadView
 from .views.entity import EntityView, HelpMeView
 from .ccserver import CCServer
 from .destructable import DestructableManager, Destructable
-from .helper import (get_guild, get_member, get_user, thread_close, react_processor, get_channel,
-                     find_tag, get_role)
+from .helper import (get_member, get_user, thread_close, react_processor,
+                     get_channel, find_tag, get_role)
 
 
 intents = discord.Intents.default()
@@ -128,6 +128,9 @@ class DiscordBot(commands.Bot):
         self.session: Optional[aiohttp.ClientSession] = None
         self.owner: Optional[discord.User] = None
         self.ccserver: Optional[CCServer] = None
+
+        # World building
+        locations.Manager.init()
 
         # Initialize all of the managers and their databases.
         tickets.Manager.init("uboot.sqlite3")
@@ -429,17 +432,18 @@ class DiscordBot(commands.Bot):
             return
 
         loc = user.c_location
+        floor = user.c_floor
         difficulty = user.difficulty
 
         # Check passive taunt.
         entity: Optional[entities.Entity] = None
         last_message = user.cooldown(users.Cooldown.GOLD)
         if datetime.now() - last_message >= timedelta(hours=12):
-            entity = entities.Manager.check_spawn(loc, difficulty,
+            entity = entities.Manager.check_spawn(loc, floor, difficulty,
                                                   False, False, True)
         else:
             # Try to spawn natural entity..
-            entity = entities.Manager.check_spawn(loc, difficulty,
+            entity = entities.Manager.check_spawn(loc, floor, difficulty,
                                                   powerhour is not None,
                                                   user.ispowerhour,
                                                   False)

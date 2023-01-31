@@ -2,7 +2,7 @@
 aspects for various creatures.
 """
 from managers import entities
-from managers.locations import Area
+from managers.locations import Area, Level
 from managers.loot_tables import LootTable, Rarity
 
 
@@ -18,8 +18,17 @@ class GiantRat(entities.Entity):
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(Rarity.COMMON, self.isparagon)
 
+    @staticmethod
+    def locations() -> list[tuple[Area, Level, int]]:
+        """Returns all of the locations the entity can spawn at."""
+        return [
+            (Area.BRITAIN_SEWERS, Level.ONE, 5),
+            (Area.WILDERNESS, Level.ONE, 2),
+            (Area.FIRE, Level.ONE, 4),
+            (Area.ORC_DUNGEON, Level.TWO, 5),
+        ]
+
 
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
-    areas = [(Area.SEWERS, 5), (Area.WILDERNESS, 2), (Area.FIRE, 4)]
-    manager.register(areas, GiantRat, "giant rat")
+    manager.register(GiantRat, "giant rat")

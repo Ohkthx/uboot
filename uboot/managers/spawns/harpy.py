@@ -2,7 +2,7 @@
 aspects for various creatures.
 """
 from managers import entities
-from managers.locations import Area
+from managers.locations import Area, Level
 from managers.loot_tables import LootTable, Rarity
 
 
@@ -18,8 +18,16 @@ class Harpy(entities.Entity):
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(Rarity.UNCOMMON, self.isparagon)
 
+    @staticmethod
+    def locations() -> list[tuple[Area, Level, int]]:
+        """Returns all of the locations the entity can spawn at."""
+        return [
+            (Area.WILDERNESS, Level.ONE, 3),
+            (Area.COVETOUS, Level.ONE, 5),
+            (Area.COVETOUS, Level.TWO, 5),
+        ]
+
 
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
-    areas = [(Area.WILDERNESS, 3)]
-    manager.register(areas, Harpy, "harpy")
+    manager.register(Harpy, "harpy")

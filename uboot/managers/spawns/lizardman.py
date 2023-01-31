@@ -2,7 +2,7 @@
 aspects for various creatures.
 """
 from managers import entities
-from managers.locations import Area
+from managers.locations import Area, Level
 from managers.loot_tables import LootTable, Rarity
 
 
@@ -18,8 +18,16 @@ class Lizardman(entities.Entity):
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(Rarity.UNCOMMON, self.isparagon)
 
+    @staticmethod
+    def locations() -> list[tuple[Area, Level, int]]:
+        """Returns all of the locations the entity can spawn at."""
+        return [
+            (Area.WILDERNESS, Level.ONE, 5),
+            (Area.DESPISE, Level.ONE, 5),
+            (Area.WRONG, Level.ONE, 5),
+        ]
+
 
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
-    areas = [(Area.WILDERNESS, 5), (Area.DESPISE, 7)]
-    manager.register(areas, Lizardman, "lizardman")
+    manager.register(Lizardman, "lizardman")

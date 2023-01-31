@@ -2,7 +2,7 @@
 aspects for various creatures.
 """
 from managers import entities
-from managers.locations import Area
+from managers.locations import Area, Level
 from managers.loot_tables import LootTable, Rarity
 
 
@@ -18,8 +18,18 @@ class Daemon(entities.Entity):
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(Rarity.EPIC, self.isparagon)
 
+    @staticmethod
+    def locations() -> list[tuple[Area, Level, int]]:
+        """Returns all of the locations the entity can spawn at."""
+        return [
+            (Area.DESTARD, Level.TWO, 5),
+            (Area.FIRE, Level.TWO, 5),
+            (Area.HYTHLOTH, Level.TWO, 5),
+            (Area.HYTHLOTH, Level.THREE, 5),
+            (Area.HYTHLOTH, Level.FOUR, 5),
+        ]
+
 
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
-    areas = [(Area.FIRE, 1)]
-    manager.register(areas, Daemon, "daemon")
+    manager.register(Daemon, "daemon")

@@ -1,18 +1,21 @@
 """Various commands that support the gambling mechanic."""
 import random
 from datetime import datetime, timedelta
+from typing import Optional
 
 import discord
 from discord.ext import commands
 from discord.ext.commands import param
 
 from managers import users, settings, react_roles, entities
+from managers.locations import Locations, Area, Floor, Level
 from managers.logs import Log
 from dclient import DiscordBot
 from dclient.destructable import DestructableManager, Destructable
 from dclient.views.gamble import GambleView, gamble, ExtractedBet
 from dclient.views.dm import DMDeleteView
-from dclient.views.user import TradeView, UserStatsView, InventoryView
+from dclient.views.user import (TradeView, UserStatsView, InventoryView,
+                                LocationView)
 from dclient.helper import (get_member, get_message,
                             get_role, get_user, check_minigame)
 
@@ -205,9 +208,10 @@ class User(commands.Cog):
 
         # Spawn the creature.
         loc = user_l.c_location
+        floor = user_l.c_floor
         difficulty = user_l.difficulty
         inpowerhour = self.bot.powerhours.get(ctx.guild.id)
-        entity = entities.Manager.check_spawn(loc, difficulty,
+        entity = entities.Manager.check_spawn(loc, floor, difficulty,
                                               inpowerhour is not None,
                                               user_l.ispowerhour,
                                               True)
@@ -247,9 +251,11 @@ class User(commands.Cog):
             c_location = user_l.c_location.name.title()
         new_loc_text: str = ""
 
-        if location != 'none':
+        area: Optional[Area] = Locations.parse_area(location)
+        if location != 'none' and area:
             # Change location.
-            if not user_l.change_location(location):
+            new_loc: Optional[Floor] = user_l.change_location(area, Level.ONE)
+            if not new_loc:
                 embed = discord.Embed()
                 embed.color = discord.Colour.from_str("#ff0f08")
                 embed.description = "Sorry, you have not discovered that "\
@@ -257,46 +263,14 @@ class User(commands.Cog):
                 embed.set_footer(text=f"Current Location: {c_location}")
                 return await ctx.send(embed=embed)
             new_loc_text = "`Location updated!`\n\n"
-            if user_l.c_location.name:
-                c_location = user_l.c_location.name.title()
             user_l.save()
+            await ctx.reply(new_loc_text, delete_after=60)
 
-        # Build list of discovered locations.
-        loc_text: list[str] = []
-        locations = user_l.locations.get_unlocks()
-        for n, loc in enumerate(locations):
-            lfeed = '└' if n + 1 == len(locations) else '├'
-            current = ""
-            if loc == c_location.lower():
-                current = " (Current)"
-            loc_text.append(f"> {lfeed} {loc.title()}{current}")
-        full_text = '\n'.join(loc_text)
+        view = LocationView(self.bot)
+        view.set_user(user)
 
-        # Get the list of connections.
-        conn_text: list[str] = []
-        conns = user_l.locations.connections(user_l.c_location)
-        for n, loc in enumerate(conns):
-            lfeed = '└' if n + 1 == len(conns) else '├'
-            name = "Unknown"
-            if loc.name:
-                name = loc.name.title()
-            conn_text.append(f"> {lfeed} {name}")
-        conn_full = '\n'.join(conn_text)
-
-        color = discord.Colour.from_str("#00ff08")
-        desc = f"**{user}**\n\n{new_loc_text}"\
-            f"**id**: {user.id}\n"\
-            f"**level**: {user_l.level}\n"\
-            f"**messages**: {user_l.msg_count}\n\n"\
-            "> __**Areas Unlocked**__:\n"\
-            f"**{full_text}**\n\n"\
-            "> __**Area Connections**__:\n"\
-            f"**{conn_full}**\n"
-
-        embed = discord.Embed(description=desc, color=color)
-        embed.set_footer(text=f"Current Location: {c_location}")
-        embed.set_thumbnail(url=user.display_avatar.url)
-        await ctx.send(embed=embed, delete_after=60)
+        embed = LocationView.get_panel(user)
+        await ctx.send(embed=embed, view=view)
 
     @commands.command(name="bank", aliases=("items", "balance", "withdraw"))
     async def bank(self, ctx: commands.Context,

@@ -2,7 +2,7 @@
 aspects for various creatures.
 """
 from managers import entities
-from managers.locations import Area
+from managers.locations import Area, Level
 from managers.loot_tables import LootTable, Rarity
 
 
@@ -17,8 +17,15 @@ class Efreet(entities.Entity):
         # Add the lootpack.
         self.lootpack = LootTable.lootpack(Rarity.RARE, self.isparagon)
 
+    @staticmethod
+    def locations() -> list[tuple[Area, Level, int]]:
+        """Returns all of the locations the entity can spawn at."""
+        return [
+            (Area.FIRE, Level.ONE, 3),
+            (Area.FIRE, Level.TWO, 5),
+        ]
+
 
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
-    areas = [(Area.FIRE, 3)]
-    manager.register(areas, Efreet, "efreet")
+    manager.register(Efreet, "efreet")

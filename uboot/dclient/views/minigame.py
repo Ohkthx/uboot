@@ -242,9 +242,10 @@ class ResourceView(ui.View):
 
         # Spawn the creature.
         loc = user_l.c_location
+        floor = user_l.c_floor
         difficulty = user_l.difficulty
         inpowerhour = self.bot.powerhours.get(guild.id)
-        entity = entities.Manager.check_spawn(loc, difficulty,
+        entity = entities.Manager.check_spawn(loc, floor, difficulty,
                                               inpowerhour is not None,
                                               user_l.ispowerhour,
                                               True)

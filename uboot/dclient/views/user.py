@@ -1,6 +1,6 @@
 """User based views."""
 from enum import Enum
-from typing import Optional, Union
+from typing import Optional, Union, Type
 from datetime import datetime, timezone
 
 import discord
@@ -8,6 +8,7 @@ from discord import ui
 
 from dclient.helper import get_user
 from managers import users
+from managers.locations import Area, Floor, Level, Locations, Manager as LocationsManager
 from managers.loot_tables import Items
 from managers.logs import Log
 from managers.banks import Inventory
@@ -73,34 +74,75 @@ def show_inventory(inventory: Inventory) -> str:
 class LocationDropdown(ui.Select):
     """Allows the user to select a new location."""
 
-    def __init__(self, user: users.User) -> None:
+    def __init__(self, user: users.User,
+                 choice_type: Union[Type[Level], Type[Area]]) -> None:
+        self.choice_type = choice_type
+        id_expand: str = "area" if choice_type == Area else "level"
         options: list[discord.SelectOption] = []
+        choices: dict[str, str] = {}  # Floor/Area Id, Name
 
-        for location in user.locations.get_unlocks():
-            options.append(discord.SelectOption(label=location))
+        if self.choice_type == Level:
+            dungeon_floor = LocationsManager.get(user.c_location, user.c_floor)
+            if dungeon_floor:
+                for floor in dungeon_floor.parent.get_floors():
+                    choices[str(floor.level.value)] = floor.name
+
+        # Populate the choices with ID and NAME of area as a backup.
+        if len(choices.items()) == 0:
+            for area in user.locations.get_unlocks():
+                name = "Unknown"
+                if area.name:
+                    name = area.name.replace("_", " ").title()
+                choices[str(area.value)] = name
+
+        for loc_id, loc_name in choices.items():
+            options.append(discord.SelectOption(label=loc_name, value=loc_id))
         super().__init__(options=options,
-                         placeholder="Recall to a new location.",
-                         custom_id="user_location_dropdown")
+                         placeholder=f"Recall to a new {id_expand}.",
+                         custom_id=f"user_location_{id_expand}_dropdown")
 
     async def callback(self, interaction: discord.Interaction):
         """Called when the menu is selected."""
         res = interaction.response
+        msg = interaction.message
+        author = interaction.user
+        if not msg:
+            await res.send_message("Unknown location, have you discovered it?",
+                                   ephemeral=True,
+                                   delete_after=30)
+            return
+
+        value = int(self.values[0])
 
         # Changes the users location, only if it is discovered.
-        user = users.Manager.get(interaction.user.id)
-        changed = user.change_location(self.values[0])
-        if interaction.message and isinstance(interaction.user, discord.User):
-            embed = UserStatsView.get_panel(interaction.user)
-            await interaction.message.edit(embed=embed)
+        user = users.Manager.get(author.id)
+        new_loc: Optional[Floor] = None
 
-        if not changed:
+        if self.choice_type == Level:
+            new_loc = user.change_location(user.c_location, Level(value))
+        else:
+            new_loc = user.change_location(Area(value), Level.ONE)
+
+        view = LocationView(interaction.client)
+        view.set_user(author)
+        if interaction.message and isinstance(author, discord.User):
+            embed = UserStatsView.get_panel(author)
+            await interaction.message.edit(embed=embed, view=view)
+
+        if not new_loc:
             await res.send_message("Unknown location, have you discovered it?",
                                    ephemeral=True,
                                    delete_after=30)
             return
 
         user.save()
-        await res.send_message(f"Location set to {self.values[0].title()}.",
+
+        # Create the new view.
+        try:
+            await msg.edit(embed=LocationView.get_panel(author), view=view)
+        except BaseException:
+            pass
+        await res.send_message(f"Location set to **{new_loc.name}**.",
                                ephemeral=True,
                                delete_after=30)
 
@@ -531,7 +573,8 @@ class LocationView(ui.View):
         """Sets the user so their locations can be used in the dropdown."""
         self.user = user
         user_l = users.Manager.get(user.id)
-        self.add_item(LocationDropdown(user_l))
+        self.add_item(LocationDropdown(user_l, Area))
+        self.add_item(LocationDropdown(user_l, Level))
 
     @staticmethod
     def get_panel(user: Union[discord.User, discord.Member]) -> discord.Embed:
@@ -540,17 +583,23 @@ class LocationView(ui.View):
         user_l = users.Manager.get(user.id)
         c_location: str = 'Unknown'
         if user_l.c_location.name:
-            c_location = user_l.c_location.name.title()
+            c_location = user_l.c_location.name.replace("_", " ").title()
 
         # Build list of discovered locations.
         loc_text: list[str] = []
         locations = user_l.locations.get_unlocks()
         for n, loc in enumerate(locations):
             lfeed = '└' if n + 1 == len(locations) else '├'
+
+            loc_name = "unknown"
+            if loc.name:
+                loc_name = loc.name.replace("_", " ").lower()
+
             current = ""
-            if loc == c_location.lower():
+            if loc_name == c_location.lower():
                 current = " (Current)"
-            loc_text.append(f"> {lfeed} {loc.title()}{current}")
+
+            loc_text.append(f"> {lfeed} {loc_name.title()}{current}")
         full_text = '\n'.join(loc_text)
 
         # Get the list of connections.
@@ -592,7 +641,8 @@ class UserStatsView(ui.View):
         """Sets the user so their locations can be used in the dropdown."""
         self.user = user
         user_l = users.Manager.get(user.id)
-        self.add_item(LocationDropdown(user_l))
+        self.add_item(LocationDropdown(user_l, Area))
+        self.add_item(LocationDropdown(user_l, Level))
 
     @staticmethod
     def get_panel(user: Union[discord.User, discord.Member]) -> discord.Embed:
@@ -620,6 +670,11 @@ class UserStatsView(ui.View):
             wtype = user_l.weapon._name.title()
             weapon_name = f"{material.name.replace('_', ' ')} {wtype} [{dur}]"
 
+        location_text: str = "Unknown"
+        location = LocationsManager.get(user_l.c_location, user_l.c_floor)
+        if location:
+            location_text = location.name
+
         color = discord.Colour.from_str("#00ff08")
         desc = f"**{user}{title}**\n\n"\
             f"**id**: {user.id}\n"\
@@ -627,6 +682,7 @@ class UserStatsView(ui.View):
             f"**deaths**: {user_l.deaths}\n"\
             f"**level**: {user_l.level}\n"\
             f"**gold**: {user_l.gold} gp\n"\
+            f"**location**: {location_text}\n"\
             f"**weapon**: {weapon_name.lower()}\n"\
             f"**messages**: {user_l.msg_count}\n"\
             f"{powerhour_text}"\

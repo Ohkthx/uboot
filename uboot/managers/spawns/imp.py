@@ -2,7 +2,7 @@
 aspects for various creatures.
 """
 from managers import entities
-from managers.locations import Area
+from managers.locations import Area, Level
 from managers.loot_tables import LootTable, Rarity
 
 
@@ -18,8 +18,18 @@ class Imp(entities.Entity):
         self.lootpack = LootTable.lootpack(Rarity.UNCOMMON, self.isparagon)
         self.image = "imp_alive.png"
 
+    @staticmethod
+    def locations() -> list[tuple[Area, Level, int]]:
+        """Returns all of the locations the entity can spawn at."""
+        return [
+            (Area.WILDERNESS, Level.ONE, 1),
+            (Area.HYTHLOTH, Level.ONE, 5),
+            (Area.HYTHLOTH, Level.TWO, 5),
+            (Area.HYTHLOTH, Level.THREE, 5),
+            (Area.HYTHLOTH, Level.FOUR, 5),
+        ]
+
 
 def setup(manager: entities.Manager):
     """Used for loading the spawn dynamically."""
-    areas = [(Area.WILDERNESS, 1)]
-    manager.register(areas, Imp, "imp")
+    manager.register(Imp, "imp")

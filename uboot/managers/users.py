@@ -10,7 +10,7 @@ from typing import Optional
 
 from db.users import UserDb, UserRaw
 from .banks import Manager as BankManager
-from .locations import Locations, Area
+from .locations import Floor, Level, Locations, Area, Manager as LocationsManager
 from .loot_tables import Item, Chest, Items, Material, ItemRaw
 
 
@@ -19,7 +19,8 @@ def make_raw(user_id: int) -> UserRaw:
     pre-defined defaults.
     """
     return (user_id, 100, 0, 0, 0, 0, 0, 0, 0,
-            Area.SEWERS.value, Area.SEWERS.value, 0, "''")
+            Area.BRITAIN_SEWERS.value, Area.BRITAIN_SEWERS.value,
+            0, "''", Level.ONE)
 
 
 class Cooldown(Enum):
@@ -47,7 +48,9 @@ class User():
         self.locations: Locations = Locations(raw[9])
         self.c_location: Area = Area(raw[10])
         if not self.locations.is_unlocked(self.c_location):
-            self.c_location = Area.SEWERS
+            self.c_location = Area.BRITAIN_SEWERS
+        self.c_floor = Level(raw[13])
+
         self._deaths = raw[11]
 
         self.weapon: Optional[Item] = None
@@ -79,7 +82,7 @@ class User():
                 self.gambles_won, self.button_press,
                 self.monsters, self.kills, self.exp,
                 self.locations.raw, self.c_location.value,
-                self._deaths, weapon)
+                self._deaths, weapon, int(self.c_floor))
 
     def timer_expired(self, cooldown: Cooldown) -> bool:
         """Checks if a specific timer is off of cooldown."""
@@ -188,20 +191,27 @@ class User():
         if Manager._db:
             Manager._db.update(self._raw)
 
-    def change_location(self, destination: str) -> bool:
+    def change_location(self, destination: Area,
+                        level: Level) -> Optional[Floor]:
         """Attempts to change the users location."""
+        dungeon_floor = LocationsManager.get(destination, level)
+        if not dungeon_floor:
+            return None
+
         new_loc: Optional[Area] = None
         for area in Area:
             if not self.locations.is_unlocked(area) or not area.name:
                 continue
-            if area.name.lower() == destination.lower():
+            if area == destination:
                 new_loc = area
                 break
 
         if not new_loc:
-            return False
+            return None
+
         self.c_location = new_loc
-        return True
+        self.c_floor = level
+        return dungeon_floor
 
     def apply_loot(self, loot: list[Item], allow_area: bool) -> Optional[Area]:
         """Applys various items to the user. If a new area is unlocked, it will

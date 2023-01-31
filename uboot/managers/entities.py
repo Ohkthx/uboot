@@ -9,7 +9,7 @@ import importlib.util
 from typing import Optional, Type
 from enum import Enum, auto
 
-from .locations import Area
+from .locations import Area, Dungeon, Floor, Level, Manager as LocationManager
 from .loot_tables import LootTable, Item, Rarity
 
 creature_actions = ["was ambushed by", "was attacked by", "was approached by",
@@ -18,7 +18,7 @@ creature_actions = ["was ambushed by", "was attacked by", "was approached by",
 chest_actions = ["stumbles upon", "discovers", "approaches", "finds",
                  "grows suspicious of"]
 
-AreaWeight = tuple[Area, int]
+AreaWeight = tuple[Area, Level, int]
 
 
 def _rand_decimal() -> float:
@@ -70,6 +70,11 @@ class Entity():
     def isboss(self) -> bool:
         """Returns if the entity is a boss or not."""
         return self.type == Types.BOSS
+
+    @staticmethod
+    def locations() -> list[AreaWeight]:
+        """Gets all of the locations an entity can spawn at."""
+        return []
 
     def set_name(self, name: str, rarity: str = "") -> None:
         """Sets the name of the entity."""
@@ -149,7 +154,7 @@ def _resolve_name(name: str) -> str:
 class Manager():
     """Manages the spawning of entities."""
     # Area => Weight, Entity
-    _areas: dict[Area, list[tuple[int, Type[Entity]]]] = {}
+    _areas: dict[str, list[tuple[int, Type[Entity]]]] = {}
     _entities: dict[str, Type[Entity]] = {}
     _loaded: dict = {}
 
@@ -192,19 +197,23 @@ class Manager():
             Manager._load_entity(f"managers.spawns.{item.stem}")
 
     @staticmethod
-    def register(areas: list[AreaWeight],
-                 entity: Type[Entity], name: str) -> None:
+    def register(entity: Type[Entity], name: str) -> None:
         """Used to register entites for factory use."""
         # Add to general tracked.
         Manager._entities[name.lower()] = entity
 
-        for area, weight in areas:
-            if not Manager._areas.get(area):
-                Manager._areas[area] = []
+        areas = entity.locations()
+        for area, level, weight in areas:
+            dungeon_floor = LocationManager.get(area, level)
+            if not dungeon_floor:
+                continue
+
+            if not Manager._areas.get(dungeon_floor.key):
+                Manager._areas[dungeon_floor.key] = []
 
             # Make sure the entity isn't already added to the area.
             exists: bool = False
-            area_spawns = Manager._areas.get(area, [])
+            area_spawns = Manager._areas.get(dungeon_floor.key, [])
             for spawn in area_spawns:
                 if spawn[1] == entity:
                     exists = True
@@ -226,9 +235,13 @@ class Manager():
         return None
 
     @staticmethod
-    def spawn(area: Area, difficulty: float) -> Optional[Entity]:
+    def spawn(area: Area, level: Level, difficulty: float) -> Optional[Entity]:
         """Spawns a random entity from an area."""
-        area_spawns = Manager._areas.get(area)
+        dungeon_floor = LocationManager.get(area, level)
+        if not dungeon_floor:
+            return None
+
+        area_spawns = Manager._areas.get(dungeon_floor.key)
         if not area_spawns or len(area_spawns) == 0:
             return None
 
@@ -243,17 +256,21 @@ class Manager():
         return spawns[0](area, difficulty)
 
     @staticmethod
-    def check_spawn(area: Area, difficulty: float,
+    def check_spawn(area: Area, level: Level, difficulty: float,
                     powerhour: bool, user_powerhour: bool,
                     istaunt: bool) -> Optional[Entity]:
         """Check if an entity should be spawned, if so- does."""
+        dungeon_floor = LocationManager.get(area, level)
+        if not dungeon_floor:
+            return None
+
         max_range: int = 1000
 
         multiplier: float = 1.5 if powerhour else 1.0
         if user_powerhour:
             multiplier += 0.5
 
-        if area in (Area.SEWERS, Area.DESPISE, Area.FIRE):
+        if dungeon_floor.parent.isdungeon:
             multiplier *= 1.5
 
         # Put a hard limit on taunts
@@ -273,5 +290,5 @@ class Manager():
             return Chest(area, difficulty)
         if val <= entity_range:
             # Creature spawned.
-            return Manager.spawn(area, difficulty)
+            return Manager.spawn(area, level, difficulty)
         return None
