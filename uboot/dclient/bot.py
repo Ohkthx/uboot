@@ -18,7 +18,7 @@ from managers.logs import Log
 from .views.generic_panels import SuggestionView, BasicThreadView
 from .views.entity import EntityView, HelpMeView
 from .ccserver import CCServer
-from .destructable import DestructableManager, Destructable
+from .destructible import DestructibleManager, Destructible
 from .helper import (get_member, get_user, thread_close, react_processor,
                      get_channel, find_tag, get_role)
 
@@ -34,7 +34,7 @@ member_cache = discord.MemberCacheFlags(joined=True)
 defaultHelp = commands.DefaultHelpCommand(no_category="HELP")
 
 
-class Sudoer():
+class Sudoer:
     """Sudoer is a person with temporary elevated roles. This class manages
     the length of time to hold the role, removing the role upon expiration.
     """
@@ -46,7 +46,7 @@ class Sudoer():
         self.length = length
         self.timestamp = datetime.now()
 
-    def isexpired(self) -> bool:
+    def is_expired(self) -> bool:
         """Checks if the time has elapsed and the role should be removed."""
         now = datetime.now()
         return now - self.timestamp > timedelta(seconds=self.length)
@@ -59,7 +59,7 @@ class Sudoer():
             Log.error("Could not remove the role from the sudoer.")
 
 
-class Powerhour():
+class Powerhour:
     """Powerhour is a single hour in which gold generation is increased."""
 
     def __init__(self, guild_id: int, channel_id: int,
@@ -70,7 +70,7 @@ class Powerhour():
         self.length = length
         self.timestamp = datetime.now()
 
-    def isexpired(self) -> bool:
+    def is_expired(self) -> bool:
         """Checks if the time has elapsed and powerhour should be removed."""
         now = datetime.now()
         return now - self.timestamp > timedelta(hours=(1 * self.length))
@@ -80,7 +80,7 @@ class Powerhour():
         embed = discord.Embed()
         embed.description = "__**Message POWERHOUR ended!**__\n"\
             "> └ Gold generation per message returned to normal."
-        embed.color = discord.Colour.from_str("#ff0f08")
+        embed.colour = discord.Colour.from_str("#ff0f08")
 
         channel = await get_channel(bot, self.channel_id)
         if not channel or not isinstance(channel, discord.TextChannel):
@@ -88,7 +88,7 @@ class Powerhour():
         await channel.send(embed=embed)
 
 
-# All of the cogs and views that should be loaded. Views are Persistent.
+# All the cogs and views that should be loaded. Views are Persistent.
 cog_extensions: list[str] = ['dclient.cogs.general',
                              'dclient.cogs.threads',
                              'dclient.cogs.user',
@@ -132,7 +132,7 @@ class DiscordBot(commands.Bot):
         # World building
         locations.Manager.init()
 
-        # Initialize all of the managers and their databases.
+        # Initialize all the managers and their databases.
         tickets.Manager.init("uboot.sqlite3")
         banks.Manager.init("uboot.sqlite3")
         users.Manager.init("uboot.sqlite3")
@@ -160,24 +160,24 @@ class DiscordBot(commands.Bot):
 
     async def add_entity(self, msg: discord.Message, user: discord.Member,
                          mob: entities.Entity) -> None:
-        """Adds an entity that will be tracked by a destructable view."""
+        """Adds an entity that will be tracked by a destructible view."""
         if not isinstance(user, discord.Member):
             return
 
         # Checks if the user is in combat or not.
         user_l = users.Manager.get(user.id)
-        if user_l.incombat:
+        if user_l.in_combat:
             return
 
         user_l.set_combat(True)
 
         # Remove all old entities for the user.
-        category = Destructable.Category.MONSTER
-        await DestructableManager.remove_many(user.id, True, category)
+        category = Destructible.Category.MONSTER
+        await DestructibleManager.remove_many(user.id, True, category)
 
         timeout: int = 30
         entity_view = EntityView(user, mob)
-        if user_l.isbot or self.user == user or mob.isboss:
+        if user_l.is_bot or self.user == user or mob.is_boss:
             timeout = 3600
             exp = mob.get_exp(user_l.level)
             entity_view = HelpMeView(user, mob, exp, 0)
@@ -193,8 +193,8 @@ class DiscordBot(commands.Bot):
 
         new_msg = await msg.reply(embed=embed, view=entity_view, file=file)
 
-        # Create a destructable view for the entity.
-        destruct = Destructable(category, user.id, timeout, True)
+        # Create a destructible view for the entity.
+        destruct = Destructible(category, user.id, timeout, True)
         destruct.set_message(message=new_msg)
         destruct.set_callback(entity_view.loss_callback)
 
@@ -221,12 +221,12 @@ class DiscordBot(commands.Bot):
 
         # Set up the CCServer
         if self.owner:
-            dmchannel = await get_channel(self, self.conf.ccdm_id)
-            if dmchannel and isinstance(dmchannel, discord.TextChannel):
-                # Make sure we have cached all of the guild threads.
-                for thread in await dmchannel.guild.active_threads():
-                    dmchannel.guild._add_thread(thread)
-                self.ccserver = CCServer(self, self.owner, dmchannel)
+            dm_channel = await get_channel(self, self.conf.ccserver_dm_id)
+            if dm_channel and isinstance(dm_channel, discord.TextChannel):
+                # Make sure we have cached all the guild threads.
+                for thread in await dm_channel.guild.active_threads():
+                    dm_channel.guild._add_thread(thread)
+                self.ccserver = CCServer(self, self.owner, dm_channel)
 
         # Persistent Views
         self.add_view(BasicThreadView())
@@ -241,7 +241,7 @@ class DiscordBot(commands.Bot):
         if not self.user:
             return
         Log.debug(f"Logged in as {self.user}")
-        users.Manager.get(self.user.id).isbot = True
+        users.Manager.get(self.user.id).is_bot = True
 
     async def close(self) -> None:
         """This is called to close the bot in a clean manner."""
@@ -249,7 +249,8 @@ class DiscordBot(commands.Bot):
         if self.session:
             await self.session.close()
 
-    def add_react_role(self, react: str, role_id: int,
+    @staticmethod
+    def add_react_role(react: str, role_id: int,
                        guild_id: int, reverse: bool) -> bool:
         """Adds a Reaction and Role pair if it does not already exist or
         conflict. Saves it memory and database.
@@ -265,7 +266,8 @@ class DiscordBot(commands.Bot):
         react_role.save()
         return True
 
-    def rm_react_role(self, role_id: int) -> bool:
+    @staticmethod
+    def rm_react_role(role_id: int) -> bool:
         """Removes a Reaction and Role pair if it does exist
         Removes it memory and database.
         """
@@ -281,7 +283,7 @@ class DiscordBot(commands.Bot):
 
     @tasks.loop(seconds=15)
     async def status_update(self) -> None:
-        """Checks destructable views, sudoers, and updates the presence for
+        """Checks destructible views, sudoers, and updates the presence for
         the Discord Bot.
         """
         # Manages the 'Red Button', randomly deleting it.
@@ -294,13 +296,13 @@ class DiscordBot(commands.Bot):
                 finally:
                     self.last_button = None
 
-        # Purge all expired destructables.
-        await DestructableManager.purge()
+        # Purge all expired destructibles.
+        await DestructibleManager.purge()
 
         # Check powerhours, if they are expired they will be removed.
         delete: list[int] = []
         for guild_id, powerhour in self.powerhours.items():
-            if powerhour.isexpired():
+            if powerhour.is_expired():
                 await powerhour.send_end(self)
                 delete.append(guild_id)
         # Remove from memory.
@@ -308,7 +310,7 @@ class DiscordBot(commands.Bot):
             del self.powerhours[i]
 
         # Check if sudoer needs to have their role removed.
-        if self.sudoer and self.sudoer.isexpired():
+        if self.sudoer and self.sudoer.is_expired():
             await self.sudoer.remove()
             await self.sudoer.user.send("Sudo status expired.")
             self.sudoer = None
@@ -316,7 +318,7 @@ class DiscordBot(commands.Bot):
         if not self.user:
             return
 
-        # Update the prescence / status with the current help and win-rate.
+        # Update the presence / status with the current help and win-rate.
         user = users.Manager.get(self.user.id)
         activity = discord.Game(
             f"{self.prefix}help | win-rate: {user.win_rate():0.1f}%",
@@ -325,7 +327,7 @@ class DiscordBot(commands.Bot):
 
     @tasks.loop(minutes=15)
     async def archiver(self) -> None:
-        """Check if there is an market posts that have expired and need
+        """Check if there is a market posts that have expired and need
         to be closed.
         """
         for guild in self.guilds:
@@ -406,7 +408,7 @@ class DiscordBot(commands.Bot):
             if not self.owner_id or user.id == self.owner_id:
                 return
 
-            return await self.ccserver.dmlog(msg)
+            return await self.ccserver.log_dm(msg)
 
         # Process DM responses.
         if self.ccserver and self.ccserver.is_response(msg):
@@ -428,7 +430,7 @@ class DiscordBot(commands.Bot):
         if not minigame_role or minigame_role not in msg.author.roles:
             return
 
-        if user.incombat:
+        if user.in_combat:
             return
 
         loc = user.c_location
@@ -436,7 +438,6 @@ class DiscordBot(commands.Bot):
         difficulty = user.difficulty
 
         # Check passive taunt.
-        entity: Optional[entities.Entity] = None
         last_message = user.cooldown(users.Cooldown.GOLD)
         if datetime.now() - last_message >= timedelta(hours=12):
             entity = entities.Manager.check_spawn(loc, floor, difficulty,
@@ -445,7 +446,7 @@ class DiscordBot(commands.Bot):
             # Try to spawn natural entity..
             entity = entities.Manager.check_spawn(loc, floor, difficulty,
                                                   powerhour is not None,
-                                                  user.ispowerhour,
+                                                  user.is_powerhour,
                                                   False)
         if entity:
             await self.add_entity(msg, msg.author, entity)
@@ -488,7 +489,8 @@ class DiscordBot(commands.Bot):
         if open_tag not in thread.applied_tags:
             await thread.add_tags(open_tag)
 
-    async def on_thread_member_join(self, member: discord.ThreadMember):
+    @staticmethod
+    async def on_thread_member_join(member: discord.ThreadMember):
         """Triggered on 'on_thread_member_join' event. Checks if the user is
         banned from the private thread, removing them as they join.
         """

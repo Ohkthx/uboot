@@ -23,11 +23,11 @@ class Rat(entities.Entity):
         self.image = "rat_alive.png"
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(Rarity.COMMON, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.COMMON, self.is_paragon)
 
     @staticmethod
     def locations() -> list[tuple[Area, Level, int]]:
-        """Returns all of the locations the entity can spawn at."""
+        """Returns all the locations the entity can spawn at."""
         return [
             (Area.BRITAIN_SEWERS, Level.ONE, 8),
             (Area.WILDERNESS, Level.ONE, 1),

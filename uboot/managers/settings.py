@@ -1,5 +1,5 @@
 """Settings for server to direct traffic and other basic settings.
-The associated manager handles all of the loading and saving to the database.
+The associated manager handles all the loading and saving to the database.
 It is equipped with finding settings based on certain parameters.
 """
 import os
@@ -14,7 +14,7 @@ REQUIRED_SECTIONS = ["MARKET", "REACTROLE", "SUPPORT", "SUGGESTION", "SUBGUILD",
                      "LOTTO", "MINIGAME", "ALIAS"]
 
 
-class Market():
+class Market:
     """Settings for market and trade channel."""
 
     def __init__(self, config: configparser.SectionProxy) -> None:
@@ -22,8 +22,8 @@ class Market():
 
     def __str__(self) -> str:
         """Overrides the string representation."""
-        return f"Channel Id: {self.channel_id}\n"\
-            f"Expiration Days: {self.expiration}"
+        return f"Channel Id: {self.channel_id}\n" \
+               f"Expiration Days: {self.expiration}"
 
     @property
     def channel_id(self) -> int:
@@ -36,7 +36,7 @@ class Market():
         return self._config.getint('EXPIRATION', 15)
 
 
-class ReactRole():
+class ReactRole:
     """Settings for reaction role assignment."""
 
     def __init__(self, config: configparser.SectionProxy) -> None:
@@ -44,12 +44,12 @@ class ReactRole():
 
     def __str__(self) -> str:
         """Overrides the string representation."""
-        return f"Channel Id: {self.channel_id}\n"\
-            f"Message Id: {self.msg_id}"
+        return f"Channel Id: {self.channel_id}\n" \
+               f"Message Id: {self.msg_id}"
 
     @property
     def channel_id(self) -> int:
-        """Channel Id where the reactions will assign roles."""
+        """Channel ID where the reactions will assign roles."""
         return self._config.getint('CHANNELID', 0)
 
     @property
@@ -58,7 +58,7 @@ class ReactRole():
         return self._config.getint('MESSAGEID', 0)
 
 
-class Support():
+class Support:
     """Settings for support assignment."""
 
     def __init__(self, config: configparser.SectionProxy) -> None:
@@ -66,21 +66,21 @@ class Support():
 
     def __str__(self) -> str:
         """Overrides the string representation."""
-        return f"Channel Id: {self.channel_id}\n"\
-            f"Role Id: {self.role_id}"
+        return f"Channel Id: {self.channel_id}\n" \
+               f"Role Id: {self.role_id}"
 
     @property
     def channel_id(self) -> int:
-        """Channel Id where the support will be provided."""
+        """Channel ID where the support will be provided."""
         return self._config.getint('CHANNELID', 0)
 
     @property
     def role_id(self) -> int:
-        """Role Id of users who act as support."""
+        """Role ID of users who act as support."""
         return self._config.getint('SUPPORTROLEID', 0)
 
 
-class Suggestion():
+class Suggestion:
     """Settings for the suggestion channel."""
 
     def __init__(self, config: configparser.SectionProxy) -> None:
@@ -88,21 +88,21 @@ class Suggestion():
 
     def __str__(self) -> str:
         """Overrides the string representation."""
-        return f"Channel Id: {self.channel_id}\n"\
-            f"Role Id: {self.role_id}"
+        return f"Channel Id: {self.channel_id}\n" \
+               f"Role Id: {self.role_id}"
 
     @property
     def channel_id(self) -> int:
-        """Channel Id where the suggestions will be provided."""
+        """Channel ID where the suggestions will be provided."""
         return self._config.getint('CHANNELID', 0)
 
     @property
     def role_id(self) -> int:
-        """Role Id of users who act as reviewers."""
+        """Role ID of users who act as reviewers."""
         return self._config.getint('REVIEWROLEID', 0)
 
 
-class SubGuild():
+class SubGuild:
     """Settings for the subguilds."""
 
     def __init__(self, config: configparser.SectionProxy) -> None:
@@ -110,21 +110,21 @@ class SubGuild():
 
     def __str__(self) -> str:
         """Overrides the string representation."""
-        return f"Channel Id: {self.channel_id}\n"\
-            f"Review Channel Id: {self.review_channel_id}"
+        return f"Channel Id: {self.channel_id}\n" \
+               f"Review Channel Id: {self.review_channel_id}"
 
     @property
     def channel_id(self) -> int:
-        """Channel Id where the subguilds will be hosted."""
+        """Channel ID where the subguilds will be hosted."""
         return self._config.getint('CHANNELID', 0)
 
     @property
     def review_channel_id(self) -> int:
-        """Channel Id of users who review subguild requests."""
+        """Channel ID of users who review subguild requests."""
         return self._config.getint('REVIEWCHANNELID', 0)
 
 
-class Lotto():
+class Lotto:
     """Settings for the lotto system."""
 
     def __init__(self, config: configparser.SectionProxy) -> None:
@@ -132,8 +132,8 @@ class Lotto():
 
     def __str__(self) -> str:
         """Overrides the string representation."""
-        return f"Role Id: {self.role_id}\n"\
-            f"Winner Role Id: {self.winner_role_id}"
+        return f"Role Id: {self.role_id}\n" \
+               f"Winner Role Id: {self.winner_role_id}"
 
     @property
     def role_id(self) -> int:
@@ -142,11 +142,11 @@ class Lotto():
 
     @property
     def winner_role_id(self) -> int:
-        """Role Id given to winners of the lotto."""
+        """Role ID given to winners of the lotto."""
         return self._config.getint('WINNERROLEID', 0)
 
 
-class MiniGame():
+class MiniGame:
     """Settings for the minigame system."""
 
     def __init__(self, config: configparser.SectionProxy) -> None:
@@ -158,16 +158,16 @@ class MiniGame():
 
     @property
     def role_id(self) -> int:
-        """Role Id that allows users to play the minigames."""
+        """Role ID that allows users to play the mini-games."""
         return self._config.getint('ROLEID', 0)
 
     @property
     def channel_id(self) -> int:
-        """Channel Id where the minigames will be hosted."""
+        """Channel ID where the mini-games will be hosted."""
         return self._config.getint('CHANNELID', 0)
 
 
-class Alias():
+class Alias:
     """Settings for the alias system."""
 
     def __init__(self, config: configparser.SectionProxy) -> None:
@@ -179,11 +179,11 @@ class Alias():
 
     @property
     def channel_id(self) -> int:
-        """Channel Id where the embeds for aliases are held."""
+        """Channel ID where the embeds for aliases are held."""
         return self._config.getint('CHANNELID', 0)
 
 
-class Settings():
+class Settings:
     """Representation of a guilds settings."""
 
     def __init__(self, config: configparser.ConfigParser,
@@ -289,8 +289,8 @@ class Settings():
 
         # Make sure the file was created.
         if not pathlib.Path(filename).is_file():
-            raise BaseException("Could not create the configuration "
-                                f"file for: {guild_id}.")
+            raise Exception("Could not create the configuration "
+                            f"file for: {guild_id}.")
 
         # Read the file, parse the configuration.
         config = configparser.ConfigParser(inline_comment_prefixes=';')
@@ -321,7 +321,7 @@ class Settings():
         return Settings(config, guild_id)
 
 
-class Manager():
+class Manager:
     """Manages the Settings database in memory and in storage."""
     _guilds: dict[int, Settings] = {}
     prefix: str = '['

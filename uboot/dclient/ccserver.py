@@ -6,26 +6,27 @@ from dclient.views.dm import DMNewView
 from .helper import get_user
 
 
-class CCServer():
+class CCServer:
     """Command and Control Server for the Discord Bot."""
 
     def __init__(self, client: discord.Client,
                  owner: discord.User,
-                 dmchannel: discord.TextChannel) -> None:
+                 dm_channel: discord.TextChannel) -> None:
         self.client = client
         self.owner = owner
-        self.dmchannel = dmchannel
+        self.dm_channel = dm_channel
 
     @property
     def guild(self) -> discord.Guild:
         """Gets the guild for the CCServer"""
-        return self.dmchannel.guild
+        return self.dm_channel.guild
 
     def is_guild(self, guild_id: int) -> bool:
         """Checks if the provided guild id is the CCServer."""
         return guild_id == self.guild.id
 
-    def is_dm(self, message: discord.Message) -> bool:
+    @staticmethod
+    def is_dm(message: discord.Message) -> bool:
         """Checks if a message belongs to a DM Channel."""
         return isinstance(message.channel, discord.DMChannel)
 
@@ -35,13 +36,13 @@ class CCServer():
         if not isinstance(thread, discord.Thread):
             return False
 
-        return thread.parent == self.dmchannel
+        return thread.parent == self.dm_channel
 
     def add_thread(self, thread: discord.Thread) -> None:
         """Adds a thread to memory."""
         if isinstance(thread.parent, discord.ForumChannel):
             return
-        if thread.parent != self.dmchannel:
+        if thread.parent != self.dm_channel:
             return
 
         self.guild._add_thread(thread)
@@ -50,14 +51,14 @@ class CCServer():
         """Removes a thread from memory."""
         if isinstance(thread.parent, discord.ForumChannel):
             return
-        if thread.parent != self.dmchannel:
+        if thread.parent != self.dm_channel:
             return
 
         self.guild._remove_thread(thread)
 
     async def get_thread(self, user: discord.User) -> discord.Thread:
-        """Gets the users DM thread. Creates a new one if cannot be found."""
-        threads = self.dmchannel.threads
+        """Gets the users DM thread. Creates a new one if it cannot be found."""
+        threads = self.dm_channel.threads
         thread = next((t for t in threads if t.name == str(user.id)), None)
         if thread:
             return thread
@@ -65,17 +66,17 @@ class CCServer():
         # Add the user text and join button.
         embed = DMNewView.get_panel(user)
         view = DMNewView(self.client)
-        message = await self.dmchannel.send(embed=embed, view=view)
+        message = await self.dm_channel.send(embed=embed, view=view)
 
         # Create the thread and add it to the cache.
-        thread = await self.dmchannel.create_thread(name=str(user.id),
-                                                    message=message)
+        thread = await self.dm_channel.create_thread(name=str(user.id),
+                                                     message=message)
         self.add_thread(thread)
 
         await thread.add_user(self.owner)
         return thread
 
-    async def dmlog(self, message: discord.Message) -> None:
+    async def log_dm(self, message: discord.Message) -> None:
         """Logs a DM into the CCServer."""
         if message.guild or not self.is_dm(message):
             return
@@ -94,7 +95,7 @@ class CCServer():
         if not isinstance(thread, discord.Thread):
             return
 
-        if thread.parent != self.dmchannel:
+        if thread.parent != self.dm_channel:
             return
 
         # Try to get the user.

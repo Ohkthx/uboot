@@ -24,10 +24,10 @@ def make_raw(guild_id: int, user_id: int,
     pre-defined defaults.
     """
     timestamp = datetime.utcnow().replace(microsecond=0).isoformat()
-    return (guild_id, user_id, int(logtype), timestamp, msg.replace("'", ''))
+    return guild_id, user_id, int(logtype), timestamp, msg.replace("'", '')
 
 
-class Log():
+class Log:
     """Representation of a log. Initialized with LogRaw."""
     debug_mode: bool = False
     _last_len: int = 0
@@ -41,10 +41,10 @@ class Log():
 
     def __str__(self) -> str:
         """Overrides the string method."""
-        gtext: str = '' if self.guild_id == 0 else f'[{self.guild_id}]'
-        utext: str = '' if self.user_id == 0 else f'[{self.user_id}]'
-        return f"[{self.timestamp}]{gtext}{utext}[{self.type.name.lower()}] "\
-            f"{self.message}"
+        guild_text = '' if self.guild_id == 0 else f'[{self.guild_id}]'
+        user_text = '' if self.user_id == 0 else f'[{self.user_id}]'
+        return f"[{self.timestamp}]{guild_text}{user_text}"\
+            f"[{self.type.name.lower()}] {self.message}"
 
     @property
     def _raw(self) -> LogRaw:
@@ -54,8 +54,8 @@ class Log():
 
     def save(self) -> None:
         """Stores the log into the database, saving it."""
-        if Manager._db:
-            Manager._db.insert_one(self._raw)
+        if Manager.db:
+            Manager.db.insert_one(self._raw)
 
     @staticmethod
     def info(msg: str, end: str = '\n',
@@ -134,13 +134,13 @@ class Log():
 
     @staticmethod
     def _print(text: str, end: str = '\n') -> None:
-        """Prints text to console. By default it creates a new line.
+        """Prints text to console. By default, it creates a new line.
         Passing '\r' makes it return the cursor to the beginning of the line.
         """
         diff: int = Log._last_len - len(text)
         extra = ''
         if diff > 0:
-            extra = ' ' * (diff)
+            extra = ' ' * diff
         print(f"{text}{extra}", end=end)
         Log._last_len = len(text)
 
@@ -157,9 +157,9 @@ class Log():
         Log._print(text, end=end)
 
 
-class Manager():
+class Manager:
     """Manages the Log database in memory and in storage."""
-    _db: Optional[LogDb] = None
+    db: Optional[LogDb] = None
     _logs: list[Log] = []
 
     @staticmethod
@@ -167,23 +167,23 @@ class Manager():
         """Initializes the Log Manager, connecting and loading from
         database.
         """
-        Manager._db = LogDb(dbname)
+        Manager.db = LogDb(dbname)
 
     @staticmethod
     def get_guild_type(guild_id: int, logtype: LogType,
                        amount: int) -> list[Log]:
         """Get logs based on its guild and type."""
-        if not Manager._db:
+        if not Manager.db:
             return []
-        raw_logs = Manager._db.find_guild_type(guild_id, int(logtype))
-        logs = [Log(l) for l in raw_logs]
+        raw_logs = Manager.db.find_guild_type(guild_id, int(logtype))
+        logs = [Log(log) for log in raw_logs]
         return logs[-amount:]
 
     @staticmethod
     def get_guild_user(guild_id: int, user_id: int, amount: int) -> list[Log]:
         """Get logs based on its guild and user."""
-        if not Manager._db:
+        if not Manager.db:
             return []
-        raw_logs = Manager._db.find_guild_user(guild_id, user_id)
-        logs = [Log(l) for l in raw_logs]
+        raw_logs = Manager.db.find_guild_user(guild_id, user_id)
+        logs = [Log(log) for log in raw_logs]
         return logs[-amount:]

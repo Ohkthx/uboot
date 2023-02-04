@@ -14,7 +14,7 @@ from dclient.views.dm import DMDeleteView
 async def validate_user(interaction: discord.Interaction,
                         guild: discord.Guild,
                         role_id: int) -> Optional[discord.Role]:
-    """Validates that the user who attempted to performed the interaction has
+    """Validates that the user who attempted to perform the interaction has
     all the required roles to do it.
     """
     user = interaction.user
@@ -35,11 +35,11 @@ async def validate_user(interaction: discord.Interaction,
         return
 
     # If the user does not have the role, notify them they cannot do that.
-    if not role in user.roles:
+    if role not in user.roles:
         res = interaction.response
         embed = discord.Embed(title="Invalid Permissions",
                               description=f"You must have the {role.mention} "
-                              "role to do that.",
+                                          "role to do that.",
                               color=discord.Color.red())
         return await res.send_message(embed=embed,
                                       ephemeral=True,
@@ -73,17 +73,17 @@ class BasicThreadView(ui.View):
 
         title = "Support Panel"
         color = discord.Colour.from_str("#00ff08")
-        desc = f"This interactive panel is only for use by {role_name}.\n\n"\
-            "> __**Options**:__\n"\
-            "> ├ **In Progress**: Work in progress.\n"\
-            "> └ **Close**: Close and lock thread, prompts reason.\n\n"\
-            "__Note__: Please allow all parties to view the thread before closure."
+        desc = f"This interactive panel is only for use by {role_name}.\n\n" \
+               "> __**Options**:__\n" \
+               "> ├ **In Progress**: Work in progress.\n" \
+               "> └ **Close**: Close and lock thread, prompts reason.\n\n" \
+               "__Note__: Please allow all parties to view the thread before closure."
 
         return discord.Embed(title=title, description=desc, color=color)
 
     @ui.button(label='In Progress', style=discord.ButtonStyle.blurple,
                custom_id='basic_thread_view:progress')
-    async def progress(self, interaction: discord.Interaction, button: ui.Button):
+    async def progress(self, interaction: discord.Interaction, _: ui.Button):
         """Upon being pressed, the thread will be marked as in-progress to
         indicate to the user that it is being worked on.
         """
@@ -127,11 +127,11 @@ class BasicThreadView(ui.View):
 
     @ui.button(label='🔒 Close', style=discord.ButtonStyle.grey,
                custom_id='basic_thread_view:close')
-    async def close(self, interaction: discord.Interaction, button: ui.Button):
+    async def close(self, interaction: discord.Interaction, _: ui.Button):
         """Closes and archives a thread. Preventing further communication from
-        ocurring within it.
+        occurring within it.
         """
-        # Validate that the action is inside of a thread.
+        # Validate that the action is inside a thread.
         thread = interaction.channel
         if not interaction.guild or not isinstance(thread, discord.Thread):
             return
@@ -193,18 +193,18 @@ class SuggestionView(ui.View):
 
         title = "Suggestion Reviewer Panel"
         color = discord.Colour.from_str("#00ff08")
-        desc = f"This interactive panel is only for use by {role_name}.\n\n"\
-            "> __**Options**:__\n"\
-            "> ├ **Approve**: Eventual implementation.\n"\
-            "> ├ **Deny**: Not implementing.\n"\
-            "> └ **Close**: Close and lock thread.\n\n"\
-            "__Note__: Please allow all parties to view the thread before closure."
+        desc = f"This interactive panel is only for use by {role_name}.\n\n" \
+               "> __**Options**:__\n" \
+               "> ├ **Approve**: Eventual implementation.\n" \
+               "> ├ **Deny**: Not implementing.\n" \
+               "> └ **Close**: Close and lock thread.\n\n" \
+               "__Note__: Please allow all parties to view the thread before closure."
 
         return discord.Embed(title=title, description=desc, color=color)
 
     @ui.button(label='🗹 Approve', style=discord.ButtonStyle.green,
                custom_id='suggestion_view:approve')
-    async def approve(self, interaction: discord.Interaction, button: ui.Button):
+    async def approve(self, interaction: discord.Interaction, _: ui.Button):
         """Marks the suggestion as being approved. Only usable by staff/admins
         with the correct role.
         """
@@ -243,7 +243,7 @@ class SuggestionView(ui.View):
 
     @ui.button(label='⨯ Deny', style=discord.ButtonStyle.red,
                custom_id='suggestion_view:deny')
-    async def deny(self, interaction: discord.Interaction, button: ui.Button):
+    async def deny(self, interaction: discord.Interaction, _: ui.Button):
         """Denies a suggestion. Labels it accordingly."""
         thread = interaction.channel
         if not interaction.guild or not isinstance(thread, discord.Thread):
@@ -288,7 +288,7 @@ class SuggestionView(ui.View):
 
     @ui.button(label='🔒 Close', style=discord.ButtonStyle.grey,
                custom_id='suggestion_view:close')
-    async def close(self, interaction: discord.Interaction, button: ui.Button):
+    async def close(self, interaction: discord.Interaction, _: ui.Button):
         """Close and archive the suggestion preventing future participation
         unless it is reopened by staff.
         """
@@ -306,8 +306,8 @@ class SuggestionView(ui.View):
         if not role:
             return
 
-        user_msg = f"**Title**: {thread.name}\n"\
-            f"Suggestion was __**closed**__ by **{interaction.user}**."
+        user_msg = f"**Title**: {thread.name}\n" \
+                   f"Suggestion was __**closed**__ by **{interaction.user}**."
         embed = discord.Embed(title="Suggestion Closed",
                               description=user_msg,
                               color=discord.Color.light_grey())

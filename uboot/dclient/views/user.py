@@ -1,17 +1,16 @@
 """User based views."""
-from enum import Enum
-from typing import Optional, Union, Type
 from datetime import datetime, timezone
+from typing import Optional, Union, Type
 
 import discord
 from discord import ui
 
 from dclient.helper import get_user
 from managers import users
-from managers.locations import Area, Floor, Level, Locations, Manager as LocationsManager
-from managers.loot_tables import Items
-from managers.logs import Log
 from managers.banks import Inventory
+from managers.locations import Area, Level, Manager as LocationsManager
+from managers.logs import Log
+from managers.loot_tables import Items
 
 
 async def extract_users(client: discord.Client,
@@ -40,28 +39,28 @@ async def extract_users(client: discord.Client,
 
 
 def show_inventory(inventory: Inventory) -> str:
-    """Creates a string containing all of the inventories items."""
+    """Creates a string containing all the inventories items."""
     # Create a list of items.
     items: list[str] = []
-    for n, item in enumerate(inventory.items):
-        lfeed = '└' if n + 1 == len(inventory.items) else '├'
+    for n, item in enumerate(inventory.items.values()):
+        line_feed = '└' if n + 1 == len(inventory.items) else '├'
         left: str = ""
         value: str = f", {item.value} gp"
-        if item.isresource:
+        if item.is_resource:
             left = "count: "
             value = ""
         elif item.type == Items.BAG:
             left = "slots: "
             value = ""
-        elif item.isconsumable:
+        elif item.is_consumable:
             left = "charges: "
-        elif item.isusable:
+        elif item.is_usable:
             left = "durability: "
 
         uses = ""
         if left != "":
             uses = f" [{left}{item.uses} / {item.uses_max}]"
-        items.append(f"> {lfeed} **{item.name.title()}**{uses}{value}")
+        items.append(f"> {line_feed} **{item.name.title()}**{uses}{value}")
 
     # If none, print none.
     items_full = '\n'.join(items)
@@ -79,7 +78,7 @@ class LocationDropdown(ui.Select):
         self.choice_type = choice_type
         id_expand: str = "area" if choice_type == Area else "level"
         options: list[discord.SelectOption] = []
-        choices: dict[str, str] = {}  # Floor/Area Id, Name
+        choices: dict[str, str] = {}  # Floor/Area ID, Name
 
         if self.choice_type == Level:
             dungeon_floor = LocationsManager.get(user.c_location, user.c_floor)
@@ -114,9 +113,8 @@ class LocationDropdown(ui.Select):
 
         value = int(self.values[0])
 
-        # Changes the users location, only if it is discovered.
+        # Changes the user's location, only if it is discovered.
         user = users.Manager.get(author.id)
-        new_loc: Optional[Floor] = None
 
         if self.choice_type == Level:
             new_loc = user.change_location(user.c_location, Level(value))
@@ -184,13 +182,12 @@ class InventoryShowDropdown(ui.Select):
         # Extract the item.
         user_l = users.Manager.get(interaction.user.id)
         bag_parse = self.values[0].split(':')
-        btype = int(bag_parse[0])
-        bvalue = int(bag_parse[1])
-        bname = bag_parse[2]
+        bag_type = int(bag_parse[0])
+        value = int(bag_parse[1])
+        name = bag_parse[2]
 
         # Find the bag.
-        bag = next((b for b in user_l.bank.bags if b.type == btype and
-                    b.value == bvalue and b.name == bname), None)
+        bag = user_l.bank.get_bag(bag_type, value, name)
         if not bag:
             await res.send_message("Could not find bag. Do you still own it?",
                                    ephemeral=True,
@@ -213,17 +210,17 @@ class InventoryShowDropdown(ui.Select):
 class InventorySellDropdown(ui.Select):
     """Allows the user to select an item to sell."""
 
-    def __init__(self, user: users.User, inventory: Inventory) -> None:
+    def __init__(self, inventory: Inventory) -> None:
         options: list[discord.SelectOption] = []
         self.inventory = inventory
 
         all_label = f"All Items, value: {inventory.value} gp"
-        options.append(discord.SelectOption(label=all_label, value='1:1:all'))
-        for item in inventory.items:
+        options.append(discord.SelectOption(label=all_label, value="all"))
+        for item in inventory.items.values():
             label: str = f"{item.name.title()}, value: {item.value} gp"
-            value: str = f"{item.type}:{item.value}:{item.name}"
+            value: str = item.id
             options.append(discord.SelectOption(label=label, value=value))
-        options.append(discord.SelectOption(label='None', value='1:0:none'))
+        options.append(discord.SelectOption(label="None", value="none"))
         super().__init__(options=options,
                          placeholder="Sell Items",
                          custom_id="inventory_sell_dropdown")
@@ -250,13 +247,10 @@ class InventorySellDropdown(ui.Select):
 
         # Extract the item.
         user_l = users.Manager.get(interaction.user.id)
-        item_parse = self.values[0].split(':')
-        itype = int(item_parse[0])
-        ivalue = int(item_parse[1])
-        iname = item_parse[2]
+        item_id = self.values[0]
 
         # None selected.
-        if Items(itype) == Items.NONE and ivalue == 0:
+        if item_id == "none":
             return await res.send_message("Transaction cancelled.",
                                           ephemeral=True,
                                           delete_after=20)
@@ -266,12 +260,12 @@ class InventorySellDropdown(ui.Select):
         view.set_user(user, self.inventory)
 
         # Check if we are selling all items.
-        if Items(itype) == Items.NONE and ivalue > 0:
+        if item_id == "all":
             total_value = self.inventory.value
             user_l.gold += total_value
             user_l.save()
 
-            self.inventory.items = []
+            self.inventory.items = {}
             user_l.bank.save()
 
             Log.player(f"{user} sold all items for {total_value} gp!",
@@ -284,7 +278,7 @@ class InventorySellDropdown(ui.Select):
                 await msg.edit(embed=embed, view=view)
                 ephemeral = False
                 delete_after = None
-            except BaseException as exc:
+            except BaseException:
                 pass
 
             return await res.send_message(f"{user} sold all items "
@@ -293,8 +287,7 @@ class InventorySellDropdown(ui.Select):
                                           delete_after=delete_after)
 
         # Find the item.
-        item = next((i for i in self.inventory.items if i.type == itype and
-                     i.value == ivalue and i.name == iname), None)
+        item = self.inventory.get_item(item_id)
         if not item:
             await res.send_message("Could not find item. Do you still own it?",
                                    ephemeral=True,
@@ -303,22 +296,22 @@ class InventorySellDropdown(ui.Select):
 
         quantity: str = ""
         value: int = 0
-        if item.isstackable:
+        if item.is_stackable:
             # Remove a single use of a consumable.
             if item.uses > 0:
-                quantity = "one use of " if item.isconsumable else "one "
+                quantity = "one use of " if item.is_consumable else "one "
                 value = item.base_value
                 self.inventory.use_stackable(item)
 
             if item.uses == 0:
-                self.inventory.remove_item(item.type, item.name, item.value)
+                self.inventory.remove_item(item.id)
                 user_l.save()
             user_l.bank.save()
         else:
             value = item.value
             # Remove the item from the user.
-            if self.inventory.remove_item(Items(itype), iname, ivalue):
-                user_l.gold += ivalue
+            if self.inventory.remove_item(item.id):
+                user_l.gold += value
                 user_l.save()
                 user_l.bank.save()
 
@@ -343,17 +336,17 @@ class InventorySellDropdown(ui.Select):
 class InventoryUseDropdown(ui.Select):
     """Allows the user to select an item to use."""
 
-    def __init__(self, user: users.User, inventory: Inventory) -> None:
+    def __init__(self, inventory: Inventory) -> None:
         options: list[discord.SelectOption] = []
         self.inventory = inventory
 
-        for item in inventory.items:
-            if not item.isusable:
+        for item in inventory.items.values():
+            if not item.is_usable:
                 continue
             label: str = f"{item.name.title()} [{item.uses} / {item.uses_max}]"
-            value: str = f"{item.type}:{item.value}:{item.name}"
+            value: str = item.id
             options.append(discord.SelectOption(label=label, value=value))
-        options.append(discord.SelectOption(label='None', value='1:0:none'))
+        options.append(discord.SelectOption(label="None", value="none"))
         super().__init__(options=options,
                          placeholder="Use / Equip Item",
                          custom_id="inventory_use_dropdown")
@@ -380,13 +373,10 @@ class InventoryUseDropdown(ui.Select):
 
         # Extract the item.
         user_l = users.Manager.get(interaction.user.id)
-        item_parse = self.values[0].split(':')
-        itype = int(item_parse[0])
-        ivalue = int(item_parse[1])
-        iname = item_parse[2]
+        item_id = self.values[0]
 
         # None selected.
-        if Items(itype) == Items.NONE and ivalue == 0:
+        if item_id == "none":
             return await res.send_message("No item used.",
                                           ephemeral=True,
                                           delete_after=20)
@@ -396,7 +386,7 @@ class InventoryUseDropdown(ui.Select):
         view.set_user(user, self.inventory)
 
         # Find the item.
-        item = self.inventory.get_item(Items(itype), iname, ivalue)
+        item = self.inventory.get_item(item_id)
         if not item:
             return await res.send_message("Could not find item. Do you still "
                                           "own it?",
@@ -405,12 +395,12 @@ class InventoryUseDropdown(ui.Select):
 
         use_text = "used"
 
-        if item.isconsumable and self.inventory.use_stackable(item):
+        if item.is_consumable and self.inventory.use_stackable(item):
             granting: str = "granting a powerhour"
             if item.type == Items.POWERHOUR:
                 user_l.mark_cooldown(users.Cooldown.POWERHOUR)
             if item.uses == 0:
-                self.inventory.remove_item(item.type, item.name, item.value)
+                self.inventory.remove_item(item.id)
                 user_l.save()
             user_l.bank.save()
 
@@ -433,7 +423,7 @@ class InventoryUseDropdown(ui.Select):
                                           delete_after=delete_after)
 
         # Remove the item from the user.
-        if self.inventory.remove_item(Items(itype), iname, ivalue):
+        if self.inventory.remove_item(item_id):
             # Swap the weapon out.
             if item.type == Items.WEAPON:
                 use_text = "equipped"
@@ -462,18 +452,18 @@ class InventoryUseDropdown(ui.Select):
 class TradeDropdown(ui.Select):
     """Allows the user to select an item to trade."""
 
-    def __init__(self, user: users.User, inventory: Inventory) -> None:
+    def __init__(self, inventory: Inventory) -> None:
         options: list[discord.SelectOption] = []
         self.inventory = inventory
 
-        for item in inventory.items:
-            ivalue: int = item.value
-            if item.isconsumable:
-                ivalue = item.base_value
-            label: str = f"{item.name.title()}, value: {ivalue} gp"
-            value: str = f"{item.type}:{item.value}:{item.name}"
+        for item in inventory.items.values():
+            value: int = item.value
+            if item.is_consumable:
+                value = item.base_value
+            label: str = f"{item.name.title()}, value: {value} gp"
+            value: str = item.id
             options.append(discord.SelectOption(label=label, value=value))
-        options.append(discord.SelectOption(label='None', value='1:0:none'))
+        options.append(discord.SelectOption(label="None", value="none"))
         super().__init__(options=options,
                          placeholder="Give / Trade Item",
                          custom_id="inventory_trade_dropdown")
@@ -501,20 +491,17 @@ class TradeDropdown(ui.Select):
 
         # Extract the item.
         user_l = users.Manager.get(interaction.user.id)
-        item_parse = self.values[0].split(':')
-        itype = int(item_parse[0])
-        ivalue = int(item_parse[1])
-        iname = item_parse[2]
+        item_id = self.values[0]
 
         # None selected.
-        if Items(itype) == Items.NONE and ivalue == 0:
+        if item_id == "none":
             await res.send_message("No item given.",
                                    ephemeral=True,
                                    delete_after=20)
             return
 
         # Find the item.
-        item = self.inventory.get_item(Items(itype), iname, ivalue)
+        item = self.inventory.get_item(item_id)
         if not item:
             await res.send_message("Could not find item. Do you still own it?",
                                    ephemeral=True,
@@ -525,7 +512,7 @@ class TradeDropdown(ui.Select):
         to_user = users.Manager.get(extracted_users[1].id)
 
         quantity: str = ""
-        if item.isconsumable:
+        if item.is_consumable:
             # Remove a single use of a consumable.
             if item.uses > 0:
                 quantity = "one use of "
@@ -533,21 +520,21 @@ class TradeDropdown(ui.Select):
                 to_user.bank.add_item(item, uses_override=1, max_override=True)
 
             if item.uses == 0:
-                self.inventory.remove_item(item.type, item.name, item.value)
+                self.inventory.remove_item(item.id)
             user_l.bank.save()
             to_user.bank.save()
         else:
             # Remove the item from the user.
-            if self.inventory.remove_item(Items(itype), iname, ivalue):
+            if self.inventory.remove_item(item.id):
                 user_l.bank.save()
                 to_user.bank.add_item(item, max_override=True)
                 to_user.bank.save()
 
-        value = item.base_value if item.isconsumable else item.value
+        value = item.base_value if item.is_consumable else item.value
 
-        logtxt = f"{user} gave {quantity}**{item.name.title()}** "\
+        log_text = f"{user} gave {quantity}**{item.name.title()}** "\
             f"(value: {value} gp) to {extracted_users[1]}."
-        Log.player(logtxt.replace('*', ''), guild_id=guild.id, user_id=user.id)
+        Log.player(log_text.replace('*', ''), guild_id=guild.id, user_id=user.id)
         Log.player(f"{extracted_users[1]} received {quantity}"
                    f"{item.name.title()} (value: {value} gp) from {user}.",
                    guild_id=guild.id, user_id=extracted_users[1].id)
@@ -558,7 +545,7 @@ class TradeDropdown(ui.Select):
         embed = InventoryView.get_panel(user, self.inventory)
         embed.set_footer(text=f"{user_l.id}:{to_user.id}")
         await msg.edit(embed=embed, view=view)
-        await res.send_message(logtxt)
+        await res.send_message(log_text)
 
 
 class LocationView(ui.View):
@@ -589,7 +576,7 @@ class LocationView(ui.View):
         loc_text: list[str] = []
         locations = user_l.locations.get_unlocks()
         for n, loc in enumerate(locations):
-            lfeed = '└' if n + 1 == len(locations) else '├'
+            line_feed = '└' if n + 1 == len(locations) else '├'
 
             loc_name = "unknown"
             if loc.name:
@@ -599,18 +586,18 @@ class LocationView(ui.View):
             if loc_name == c_location.lower():
                 current = " (Current)"
 
-            loc_text.append(f"> {lfeed} {loc_name.title()}{current}")
+            loc_text.append(f"> {line_feed} {loc_name.title()}{current}")
         full_text = '\n'.join(loc_text)
 
         # Get the list of connections.
         conn_text: list[str] = []
         conns = user_l.locations.connections(user_l.c_location)
         for n, loc in enumerate(conns):
-            lfeed = '└' if n + 1 == len(conns) else '├'
+            line_feed = '└' if n + 1 == len(conns) else '├'
             name = "Unknown"
             if loc.name:
                 name = loc.name.title()
-            conn_text.append(f"> {lfeed} {name}")
+            conn_text.append(f"> {line_feed} {name}")
         conn_full = '\n'.join(conn_text)
 
         color = discord.Colour.from_str("#00ff08")
@@ -660,15 +647,15 @@ class UserStatsView(ui.View):
         day_str = '' if age.days % 365 == 0 else f"{int(age.days%365)} day(s)"
 
         powerhour_text = ""
-        if user_l.ispowerhour:
+        if user_l.is_powerhour:
             powerhour_text = "**powerhour**: enabled\n"
 
         weapon_name = "unarmed"
         if user_l.weapon:
             material = user_l.weapon.material
             dur = f"{user_l.weapon.uses} / {user_l.weapon.uses_max}"
-            wtype = user_l.weapon._name.title()
-            weapon_name = f"{material.name.replace('_', ' ')} {wtype} [{dur}]"
+            weapon_type = user_l.weapon._name.title()
+            weapon_name = f"{material.name.replace('_', ' ')} {weapon_type} [{dur}]"
 
         location_text: str = "Unknown"
         location = LocationsManager.get(user_l.c_location, user_l.c_floor)
@@ -686,7 +673,7 @@ class UserStatsView(ui.View):
             f"**weapon**: {weapon_name.lower()}\n"\
             f"**messages**: {user_l.msg_count}\n"\
             f"{powerhour_text}"\
-            f"**gold multiplier**: {(user_l.gold_multiplier):0.2f}\n\n"\
+            f"**gold multiplier**: {user_l.gold_multiplier :0.2f}\n\n"\
             "> __Gamble__:\n"\
             f"> ├ **total**: {user_l.gambles}\n"\
             f"> ├ **won**: {user_l.gambles_won}\n"\
@@ -718,11 +705,11 @@ class InventoryView(ui.View):
 
     def set_user(self, user: Union[discord.User, discord.Member],
                  inventory: Inventory) -> None:
-        """Sets the user and inventory so it can be used in the dropdown."""
+        """Sets the user and inventory, so it can be used in the dropdown."""
         self.user = user
         user_l = users.Manager.get(user.id)
-        self.add_item(InventorySellDropdown(user_l, inventory))
-        self.add_item(InventoryUseDropdown(user_l, inventory))
+        self.add_item(InventorySellDropdown(inventory))
+        self.add_item(InventoryUseDropdown(inventory))
 
         # Only banks can show their sub containers for now.
         if inventory.type == Inventory.Type.BANK:
@@ -735,15 +722,15 @@ class InventoryView(ui.View):
         # Get the local user.
         user_l = users.Manager.get(user.id)
         powerhour_status = "off"
-        if user_l.ispowerhour:
+        if user_l.is_powerhour:
             powerhour_status = "enabled"
 
         weapon_name = "unarmed"
         if user_l.weapon:
             material = user_l.weapon.material
             dur = f"{user_l.weapon.uses} / {user_l.weapon.uses_max}"
-            wtype = user_l.weapon._name.title()
-            weapon_name = f"{material.name.replace('_', ' ')} {wtype} [{dur}]"
+            weapon_type = user_l.weapon._name.title()
+            weapon_name = f"{material.name.replace('_', ' ')} {weapon_type} [{dur}]"
 
         # Get the contents of the inventory.
         inventory_str = show_inventory(inventory)
@@ -766,11 +753,11 @@ class InventoryView(ui.View):
 
         # Build the embed.
         embed = discord.Embed(title=tree)
-        embed.color = discord.Colour.from_str("#00ff08")
+        embed.colour = discord.Colour.from_str("#00ff08")
         embed.set_footer(text=f"{user.id}")
         embed.set_thumbnail(url=user.display_avatar.url)
         embed.description = f"**gold**: {user_l.gold} gp\n"\
-            f"**gold per message (gpm)**: {(user_l.gold_multiplier):0.2f}\n"\
+            f"**gold per message (gpm)**: {user_l.gold_multiplier :0.2f}\n"\
             f"**gpm (powerhour)**: {gpm_ph:0.2f}\n"\
             f"**powerhour**: {powerhour_status}\n"\
             f"**weapon**: {weapon_name.lower()}\n\n"\
@@ -795,7 +782,7 @@ class TradeView(ui.View):
         """Sets the users involved in the trade."""
         self.user = user
         user_l = users.Manager.get(user.id)
-        self.add_item(TradeDropdown(user_l, user_l.bank))
+        self.add_item(TradeDropdown(user_l.bank))
 
 
 async def setup(bot: discord.Client) -> None:

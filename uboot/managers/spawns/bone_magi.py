@@ -23,11 +23,11 @@ class BoneMagi(entities.Entity):
         self.image = "bone_magi_alive.png"
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(Rarity.UNCOMMON, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.UNCOMMON, self.is_paragon)
 
     @staticmethod
     def locations() -> list[tuple[Area, Level, int]]:
-        """Returns all of the locations the entity can spawn at."""
+        """Returns all the locations the entity can spawn at."""
         return [
             (Area.DECEIT, Level.TWO, 5),
             (Area.FIRE, Level.ONE, 5),

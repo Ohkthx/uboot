@@ -6,7 +6,7 @@ import discord
 from discord import ui
 
 from dclient.helper import get_role
-from dclient.destructable import DestructableManager
+from dclient.destructible import DestructibleManager
 from managers import users, entities, settings, images
 from managers.loot_tables import Chest, Items, Item
 from managers.locations import Area
@@ -29,8 +29,8 @@ def durability_loss(leader: users.User) -> bool:
     return False
 
 
-class Participant():
-    """A single participant inside of a party."""
+class Participant:
+    """A single participant inside a party."""
 
     def __init__(self, user: discord.Member) -> None:
         self.user = user
@@ -44,11 +44,11 @@ class Participant():
             return
         if damage > self.user_l.gold:
             damage = self.user_l.gold
-
         self.damage.append(damage)
         self.user_l.gold -= damage
         if self.user_l.gold == 0:
             self.deaths += 1
+
         self.user_l.save()
 
     def total_damage(self) -> int:
@@ -56,15 +56,14 @@ class Participant():
         return sum(self.damage)
 
 
-class Party():
+class Party:
     """Represents several participants and their objective."""
 
     def __init__(self, leader: discord.Member,
                  entity: entities.Entity) -> None:
         self.leader = Participant(leader)
         self.entity = entity
-        self.helpers: dict[int, Participant] = {}
-        self.helpers[leader.id] = self.leader
+        self.helpers: dict[int, Participant] = {leader.id: self.leader}
 
     @property
     def count(self) -> int:
@@ -97,19 +96,19 @@ class Party():
 
 def loot_text(user: discord.Member, all_loot: list[Item], indent: int,
               new_area: Optional[Area]) -> str:
-    """Generates all of the text for the loot acquired."""
+    """Generates all the text for the loot acquired."""
     spacer: str = "ㅤ" * indent
-    all_loot = [l for l in all_loot if l.type != Items.NONE]
+    all_loot = [loot for loot in all_loot if loot.type != Items.NONE]
 
     item_texts: list[str] = []
     for n, item in enumerate(all_loot):
-        lfeed = '└' if n + 1 == len(all_loot) else '├'
+        line_feed = '└' if n + 1 == len(all_loot) else '├'
         amt_text: str = ''
         if item.value > 1 and item.type == Items.BAG:
             amt_text = f" [slots: {item.uses} / {item.uses_max}]"
         elif item.value > 1 and item.type not in (Items.WEAPON, Items.TRASH):
             amt_text = f" [{item.value}]"
-        elif item.type == Items.TRASH or item.isusable:
+        elif item.type == Items.TRASH or item.is_usable:
             amt_text = f" [value: {item.value} gp]"
 
         name = item.name.title()
@@ -120,13 +119,13 @@ def loot_text(user: discord.Member, all_loot: list[Item], indent: int,
                 area_name = new_area.name.title()
             name = f"NEW AREA FOUND: {area_name}"
 
-        item_texts.append(f"> {spacer}{lfeed} **{name}**{amt_text}")
+        item_texts.append(f"> {spacer}{line_feed} **{name}**{amt_text}")
         Log.player(f"{user} looted {name}{amt_text}",
                    guild_id=user.guild.id, user_id=user.id)
 
         if item.type == Items.CHEST and isinstance(item, Chest):
-            tchest_text = loot_text(user, item.items, indent + 1, new_area)
-            item_texts.append(tchest_text)
+            chest_text = loot_text(user, item.items, indent + 1, new_area)
+            item_texts.append(chest_text)
 
     # Combine the text.
     full_loot = '\n'.join(item_texts)
@@ -135,7 +134,7 @@ def loot_text(user: discord.Member, all_loot: list[Item], indent: int,
     return full_loot
 
 
-def loot(party: Party) -> str:
+def party_loot(party: Party) -> str:
     """Attempts to attack the entity."""
     if party.count == 0:
         return "How did you manage to kill something with no one?"
@@ -149,18 +148,18 @@ def loot(party: Party) -> str:
 
     # Check if the leader loses durability on their weapon.
     loss_dur: bool = False
-    if not entity.ischest:
+    if not entity.is_chest:
         loss_dur = durability_loss(leader)
 
     all_loot = entity.get_loot()
-    all_loot = [l for l in all_loot if l.type != Items.NONE]
+    all_loot = [loot for loot in all_loot if loot.type != Items.NONE]
 
     # Apply all loot to each participant.
     new_area: Optional[Area] = None
     helpers_exp: list[str] = []
     total_exp = party.entity.get_exp(leader.level)
     for n, helper in enumerate(party.get_all()):
-        lfeed = '└' if n + 1 == party.count else '├'
+        line_feed = '└' if n + 1 == party.count else '├'
         user = users.Manager.get(helper.user.id)
         exp = helper.total_damage() / entity.max_health * total_exp
         user.exp += exp
@@ -169,11 +168,11 @@ def loot(party: Party) -> str:
         if helper.deaths > 0:
             user.deaths -= helper.deaths
         user.save()
-        helpers_exp.append(f"> {lfeed} {helper.user} gained {exp:0.2f} exp.")
+        helpers_exp.append(f"> {line_feed} {helper.user} gained {exp:0.2f} exp.")
     full_help = '\n'.join(helpers_exp)
 
     if not new_area:
-        all_loot = [l for l in all_loot if l.type != Items.LOCATION]
+        all_loot = [loot for loot in all_loot if loot.type != Items.LOCATION]
 
     # Creates the text for loot.
     full_loot = loot_text(leader_user, all_loot, 0, new_area)
@@ -188,11 +187,11 @@ def loot(party: Party) -> str:
 
     discarded_items: int = 0
     for helper in party.get_all():
-        huser = helper.user
-        huser_l = helper.user_l
-        if len(huser_l.bank.items) >= huser_l.bank.max_capacity:
+        user = helper.user
+        bank = helper.user_l.bank
+        if len(bank.items) >= bank.max_capacity:
             discarded_items += 1
-            notes_list.append(f"{huser} has a __**full bank**__.")
+            notes_list.append(f"{user} has a __**full bank**__.")
 
     notes_full = ""
     if len(notes_list) > 0:
@@ -215,7 +214,7 @@ def loot(party: Party) -> str:
             f"to check out and sell your items."
 
     win = win_text[random.randrange(0, len(win_text))]
-    if entity.ischest:
+    if entity.is_chest:
         win = "heroically opens"
     return f"**{leader_user}** {win} **{entity.name}**!\n\n"\
         f"**Total Reward**: {total_exp:0.2f} exp\n"\
@@ -233,7 +232,7 @@ class Dropdown(ui.Select):
         self.user_l = users.Manager.get(user.id)
         self.entity = entity
         atk_label = "Attack"
-        if entity.ischest:
+        if entity.is_chest:
             atk_label = "Open"
 
         options = [
@@ -261,9 +260,8 @@ class Dropdown(ui.Select):
                              guild_id=guild_id, user_id=self.user.id)
 
         cached = msg.reference.cached_message
-
         embed = discord.Embed()
-        embed.color = discord.Colour.from_str("#ff0f08")
+        embed.colour = discord.Colour.from_str("#ff0f08")
         embed.description = f"**{self.user}** flees like a coward.\n"\
             f"Leaving {self.entity.get_exp(self.user_l.level):0.2f} exp.\n\n"\
             f"**{self.entity.name.title()}** begins to hunt again."
@@ -275,8 +273,7 @@ class Dropdown(ui.Select):
                 embed.set_thumbnail(url=url)
 
         if self.values[0].lower() in ('attack', 'open'):
-
-            embed.color = discord.Colour.from_str("#00ff08")
+            embed.colour = discord.Colour.from_str("#00ff08")
             if self.user_l.gold < self.entity.health:
                 # Get help from another user.
                 exp = self.entity.get_exp(self.user_l.level)
@@ -288,7 +285,7 @@ class Dropdown(ui.Select):
                     help_embed.set_thumbnail(url=url)
 
                 # Register the "loss" callback.
-                destruct = DestructableManager.get(msg.id)
+                destruct = DestructibleManager.get(msg.id)
                 if destruct:
                     destruct.set_callback(help_view.loss_callback)
                     destruct.add_time(60)
@@ -296,26 +293,27 @@ class Dropdown(ui.Select):
                 await msg.edit(embed=help_embed, view=help_view)
                 return await res.send_message(f"You deal {damage} damage.",
                                               ephemeral=True, delete_after=30)
+
             party = Party(self.user, self.entity)
             party.add_damage(self.user, self.entity.health)
-            embed.description = loot(party)
+            embed.description = party_loot(party)
             embed.set_footer(text=f"Current gold: {self.user_l.gold} gp")
         elif self.values[0].lower() == 'flee':
             Log.player(f"{self.user} fled {self.entity.name}.",
                        guild_id=guild_id, user_id=self.user.id)
         else:
-            embed.color = discord.Colour.from_str("#F1C800")
+            embed.colour = discord.Colour.from_str("#F1C800")
             embed.description = "You perform some unknown action?! What a feat."
 
         # User is exiting combat.
         self.user_l.set_combat(False)
 
-        # Delete the old destructable.
-        await DestructableManager.remove_one(msg.id, True)
+        # Delete the old destructible.
+        await DestructibleManager.remove_one(msg.id, True)
 
         # Create the new one.
         delete_after: Optional[int] = None
-        if not self.entity.isboss:
+        if not self.entity.is_boss:
             delete_after = 420
         await cached.reply(embed=embed, delete_after=delete_after, file=file)
 
@@ -335,7 +333,7 @@ class HelpMeView(ui.View):
         self.party.add_damage(user, damage)
 
         self.exp_gain: float = exp_gain
-        self.iscomplete: bool = False
+        self.is_complete: bool = False
         super().__init__(timeout=None)
 
     def has_contributed(self, user: discord.Member) -> bool:
@@ -350,8 +348,7 @@ class HelpMeView(ui.View):
         action = self.entity.get_action()
         cost = self.entity.health
 
-        # Add all of the participants and their contributions.
-        participants_full: str = ""
+        # Add all the participants and their contributions.
         all_help: list[str] = []
         if self.party.count == 0:
             participants_full = "__**Party**__:\n> empty\n\n"
@@ -369,7 +366,7 @@ class HelpMeView(ui.View):
         if self.entity.location.name:
             loc_name = self.entity.location.name.title()
 
-        embed.color = discord.Colour.from_str("#F1C800")
+        embed.colour = discord.Colour.from_str("#F1C800")
         embed.description = f"**{self.user}** {action} by **{self.entity.name}**!\n"\
             f"**Location**: {loc_name}\n"\
             f"**Health Remaining**: {cost}\n\n"\
@@ -385,7 +382,7 @@ class HelpMeView(ui.View):
         """Called when the original message gets deleted."""
         self.user_l.set_combat(False)
 
-        if self.iscomplete:
+        if self.is_complete:
             return
 
         if not msg or not msg.reference or not msg.reference.cached_message:
@@ -397,7 +394,7 @@ class HelpMeView(ui.View):
                    guild_id=leader.user.guild.id,
                    user_id=leader.user.id)
 
-        # Generate all of the gold that was lost text.
+        # Generate all the gold that was lost text.
         dead_text: list[str] = []
         if party.count == 0:
             dead_text.append("> empty")
@@ -407,7 +404,7 @@ class HelpMeView(ui.View):
                 dead_text.append(f"> {helper.user} lost {cost} gp.")
         dead_full = '\n'.join(dead_text)
 
-        # Check the durability of the leaders weapon.
+        # Check the durability of the leaders' weapon.
         loss_dur = durability_loss(leader.user_l)
 
         notes_list: list[str] = []
@@ -424,13 +421,13 @@ class HelpMeView(ui.View):
             notes_full = f"__**Notes**__:\n > {notes_text}\n\n"
 
         leader = party.leader
-        partytxt = "The **party**" if party.count > 1 else f"**{leader.user}**"
-        description = f"{partytxt} has failed to kill **{self.entity.name}**.\n\n"\
+        party_text = "The **party**" if party.count > 1 else f"**{leader.user}**"
+        description = f"{party_text} has failed to kill **{self.entity.name}**.\n\n"\
             f"{notes_full}"\
             f"__**Losses**__:\n{dead_full}"
 
         embed = discord.Embed(description=description)
-        embed.color = discord.Colour.from_str("#ff0f08")
+        embed.colour = discord.Colour.from_str("#ff0f08")
         embed.set_footer(text="Better luck next time!")
         file: Optional[discord.File] = None
         if self.entity.image:
@@ -440,27 +437,27 @@ class HelpMeView(ui.View):
                 embed.set_thumbnail(url=url)
 
         delete_after: Optional[int] = None
-        if not party.entity.isboss:
+        if not party.entity.is_boss:
             delete_after = 360
         cached = msg.reference.cached_message
         await cached.reply(embed=embed, delete_after=delete_after, file=file)
 
     @ui.button(label='HELP [ALL]', style=discord.ButtonStyle.red,
                custom_id='helpme_view:help_all')
-    async def help_all(self, interaction: discord.Interaction, button: ui.Button):
+    async def help_all(self, interaction: discord.Interaction, _: ui.Button):
         user = users.Manager.get(interaction.user.id)
         await self.help(interaction, user.gold)
 
     @ui.button(label='HELP [1000]', style=discord.ButtonStyle.red,
                custom_id='helpme_view:help_1k')
-    async def help_1000(self, interaction: discord.Interaction, button: ui.Button):
+    async def help_1000(self, interaction: discord.Interaction, _: ui.Button):
         user = users.Manager.get(interaction.user.id)
         amount = 1000 if user.gold > 1000 else user.gold
         await self.help(interaction, amount)
 
     @ui.button(label='HELP [100]', style=discord.ButtonStyle.red,
                custom_id='helpme_view:help_100')
-    async def help_100(self, interaction: discord.Interaction, button: ui.Button):
+    async def help_100(self, interaction: discord.Interaction, _: ui.Button):
         user = users.Manager.get(interaction.user.id)
         amount = 100 if user.gold > 100 else user.gold
         await self.help(interaction, amount)
@@ -478,7 +475,6 @@ class HelpMeView(ui.View):
         # Check that the user has the minigame role.
         setting = settings.Manager.get(guild.id)
         role_id = setting.minigame.role_id
-        minigame_role: Optional[discord.Role] = None
 
         # Validate the role is set to play.
         minigame_role = await get_role(interaction.client, guild.id, role_id)
@@ -521,9 +517,9 @@ class HelpMeView(ui.View):
         # Cannot do a final blow, so add them as a participant.
         if amount < self.entity.health:
             extension: int = 60
-            if self.entity.isboss:
+            if self.entity.is_boss:
                 extension = 1800
-            DestructableManager.extend(msg.id, extension)
+            DestructibleManager.extend(msg.id, extension)
 
             self.party.add_damage(user, amount)
             help_embed = self.get_panel()
@@ -540,26 +536,26 @@ class HelpMeView(ui.View):
 
         self.user_l.set_combat(False)
 
-        self.iscomplete = True
+        self.is_complete = True
         await res.send_message("You deal the fatal blow!",
                                ephemeral=True, delete_after=30)
 
         # Build the final embed and send it.
         embed = discord.Embed()
-        embed.color = discord.Colour.from_str("#00ff08")
-        embed.description = loot(self.party)
+        embed.colour = discord.Colour.from_str("#00ff08")
+        embed.description = party_loot(self.party)
 
         if file:
             url = f"attachment://{self.entity.image}"
             embed.set_thumbnail(url=url)
 
         cached = msg.reference.cached_message
-        # Delete the old destructable.
-        await DestructableManager.remove_one(msg.id, True)
+        # Delete the old destructible.
+        await DestructibleManager.remove_one(msg.id, True)
 
         # Create a new one.
         delete_after: Optional[int] = None
-        if not self.party.entity.isboss:
+        if not self.party.entity.is_boss:
             delete_after = 420
         await cached.reply(embed=embed, delete_after=delete_after, file=file)
 
@@ -590,11 +586,11 @@ class EntityView(ui.View):
 
         loc_name = 'Unknown'
         atk: str = "Attack"
-        if self.entity.ischest:
+        if self.entity.is_chest:
             atk = "Open"
         if self.entity.location.name:
             loc_name = self.entity.location.name.title()
-        embed.color = discord.Colour.from_str("#F1C800")
+        embed.colour = discord.Colour.from_str("#F1C800")
         embed.description = f"**{self.user}** {action} **{self.entity.name}**!\n"\
             f"**Location**: {loc_name}\n"\
             f"**Health**: {cost}\n\n"\

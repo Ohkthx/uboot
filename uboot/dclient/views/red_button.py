@@ -7,7 +7,7 @@ from itertools import repeat
 import discord
 from discord import ui
 
-from dclient import DiscordBot
+from dclient.bot import DiscordBot
 from managers import users, entities
 
 
@@ -32,7 +32,7 @@ class RedButtonView(ui.View):
 
     @ui.button(label='Do NOT Press', style=discord.ButtonStyle.red,
                custom_id='red_button_view:red')
-    async def do_not(self, interaction: discord.Interaction, button: ui.Button):
+    async def do_not(self, interaction: discord.Interaction, _: ui.Button):
         """The button the users must refrain from pressing."""
         res = interaction.response
         user = interaction.user

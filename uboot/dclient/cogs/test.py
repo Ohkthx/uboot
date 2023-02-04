@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import param
 
-from dclient import DiscordBot
+from dclient.bot import DiscordBot
 from dclient.helper import get_role
 from dclient.views.test import PersistentView
 from dclient.views.red_button import RedButtonView
@@ -75,7 +75,7 @@ class Test(commands.Cog):
             return
 
         user_l = users.Manager.get(user.id)
-        if user_l.incombat:
+        if user_l.in_combat:
             return await ctx.reply("You are already in combat.",
                                    delete_after=15)
 

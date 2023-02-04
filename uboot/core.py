@@ -1,14 +1,12 @@
 """Entrance into the application."""
-from typing import Optional
 
 from config import GeneralConfig, CONFIG_FILENAME
 from managers.logs import Log, Manager as LogManager
-from dclient import DiscordBot
+from dclient.bot import DiscordBot
 
 
 def main() -> None:
     """Entrance function into the application."""
-    config: Optional[GeneralConfig] = None
 
     try:
         # Load the configuration file.

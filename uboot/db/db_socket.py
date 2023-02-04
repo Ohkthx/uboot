@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 
 def clean_name(name: str) -> str:
-    """Cleans a table name so that is will not cause issues."""
+    """Cleans a table name so that it will not cause issues."""
     return ''.join(char for char in name if char.isalnum()
                    or char == '_').lower()
 
@@ -14,7 +14,7 @@ valid_keys = ('find_one', 'find_many', 'insert_one', 'insert_many', 'update',
               'delete', 'create_table', 'table_exists')
 
 
-class DbSocket():
+class DbSocket:
     """The root of database access. Inherited for individual database managers."""
 
     def __init__(self, filename: str) -> None:
@@ -86,7 +86,7 @@ class DbSocket():
         return res if res else []
 
     def _insert_one(self, data) -> None:
-        """Adds a single item to database, if it already exist then it is
+        """Adds a single item to database, if it already exists, then it is
         discarded.
         """
         self._is_saving = True
@@ -102,7 +102,7 @@ class DbSocket():
             self._is_saving = False
 
     def _insert_many(self, data) -> None:
-        """Adds serveral items to database, if they already exist then the
+        """Adds several items to database, if they already exist then the
         individual one is ignored.
         """
         self._is_saving = True

@@ -5,7 +5,7 @@ import discord
 from discord import ui
 
 from managers import settings, subguilds
-from dclient import DiscordBot
+from dclient.bot import DiscordBot
 from dclient.helper import get_channel
 from dclient.views.private_guild_panel import GuildApprovalView
 
@@ -28,8 +28,8 @@ class GuildSignupModal(ui.Modal, title='Guild Request'):
         required=True,
     )
 
-    # Abbreviation of the the guild.
-    guild_abrv = ui.TextInput(
+    # Abbreviation of the guild.
+    guild_abbrev = ui.TextInput(
         label='Guild abbreviation',
         style=discord.TextStyle.short,
         placeholder='ex. MM',
@@ -72,7 +72,7 @@ class GuildSignupModal(ui.Modal, title='Guild Request'):
 
         # Create and send the Reviewers embed.
         embed = GuildApprovalView.get_panel(self.guild_name.value,
-                                            self.guild_abrv.value,
+                                            self.guild_abbrev.value,
                                             self.description.value,
                                             interaction.user,
                                             subguild_id)

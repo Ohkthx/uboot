@@ -32,7 +32,7 @@ class Cooldown(Enum):
     MINING = auto()
 
 
-class User():
+class User:
     """Representation of a user. Initialized with UserRaw."""
 
     def __init__(self, raw: UserRaw) -> None:
@@ -58,8 +58,8 @@ class User():
             weapon_raw: ItemRaw = json.loads(raw[12].replace("'", ''))
             self.weapon = Item.from_raw(weapon_raw)
 
-        self.isbot = False
-        self._incombat = False
+        self.is_bot = False
+        self._in_combat = False
 
         self._cooldowns: dict[Cooldown, datetime] = {}
         self.bank = BankManager.get(self.id)
@@ -69,15 +69,15 @@ class User():
         return f"id: {self.id}, gold: {self._gold}, msgs: {self.msg_count}"
 
     @property
-    def _raw(self) -> UserRaw:
-        """Convers the User back into a UserRaw."""
+    def raw(self) -> UserRaw:
+        """Converts the User back into a UserRaw."""
         gold = self.gold
-        if self.isbot:
+        if self.is_bot:
             gold = self._gold
 
         weapon = "''"
         if self.weapon:
-            weapon = f"'{json.dumps(self.weapon._raw)}'"
+            weapon = f"'{json.dumps(self.weapon.raw)}'"
         return (self.id, gold, self.msg_count, self.gambles,
                 self.gambles_won, self.button_press,
                 self.monsters, self.kills, self.exp,
@@ -101,14 +101,14 @@ class User():
         return True
 
     @property
-    def ispowerhour(self) -> bool:
+    def is_powerhour(self) -> bool:
         """Checks if the user is in powerhour or not."""
         return not self.timer_expired(Cooldown.POWERHOUR)
 
     @property
-    def incombat(self) -> bool:
+    def in_combat(self) -> bool:
         """Checks if the user is in combat or not."""
-        return self._incombat
+        return self._in_combat
 
     def durability_loss(self, value: int) -> None:
         """Removes durability from weapons/armor."""
@@ -123,10 +123,10 @@ class User():
 
     def set_combat(self, value: bool) -> None:
         """Set the user to be in combat."""
-        self._incombat = value
+        self._in_combat = value
 
     def cooldown(self, cooldown: Cooldown) -> datetime:
-        """Obtains a cooldowns status."""
+        """Obtains a cooldown's status."""
         cd_timer = self._cooldowns.get(cooldown)
         if not cd_timer:
             cd_timer = datetime.now() - timedelta(hours=6)
@@ -142,14 +142,14 @@ class User():
         """Displays the current amount of gold a user has. If the user is the
         bot, it does additional calculations to determine gold amount.
         """
-        if not self.isbot:
+        if not self.is_bot:
             # Non-bot defaults to its gold amount.
             return int(self._gold)
 
         total: int = 0
         # Get the amount of "lost" gold for each user and add it up.
-        for user in Manager.getall():
-            if user.isbot or user._gold >= user.msg_count or user._gold < 0:
+        for user in Manager.get_all():
+            if user.is_bot or user._gold >= user.msg_count or user._gold < 0:
                 # Ignore bot or negative amounts.
                 continue
             total += (user.msg_count - user._gold)
@@ -172,7 +172,7 @@ class User():
 
     @deaths.setter
     def deaths(self, val) -> None:
-        """Setter for accessing protected deaths property."""
+        """Setter for accessing protected death property."""
         self._deaths = val
         self._deaths = max(self._deaths, 0)
 
@@ -188,12 +188,12 @@ class User():
 
     def save(self) -> None:
         """Saves the user in memory to database."""
-        if Manager._db:
-            Manager._db.update(self._raw)
+        if Manager.db:
+            Manager.db.update(self.raw)
 
     def change_location(self, destination: Area,
                         level: Level) -> Optional[Floor]:
-        """Attempts to change the users location."""
+        """Attempts to change the user's location."""
         dungeon_floor = LocationsManager.get(destination, level)
         if not dungeon_floor:
             return None
@@ -214,11 +214,11 @@ class User():
         return dungeon_floor
 
     def apply_loot(self, loot: list[Item], allow_area: bool) -> Optional[Area]:
-        """Applys various items to the user. If a new area is unlocked, it will
+        """Applies various items to the user. If a new area is unlocked, it will
         return the new area.
         """
         new_area: Optional[Area] = None
-        loot = [l for l in loot if l.type != Items.NONE]
+        loot = [loot for loot in loot if loot.type != Items.NONE]
         if len(loot) == 0:
             return
 
@@ -230,7 +230,7 @@ class User():
             elif item.type == Items.LOCATION and allow_area:
                 # Get all connections, removing the ones already discovered.
                 conn = self.locations.connections(self.c_location)
-                conn = [l for l in conn if not self.locations.is_unlocked(l)]
+                conn = [loc for loc in conn if not self.locations.is_unlocked(loc)]
                 if len(conn) == 0:
                     continue
 
@@ -255,7 +255,7 @@ class User():
     @property
     def difficulty(self) -> float:
         """Calculates the difficulty of the user."""
-        if self.isbot:
+        if self.is_bot:
             return 0.0
 
         material = self.weapon.material if self.weapon else Material.NONE
@@ -279,7 +279,7 @@ class User():
     @property
     def gold_multiplier(self) -> float:
         """Generates a gold multiplier based on the players level."""
-        if self.isbot:
+        if self.is_bot:
             return 0.0
         return max(math.log(self.level / 6, 400) + 1, 1.0)
 
@@ -287,10 +287,10 @@ class User():
         """Adds a message to the user. Rewards with gold if off cooldown."""
         self.msg_count += 1
 
-        if self.ispowerhour:
+        if self.is_powerhour:
             multiplier += self.gold_multiplier_powerhour
 
-        # Check if it adding gold is off of cooldown.
+        # Check if adding gold is off of cooldown.
         if not self.timer_expired(Cooldown.GOLD):
             return
 
@@ -315,9 +315,9 @@ class User():
         return minimum_offset if minimum_offset > floor else floor
 
 
-class Manager():
+class Manager:
     """Manages the User database in memory and in storage."""
-    _db: Optional[UserDb] = None
+    db: Optional[UserDb] = None
     _users: dict[int, User] = {}
 
     @staticmethod
@@ -325,8 +325,8 @@ class Manager():
         """Initializes the User Manager, connecting and loading from
         database.
         """
-        Manager._db = UserDb(dbname)
-        raw_users = Manager._db.find_all()
+        Manager.db = UserDb(dbname)
+        raw_users = Manager.db.find_all()
         for raw in raw_users:
             Manager.add(User(raw))
 
@@ -349,6 +349,7 @@ class Manager():
         return user
 
     @staticmethod
-    def getall() -> list[User]:
-        """Gets all of the users being managed."""
+    def get_all() -> list[User]:
+        """Gets all the users being managed."""
         return list(Manager._users.values())
+ 

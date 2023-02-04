@@ -54,7 +54,7 @@ class SupportThreadView(ui.View):
 
     @ui.button(label='↵ Leave', style=discord.ButtonStyle.blurple,
                custom_id='support_thread_view:leave')
-    async def leave(self, interaction: discord.Interaction, button: ui.Button):
+    async def leave(self, interaction: discord.Interaction, _: ui.Button):
         """This is a button used by the user to leave the thread. Prevents them
         from getting future updates to the thread if admins/staff need to
         further discuss the issue.
@@ -74,11 +74,11 @@ class SupportThreadView(ui.View):
 
     @ui.button(label='🔒 Close', style=discord.ButtonStyle.grey,
                custom_id='support_thread_view:close')
-    async def close(self, interaction: discord.Interaction, button: ui.Button):
+    async def close(self, interaction: discord.Interaction, _: ui.Button):
         """Closes the thread, this button is only accessible to the
         staff/admins with the role designated for them. This cleans up the
         thread by removing all users and closing it. The thread can still be
-        viewd in the archived threads for the support channel.
+        viewed in the archived threads for the support channel.
         """
         guild = interaction.guild
         thread = interaction.channel
@@ -102,7 +102,7 @@ class SupportThreadView(ui.View):
             return
 
         # Validate they can press the button.
-        if not role in user.roles:
+        if role not in user.roles:
             embed = discord.Embed(title="Invalid Permissions",
                                   description=f"You must have the {role.mention} "
                                   "role to do that.",
@@ -140,7 +140,7 @@ class SupportThreadView(ui.View):
         if await reason.wait():
             return
 
-        # Update the tickets status.
+        # Update the ticket's status.
         ticket.done = True
         ticket.save()
 

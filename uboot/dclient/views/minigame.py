@@ -1,15 +1,15 @@
 """User based views."""
+import uuid
 from datetime import datetime, timedelta
-from random import choice, randint
 from enum import Enum
-from typing import Optional
+from random import choice, randint
 
 import discord
 from discord import ui
 
-from dclient import DiscordBot
+from dclient.bot import DiscordBot
+from dclient.destructible import Destructible, DestructibleManager
 from dclient.helper import get_user, check_minigame
-from dclient.destructable import Destructable, DestructableManager
 from dclient.views.user import (InventoryView, LocationView, UserStatsView)
 from managers import users, entities
 from managers.logs import Log
@@ -32,7 +32,7 @@ def extract_ints(message: discord.Message) -> list[int]:
     if len(message.embeds) == 0:
         return []
 
-    # Extract the integerss from the footer.
+    # Extract the integers from the footer.
     all_ints: list[int] = []
     try:
         if message.embeds[0].footer.text:
@@ -98,8 +98,8 @@ class ManagementDropdown(ui.Select):
             return await res.send_message(msg, ephemeral=True, delete_after=30)
 
         # Remove the old views.
-        category = Destructable.Category.OTHER
-        await DestructableManager.remove_many(user.id, True, category)
+        category = Destructible.Category.OTHER
+        await DestructibleManager.remove_many(user.id, True, category)
 
         option: ManageOptions = ManageOptions.STATS
         for opt in ManageOptions:
@@ -110,8 +110,6 @@ class ManagementDropdown(ui.Select):
         stats = extract_ints(message)
 
         # Get the proper view for the sub menu.
-        view: Optional[ui.View] = None
-        embed: Optional[discord.Embed] = None
         if option == ManageOptions.BANK:
             stats[1] += 1
             view = InventoryView(interaction.client)
@@ -152,7 +150,7 @@ class UserManagementView(ui.View):
     def get_panel() -> discord.Embed:
         """Creates the panels embed for the basic action view."""
         embed = discord.Embed()
-        embed.color = discord.Colour.from_str("#00ff08")
+        embed.colour = discord.Colour.from_str("#00ff08")
         embed.description = "Manage your user account below.\n\n"\
             f"__**Options**__:\n"\
             f"> ├ **STATS**, check your player status.\n"\
@@ -175,7 +173,7 @@ class ResourceView(ui.View):
     def get_panel() -> discord.Embed:
         """Creates the panels embed for the resource view."""
         embed = discord.Embed(title="Fill your bank with loot or resources!")
-        embed.color = discord.Colour.from_str("#00ff08")
+        embed.colour = discord.Colour.from_str("#00ff08")
         embed.description = "Interested in adventure?\nAre you brave?\n"\
             f"Trying to farm for new weapons, armor, or materials?\n\n"\
             f"__**Options**__:\n"\
@@ -189,7 +187,7 @@ class ResourceView(ui.View):
 
     @ui.button(label='👺 TAUNT', style=discord.ButtonStyle.red,
                custom_id='resource_view:taunt')
-    async def taunt(self, interaction: discord.Interaction, button: ui.Button):
+    async def taunt(self, interaction: discord.Interaction, _: ui.Button):
         """Taunts entities to attack the player who pressed the button."""
         res = interaction.response
         guild = interaction.guild
@@ -224,7 +222,7 @@ class ResourceView(ui.View):
                                           delete_after=30)
 
         # Check if the user is in combat.
-        if user_l.incombat:
+        if user_l.in_combat:
             return await res.send_message("You are already in combat with "
                                           "another creature.",
                                           ephemeral=True,
@@ -244,10 +242,10 @@ class ResourceView(ui.View):
         loc = user_l.c_location
         floor = user_l.c_floor
         difficulty = user_l.difficulty
-        inpowerhour = self.bot.powerhours.get(guild.id)
+        in_powerhour = self.bot.powerhours.get(guild.id)
         entity = entities.Manager.check_spawn(loc, floor, difficulty,
-                                              inpowerhour is not None,
-                                              user_l.ispowerhour,
+                                              in_powerhour is not None,
+                                              user_l.is_powerhour,
                                               True)
         if not entity:
             stats_changes = ':'.join([str(i) for i in stats])
@@ -276,7 +274,7 @@ class ResourceView(ui.View):
 
     @ui.button(label='🪴 FORAGE', style=discord.ButtonStyle.green,
                custom_id='resource_view:forage')
-    async def forage(self, interaction: discord.Interaction, button: ui.Button):
+    async def forage(self, interaction: discord.Interaction, _: ui.Button):
         """Attempts to discover new reagents."""
         res = interaction.response
         guild = interaction.guild
@@ -328,7 +326,8 @@ class ResourceView(ui.View):
         stats[4] += 1
         stats_changes = ':'.join([str(i) for i in stats])
         await update_footer(message, stats_changes)
-        item = Item(Items.REAGENT,
+        item = Item(str(uuid.uuid4()),
+                    Items.REAGENT,
                     material=reagent,
                     value=5,
                     uses=count,
@@ -349,7 +348,7 @@ class ResourceView(ui.View):
 
     @ui.button(label='⛏️ MINE', style=discord.ButtonStyle.blurple,
                custom_id='resource_view:mine')
-    async def mine(self, interaction: discord.Interaction, button: ui.Button):
+    async def mine(self, interaction: discord.Interaction, _: ui.Button):
         """Attempts to discover new ores."""
         res = interaction.response
         guild = interaction.guild
@@ -403,7 +402,8 @@ class ResourceView(ui.View):
         stats[7] += 1
         stats_changes = ':'.join([str(i) for i in stats])
         await update_footer(message, stats_changes)
-        item = Item(Items.ORE,
+        item = Item(str(uuid.uuid4()),
+                    Items.ORE,
                     material=material,
                     value=10,
                     uses=count,

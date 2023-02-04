@@ -36,7 +36,7 @@ class DMDeleteView(ui.View):
 
     @ui.button(label='DELETE MESSAGE', style=discord.ButtonStyle.red,
                custom_id='dm_delete_view:delete')
-    async def delete(self, interaction: discord.Interaction, button: ui.Button):
+    async def delete(self, interaction: discord.Interaction, _: ui.Button):
         """Button to press to delete the message."""
         msg = interaction.message
         if not msg:
@@ -64,7 +64,7 @@ class DMNewView(ui.View):
 
     @ui.button(label='JOIN', style=discord.ButtonStyle.blurple,
                custom_id='dm_new_view:join')
-    async def join(self, interaction: discord.Interaction, button: ui.Button):
+    async def join(self, interaction: discord.Interaction, _: ui.Button):
         """Prompts for a response message."""
         res = interaction.response
         client = interaction.client
@@ -97,12 +97,11 @@ class DMNewView(ui.View):
 
     @ui.button(label='REFRESH', style=discord.ButtonStyle.green,
                custom_id='dm_new_view:refresh')
-    async def refresh(self, interaction: discord.Interaction, button: ui.Button):
+    async def refresh(self, interaction: discord.Interaction, _: ui.Button):
         """Refreshes the user embed."""
         res = interaction.response
         client = interaction.client
         msg = interaction.message
-        channel = interaction.channel
 
         if not msg:
             return await res.send_message("Could not locate message.",
@@ -128,7 +127,7 @@ class DMResponseView(ui.View):
 
     @ ui.button(label='RESPOND', style=discord.ButtonStyle.blurple,
                 custom_id='dm_response_view:respond')
-    async def respond(self, interaction: discord.Interaction, button: ui.Button):
+    async def respond(self, interaction: discord.Interaction, _: ui.Button):
         """Prompts for a response message."""
         res = interaction.response
         client = interaction.client
@@ -149,7 +148,7 @@ class DMResponseView(ui.View):
 
     @ ui.button(label='DELETE MESSAGE', style=discord.ButtonStyle.red,
                 custom_id='dm_response_view:delete')
-    async def delete(self, interaction: discord.Interaction, button: ui.Button):
+    async def delete(self, interaction: discord.Interaction, _: ui.Button):
         """Button to press to delete the message."""
         msg = interaction.message
         if not msg:

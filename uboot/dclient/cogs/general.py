@@ -7,13 +7,13 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import param
 
-from dclient import DiscordBot
+from dclient.bot import DiscordBot
 from dclient.helper import get_message, get_channel
 from dclient.views.embeds import EmbedView
 from managers import aliases, settings
 
-# All standard magic 8 ball options.
-eight_ball_opts = [["It is certain.", "It is decidely so.", "Without a doubt.",
+# All standard magic 8-ball options.
+eight_ball_opts = [["It is certain.", "It is decidedly so.", "Without a doubt.",
                     "Yes definitely.", "You may rely on it.",
                     "As I see it, yes.", "Most likely.", "Outlook good.", "Yes",
                     "Signs point to yes."],
@@ -58,10 +58,7 @@ class General(commands.Cog):
         await ctx.send("Sucks to suck.")
 
     @commands.command(name="8ball", aliases=("8-ball", "magic-8ball", "shake"))
-    async def eight_ball(self, ctx: commands.Context,
-                         question: Optional[str] = param(
-                             description="Question to ask.",
-                             default='none')) -> None:
+    async def eight_ball(self, ctx: commands.Context) -> None:
         """Shakes a magic 8-ball. Results are not final."""
         if len(ctx.message.mentions) > 0:
             await ctx.send("Mentioning others is not allowed while asking "
@@ -70,8 +67,8 @@ class General(commands.Cog):
             return
 
         # Extracts the question from the raw message.
-        lstrip = f"{ctx.prefix}{ctx.invoked_with} "
-        question = ctx.message.content.lstrip(lstrip)
+        left_strip = f"{ctx.prefix}{ctx.invoked_with} "
+        question = ctx.message.content.lstrip(left_strip)
         asks = ''
         if len(question) > 0:
             asks = f' > "{question}"\n\n'
@@ -94,7 +91,7 @@ class General(commands.Cog):
         embed.description = f"**{ctx.author}** shakes the magic 8-ball.\n"\
             f"{asks}"\
             f"```{phrase}```"
-        embed.color = color
+        embed.colour = color
         embed.set_footer(text="disclaimer: works 50% of the time, every time.")
         await ctx.send(embed=embed)
 
@@ -124,7 +121,7 @@ class General(commands.Cog):
         embed.description = "__**Message POWERHOUR started!**__\n"\
             "> ├ Gold generation per message is increased by 3x.\n"\
             f"> └ Hours Active: {length}"
-        embed.color = discord.Colour.from_str("#00ff08")
+        embed.colour = discord.Colour.from_str("#00ff08")
         embed.set_footer(text=f"Powerhour started by {ctx.author}")
         await ctx.send(embed=embed)
 
@@ -176,7 +173,7 @@ class General(commands.Cog):
 
         msg: Optional[discord.Message] = None
         if msg_id > 0:
-            # Message Id was passed, try to get the message.
+            # Message ID was passed, try to get the message.
             msg = await channel.fetch_message(msg_id)
             if not msg:
                 await ctx.send("Could not find message by that id.",
@@ -286,7 +283,7 @@ class General(commands.Cog):
         alias.save()
 
         embed = discord.Embed(title="Alias Created")
-        embed.color = discord.Color.blurple()
+        embed.colour = discord.Color.blurple()
         embed.description = f"Done! **{name.lower()}** alias added to "\
             f"[message]({msg.jump_url})."
         await ctx.send(embed=embed, delete_after=120)
@@ -318,7 +315,7 @@ class General(commands.Cog):
             return
 
         embed = discord.Embed()
-        embed.color = discord.Colour.from_str("#ff0f08")
+        embed.colour = discord.Colour.from_str("#ff0f08")
         all_alias = aliases.Manager.get_all(ctx.guild.id)
         if len(all_alias) == 0:
             embed.description = "There are no aliases set."
@@ -330,7 +327,7 @@ class General(commands.Cog):
             alias_str.append(f"> {str(alias)}")
 
         full_text: str = '\n'.join(alias_str)
-        embed.color = discord.Colour.from_str("#00ff08")
+        embed.colour = discord.Colour.from_str("#00ff08")
         embed.description = f"__**Current Aliases**__:\n{full_text}"
 
         await ctx.send(embed=embed)

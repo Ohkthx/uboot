@@ -1,7 +1,7 @@
 """Tickets are support requests created by users for issues that need
 to be resolved by others.
-The associated manager handles all of the loading and saving to database. It is
-also equpped with finding tickets based on certain parameters.
+The associated manager handles all the loading and saving to database. It is
+also equipped with finding tickets based on certain parameters.
 """
 from typing import Optional
 
@@ -12,10 +12,10 @@ def make_raw(guild_id: int, ticket_id: int) -> TicketRaw:
     """Creates a raw ticket (tuple) fit for storing into a database with
     pre-defined defaults.
     """
-    return (guild_id, ticket_id, "unknown", False, 0)
+    return guild_id, ticket_id, "unknown", False, 0
 
 
-class Ticket():
+class Ticket:
     """Representation of support tickets. Initialized with TicketRaw."""
 
     def __init__(self, raw: TicketRaw) -> None:
@@ -26,9 +26,9 @@ class Ticket():
         self.owner_id = raw[4]
 
     @property
-    def _raw(self) -> TicketRaw:
+    def raw(self) -> TicketRaw:
         """Converts the Ticket back into a TicketRaw"""
-        return (self.guild_id, self.id, self.title, self.done, self.owner_id)
+        return self.guild_id, self.id, self.title, self.done, self.owner_id
 
     @property
     def name(self) -> str:
@@ -39,13 +39,13 @@ class Ticket():
         """Stores the Ticket into the database, saving or updating
         as necessary.
         """
-        if Manager._db:
-            Manager._db.update(self._raw)
+        if Manager.db:
+            Manager.db.update(self.raw)
 
 
-class Manager():
+class Manager:
     """Manages the Ticket database in memory and in storage."""
-    _db: Optional[TicketDb] = None
+    db: Optional[TicketDb] = None
     _tickets: dict[int, dict[int, Ticket]] = {}
 
     @staticmethod
@@ -53,19 +53,19 @@ class Manager():
         """Initializes the Ticket Manager, connecting and loading from
         database.
         """
-        Manager._db = TicketDb(dbname)
-        raw_tickets = Manager._db.find_all(incomplete_only=True)
+        Manager.db = TicketDb(dbname)
+        raw_tickets = Manager.db.find_all(incomplete_only=True)
         for raw in raw_tickets:
             Manager.add(Ticket(raw))
 
     @staticmethod
     def last_id(guild_id: int) -> int:
-        """Gets the most recent Id created for a particular guild.
+        """Gets the most recent ID created for a particular guild.
         Defaults to 0 if there is none."""
-        if not Manager._db:
+        if not Manager.db:
             raise ValueError("could not get last ticket id, no db.")
 
-        last = Manager._db.find_last(guild_id)
+        last = Manager.db.find_last(guild_id)
         if last:
             return Ticket(last).id
         return 0

@@ -1,6 +1,6 @@
-"""Subguilds are privatized Discord threads within the greater guild.
-The associated manager handles all of the loading and saving to database. It is
-also equipped with finding subguilds based on certain parameters.
+"""Sub-guilds are privatized Discord threads within the greater guild.
+The associated manager handles all the loading and saving to database. It is
+also equipped with finding sub-guilds based on certain parameters.
 """
 from typing import Optional
 import json
@@ -12,10 +12,10 @@ def make_raw(guild_id: int, subguild_id: int) -> SubGuildRaw:
     """Creates a raw subguild (tuple) fit for storing into a database with
     pre-defined defaults.
     """
-    return (subguild_id, guild_id, "unknown", 0, 0, 0, True, '[]')
+    return subguild_id, guild_id, "unknown", 0, 0, 0, True, '[]'
 
 
-class SubGuild():
+class SubGuild:
     """Representation of a subguild. Initialized with SubGuildRaw."""
 
     def __init__(self, raw: SubGuildRaw) -> None:
@@ -39,13 +39,13 @@ class SubGuild():
         """Stores the SubGuild into the database, saving or updating
         as necessary.
         """
-        if Manager._db:
-            Manager._db.update(self._raw)
+        if Manager.db:
+            Manager.db.update(self._raw)
 
 
-class Manager():
+class Manager:
     """Manages the SubGuild database in memory and in storage."""
-    _db: Optional[SubGuildDb] = None
+    db: Optional[SubGuildDb] = None
     _subguilds: dict[int, dict[int, SubGuild]] = {}
 
     @staticmethod
@@ -53,19 +53,19 @@ class Manager():
         """Initializes the SubGuild Manager, connecting and loading from
         database.
         """
-        Manager._db = SubGuildDb(dbname)
-        raw_subguilds = Manager._db.find_all()
+        Manager.db = SubGuildDb(dbname)
+        raw_subguilds = Manager.db.find_all()
         for raw in raw_subguilds:
             Manager.add(SubGuild(raw))
 
     @staticmethod
     def last_id(guild_id: int) -> int:
-        """Gets the most recent Id created for a particular guild.
+        """Gets the most recent ID created for a particular guild.
         Defaults to 0 if there is none."""
-        if not Manager._db:
+        if not Manager.db:
             raise ValueError("could not get last subguild id, no db.")
 
-        last = Manager._db.find_last(guild_id)
+        last = Manager.db.find_last(guild_id)
         if last:
             return SubGuild(last).id
         return 0
@@ -109,7 +109,7 @@ class Manager():
 
     @staticmethod
     def by_thread(guild_id: int, thread_id: int) -> Optional[SubGuild]:
-        """Attempt to find the subguild based on its threads id."""
+        """Attempt to find the subguild based on its thread's id."""
         guild_subguilds = Manager._subguilds.get(guild_id)
         if not guild_subguilds:
             # No subguilds for guild, none exist.

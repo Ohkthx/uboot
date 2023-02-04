@@ -6,7 +6,7 @@ from discord.ext import commands
 from discord.ext.commands import param
 
 from managers import settings, subguilds
-from dclient import DiscordBot
+from dclient.bot import DiscordBot
 from dclient.helper import get_channel
 
 
@@ -118,7 +118,7 @@ class Guild(commands.Cog):
 
         # Remove the user and add them to the banned list.
         await ctx.channel.remove_user(user)
-        if not user.id in subguild.banned:
+        if user.id not in subguild.banned:
             subguild.banned.append(user.id)
             subguild.save()
 
@@ -157,7 +157,7 @@ class Guild(commands.Cog):
                                   "command is being used.",
                                   delete_after=60)
 
-        # Remove the user from the banned lsit.
+        # Remove the user from the banned list.
         if user.id in subguild.banned:
             subguild.banned = [b for b in subguild.banned if b != user.id]
             subguild.save()

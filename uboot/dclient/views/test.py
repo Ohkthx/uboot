@@ -2,7 +2,7 @@
 import discord
 from discord import ui
 
-from dclient import DiscordBot
+from dclient.bot import DiscordBot
 
 
 class Dropdown(ui.Select):
@@ -23,8 +23,8 @@ class Dropdown(ui.Select):
         await interaction.response.send_message(f'Your favourite colour is {self.values[0]}')
 
 
-# Possible options for a drop down menu.
-options = ['discord', 'in-game', 'website', 'other']
+# Possible options for a drop-down menu.
+dropdown_opts = ['discord', 'in-game', 'website', 'other']
 
 
 class PersistentView(ui.View):
@@ -37,7 +37,7 @@ class PersistentView(ui.View):
     # Last option selected from the dropdown menu.
     last_dropdown: str = ""
 
-    @ui.select(options=[discord.SelectOption(label=item) for item in options],
+    @ui.select(options=[discord.SelectOption(label=item) for item in dropdown_opts],
                custom_id='persistent_view:menu',
                placeholder="Select one below.")
     async def select_dropdown(self, interaction: discord.Interaction,
@@ -49,7 +49,7 @@ class PersistentView(ui.View):
 
     @ui.button(label='Green', style=discord.ButtonStyle.green,
                custom_id='persistent_view:green')
-    async def green(self, interaction: discord.Interaction, button: ui.Button):
+    async def green(self, interaction: discord.Interaction, _: ui.Button):
         """Green button to interact with."""
         res = interaction.response
         await res.send_message('This is green, last: '
@@ -58,7 +58,7 @@ class PersistentView(ui.View):
 
     @ui.button(label='Red', style=discord.ButtonStyle.red,
                custom_id='persistent_view:red')
-    async def red(self, interaction: discord.Interaction, button: ui.Button):
+    async def red(self, interaction: discord.Interaction, _: ui.Button):
         """Red button to interact with."""
         res = interaction.response
         await res.send_message(f'This is red, last: {self.last_dropdown}',
@@ -66,7 +66,7 @@ class PersistentView(ui.View):
 
     @ui.button(label='Grey', style=discord.ButtonStyle.grey,
                custom_id='persistent_view:grey')
-    async def grey(self, interaction: discord.Interaction, button: ui.Button):
+    async def grey(self, interaction: discord.Interaction, _: ui.Button):
         """Grey button to interact with."""
         res = interaction.response
         await res.send_message(f'This is grey, last: {self.last_dropdown}',

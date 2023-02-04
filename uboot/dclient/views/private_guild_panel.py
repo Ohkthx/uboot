@@ -1,11 +1,11 @@
-"""All of the panels used to manage Private Guilds (SubGuilds)."""
+"""All the panels used to manage Private Guilds (SubGuilds)."""
 from typing import Union, Optional
 from datetime import datetime
 
 import discord
 from discord import ui
 
-from dclient import DiscordBot
+from dclient.bot import DiscordBot
 from dclient.helper import get_channel, get_member
 from dclient.modals.generic_reason import ReasonModal
 from managers import subguilds, settings
@@ -93,7 +93,7 @@ class GuildManagerView(ui.View):
 
     @ui.button(label='Close Guild', style=discord.ButtonStyle.red,
                custom_id='guild_invite_view: close_guild')
-    async def close(self, interaction: discord.Interaction, button: ui.Button):
+    async def close(self, interaction: discord.Interaction, _: ui.Button):
         """Closes the guild notifying the guild leader. This just locks and
         archives the thread preventing additional messages being sent to it.
         """
@@ -112,7 +112,7 @@ class GuildManagerView(ui.View):
                                           delete_after=60)
         embed = interaction.message.embeds[0]
         embed.set_author(name=f"Closed by {interaction.user}")
-        embed.color = discord.Colour.from_str("#ff0f08")
+        embed.colour = discord.Colour.from_str("#ff0f08")
 
         # Extract the sub guilds id from its panel.
         subguild_id = 0
@@ -181,8 +181,8 @@ class GuildManagerView(ui.View):
 
     @ui.button(label='Reopen Guild', style=discord.ButtonStyle.green,
                custom_id='guild_invite_view: open_guild')
-    async def reopen(self, interaction: discord.Interaction, button: ui.Button):
-        """If the guld had be closed previously, this will reopen it and allow
+    async def reopen(self, interaction: discord.Interaction, _: ui.Button):
+        """If the guild had be closed previously, this will reopen it and allow
         users to interact with each other again inside the guild.
         """
         res = interaction.response
@@ -297,7 +297,7 @@ class GuildInviteView(ui.View):
 
     @ui.button(label='Accept', style=discord.ButtonStyle.green,
                custom_id='guild_invite_view: accept')
-    async def accept(self, interaction: discord.Interaction, button: ui.Button):
+    async def accept(self, interaction: discord.Interaction, _: ui.Button):
         """Upon being pressed, the user that submitted the request will be
         added to the private guild.
         """
@@ -374,7 +374,7 @@ class GuildPromotionView(ui.View):
 
     @ui.button(label='Request to Join', style=discord.ButtonStyle.blurple,
                custom_id='guild_promotion_view: request')
-    async def request(self, interaction: discord.Interaction, button: ui.Button):
+    async def request(self, interaction: discord.Interaction, _: ui.Button):
         """Upon pressing this button, a request is sent to the guild to
         join.
         """
@@ -434,7 +434,7 @@ class GuildPromotionView(ui.View):
 
     @ui.button(label='Create Your Own', style=discord.ButtonStyle.grey,
                custom_id='guild_promotion_view: create')
-    async def create(self, interaction: discord.Interaction, button: ui.Button):
+    async def create(self, interaction: discord.Interaction, _: ui.Button):
         """Placeholder that just tells the user to create their own."""
         res = interaction.response
         await res.send_message('Scroll to the top of the channel, a request '
@@ -451,14 +451,14 @@ class GuildApprovalView(ui.View):
         super().__init__(timeout=None)
 
     @staticmethod
-    def get_panel(name: str, abbrv: str,
+    def get_panel(name: str, abbrev: str,
                   description: str,
                   user: Union[discord.User, discord.Member],
                   subguild_id: int) -> discord.Embed:
         """Panel text for admins/staff to see the guild information."""
         now = datetime.utcnow().replace(microsecond=0)
         title = name
-        desc = f"**Abbreviation**: {abbrv}\n"\
+        desc = f"**Abbreviation**: {abbrev}\n"\
             f"**Point of Contact**: {user.mention}\n"\
             f"**Established**: {now} UTC\n\n"\
             f"**Description**:\n```{description}```"
@@ -469,7 +469,7 @@ class GuildApprovalView(ui.View):
 
     @ui.button(label='🗹 Approve', style=discord.ButtonStyle.green,
                custom_id='guild_approval_view:approve')
-    async def approve(self, interaction: discord.Interaction, button: ui.Button):
+    async def approve(self, interaction: discord.Interaction, _: ui.Button):
         """Approves the guild creation request. Establishes the guilds thread
         and sends the promotional panel to the sub guild channel.
         """
@@ -477,7 +477,7 @@ class GuildApprovalView(ui.View):
         if not interaction.message or not interaction.guild:
             return
 
-        # Get the embed to extract the guilds id.
+        # Get the embed to extract the guild's id.
         if len(interaction.message.embeds) == 0:
             return await res.send_message("Could not locate embed for guild.")
         embed = interaction.message.embeds[0]
@@ -509,7 +509,7 @@ class GuildApprovalView(ui.View):
 
         # Mark it as approved and remove the buttons.
         color = discord.Colour.from_str("#00ff08")  # Green color.
-        embed.color = color
+        embed.colour = color
         embed.set_author(name=f"Approved by {interaction.user}")
         await interaction.message.edit(embed=embed,
                                        view=GuildManagerView(self.bot),
@@ -525,8 +525,8 @@ class GuildApprovalView(ui.View):
 
     @ui.button(label='⨯ Deny', style=discord.ButtonStyle.red,
                custom_id='guild_approval_view:deny')
-    async def deny(self, interaction: discord.Interaction, button: ui.Button):
-        """Denies a guild creation requestion. Prompts staff for a reason why
+    async def deny(self, interaction: discord.Interaction, _: ui.Button):
+        """Denies a guild creation request. Prompts staff for a reason why
         the guild was denied and sends that reason to the guild leader to
         potentially makes changes.
         """

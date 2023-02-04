@@ -16,11 +16,11 @@ class EarthElemental(entities.Entity):
         self.image = "earth_elemental_alive.png"
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(Rarity.UNCOMMON, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.UNCOMMON, self.is_paragon)
 
     @staticmethod
     def locations() -> list[tuple[Area, Level, int]]:
-        """Returns all of the locations the entity can spawn at."""
+        """Returns all the locations the entity can spawn at."""
         return [
             (Area.DESPISE, Level.TWO, 5),
             (Area.ORC_DUNGEON, Level.THREE, 5),

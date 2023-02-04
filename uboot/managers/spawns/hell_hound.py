@@ -15,11 +15,11 @@ class HellHound(entities.Entity):
         self.set_health(66, 125)
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(Rarity.UNCOMMON, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.UNCOMMON, self.is_paragon)
 
     @staticmethod
     def locations() -> list[tuple[Area, Level, int]]:
-        """Returns all of the locations the entity can spawn at."""
+        """Returns all the locations the entity can spawn at."""
         return [
             (Area.FIRE, Level.ONE, 4),
             (Area.FIRE, Level.TWO, 5),

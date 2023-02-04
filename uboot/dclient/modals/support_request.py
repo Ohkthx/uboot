@@ -93,7 +93,7 @@ class SupportRequestModal(ui.Modal, title='Support Request'):
         ticket.save()
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
-        """Cleanly handles unknown errors with a pretty print out to the
+        """Cleanly handles unknown errors with a pretty print-out to the
         user.
         """
         res = interaction.response

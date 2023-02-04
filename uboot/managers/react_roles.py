@@ -11,10 +11,10 @@ def make_raw(role_id: int) -> ReactRoleRaw:
     """Creates a raw react role (tuple) fit for storing into a database with
     pre-defined defaults.
     """
-    return (role_id, 0, "", False)
+    return role_id, 0, "", False
 
 
-class ReactRole():
+class ReactRole:
     """Representation of a React Role pair. Initialized with ReactRoleRaw."""
 
     def __init__(self, raw: ReactRoleRaw):
@@ -25,7 +25,7 @@ class ReactRole():
 
     @property
     def _raw(self) -> ReactRoleRaw:
-        """Convers the ReactRole back into a ReactRoleRaw."""
+        """Converts the ReactRole back into a ReactRoleRaw."""
         return (self.role_id, self.guild_id,
                 f"'{self.reaction}'", self.reversed)
 
@@ -33,18 +33,18 @@ class ReactRole():
         """Stores the React Role pair into the database, saving or updating
         as necessary.
         """
-        if Manager._db:
-            Manager._db.update(self._raw)
+        if Manager.db:
+            Manager.db.update(self._raw)
 
     def delete(self) -> None:
         """Removes the React Role pair from the database."""
-        if Manager._db:
-            Manager._db.delete_one(self._raw)
+        if Manager.db:
+            Manager.db.delete_one(self._raw)
 
 
-class Manager():
+class Manager:
     """Manages the ReactRole database in memory and in storage."""
-    _db: Optional[RoleDb] = None
+    db: Optional[RoleDb] = None
     _react_roles: dict[int, ReactRole] = {}
 
     @staticmethod
@@ -52,8 +52,8 @@ class Manager():
         """Initializes the React Roles Manager, connection and loading
         from the database.
         """
-        Manager._db = RoleDb(dbname)
-        raw_roles = Manager._db.find_all()
+        Manager.db = RoleDb(dbname)
+        raw_roles = Manager.db.find_all()
         for raw in raw_roles:
             Manager.add(ReactRole(raw))
 
@@ -75,7 +75,7 @@ class Manager():
 
     @staticmethod
     def guild_roles(guild_id: int) -> list[ReactRole]:
-        """Obtains all of the ReactRoles for the specified guild."""
+        """Obtains all the ReactRoles for the specified guild."""
         guild_roles: list[ReactRole] = []
         for value in Manager._react_roles.values():
             # Check that it is the correct guild id.

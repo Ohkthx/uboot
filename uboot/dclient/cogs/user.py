@@ -10,8 +10,8 @@ from discord.ext.commands import param
 from managers import users, settings, react_roles, entities
 from managers.locations import Locations, Area, Floor, Level
 from managers.logs import Log
-from dclient import DiscordBot
-from dclient.destructable import DestructableManager, Destructable
+from dclient.bot import DiscordBot
+from dclient.destructible import DestructibleManager, Destructible
 from dclient.views.gamble import GambleView, gamble, ExtractedBet
 from dclient.views.dm import DMDeleteView
 from dclient.views.user import (TradeView, UserStatsView, InventoryView,
@@ -117,7 +117,7 @@ class User(commands.Cog):
             await ctx.send("That is not a valid leaderboard.", delete_after=30)
             return
 
-        all_users = users.Manager.getall()
+        all_users = users.Manager.get_all()
         all_users = list(filter(lambda u: getattr(u, category) > 0, all_users))
         all_users.sort(key=lambda u: getattr(u, category), reverse=True)
 
@@ -163,7 +163,7 @@ class User(commands.Cog):
                          f"{cat_fancy}: {display} "
                          f"{suffix}")
 
-        # Combine all of the user data into a single message.
+        # Combine all the user data into a single message.
         summary = "\n".join(board)
         color = discord.Colour.from_str("#00ff08")
         embed = discord.Embed(title=f"Top 10 {cat_fancy}",
@@ -198,7 +198,7 @@ class User(commands.Cog):
             return
 
         # Check if the user is in combat.
-        if user_l.incombat:
+        if user_l.in_combat:
             await ctx.reply("You are already in combat with another creature.",
                             delete_after=30)
             return
@@ -210,10 +210,10 @@ class User(commands.Cog):
         loc = user_l.c_location
         floor = user_l.c_floor
         difficulty = user_l.difficulty
-        inpowerhour = self.bot.powerhours.get(ctx.guild.id)
+        in_powerhour = self.bot.powerhours.get(ctx.guild.id)
         entity = entities.Manager.check_spawn(loc, floor, difficulty,
-                                              inpowerhour is not None,
-                                              user_l.ispowerhour,
+                                              in_powerhour is not None,
+                                              user_l.is_powerhour,
                                               True)
         if not entity:
             await ctx.reply("No nearby enemies react to your taunt.",
@@ -257,7 +257,7 @@ class User(commands.Cog):
             new_loc: Optional[Floor] = user_l.change_location(area, Level.ONE)
             if not new_loc:
                 embed = discord.Embed()
-                embed.color = discord.Colour.from_str("#ff0f08")
+                embed.colour = discord.Colour.from_str("#ff0f08")
                 embed.description = "Sorry, you have not discovered that "\
                     "location yet."
                 embed.set_footer(text=f"Current Location: {c_location}")
@@ -295,8 +295,8 @@ class User(commands.Cog):
             await ctx.reply(msg, delete_after=30)
             return
 
-        category = Destructable.Category.OTHER
-        await DestructableManager.remove_many(ctx.author.id, True, category)
+        category = Destructible.Category.OTHER
+        await DestructibleManager.remove_many(ctx.author.id, True, category)
 
         user_l = users.Manager.get(user.id)
 
@@ -306,8 +306,8 @@ class User(commands.Cog):
         embed = InventoryView.get_panel(user, user_l.bank)
         message = await ctx.send(embed=embed, view=view)
 
-        # Create the destructable.
-        destruct = Destructable(category, ctx.author.id, 60, True)
+        # Create the destructible.
+        destruct = Destructible(category, ctx.author.id, 60, True)
         destruct.set_message(message)
 
     @commands.command(name="stats", aliases=("who", "whois"))
@@ -332,8 +332,8 @@ class User(commands.Cog):
             await ctx.reply(msg, delete_after=30)
             return
 
-        category = Destructable.Category.OTHER
-        await DestructableManager.remove_many(ctx.author.id, True, category)
+        category = Destructible.Category.OTHER
+        await DestructibleManager.remove_many(ctx.author.id, True, category)
 
         # Check if the channel name is a user id
         thread = ctx.message.channel
@@ -353,8 +353,8 @@ class User(commands.Cog):
         embed = UserStatsView.get_panel(user)
         message = await ctx.send(embed=embed, view=view)
 
-        # Create the destructable.
-        destruct = Destructable(category, ctx.author.id, 60, True)
+        # Create the destructible.
+        destruct = Destructible(category, ctx.author.id, 60, True)
         destruct.set_message(message)
 
     @commands.is_owner()
@@ -367,8 +367,8 @@ class User(commands.Cog):
             (prefix)spawn @Gatekeeper 40
         """
         # Remove all 'DOUBLE OR NOTHING' buttons. Prevents gold duping.
-        category = Destructable.Category.GAMBLE
-        await DestructableManager.remove_many(to.id, True, category)
+        category = Destructible.Category.GAMBLE
+        await DestructibleManager.remove_many(to.id, True, category)
 
         # Give the gold to the user and save them.
         user = users.Manager.get(to.id)
@@ -433,9 +433,9 @@ class User(commands.Cog):
             return
 
         # Remove all 'DOUBLE OR NOTHING' buttons. Prevents gold duping.
-        category = Destructable.Category.GAMBLE
-        await DestructableManager.remove_many(to_user.id, True, category)
-        await DestructableManager.remove_many(from_user.id, True, category)
+        category = Destructible.Category.GAMBLE
+        await DestructibleManager.remove_many(to_user.id, True, category)
+        await DestructibleManager.remove_many(from_user.id, True, category)
 
         # Remove from the giver and add to the receiver.
         from_user.gold -= amount
@@ -485,8 +485,8 @@ class User(commands.Cog):
             return
 
         # Remove all buttons. Prevents item duping.
-        category = Destructable.Category.OTHER
-        await DestructableManager.remove_many(from_user.id, True, category)
+        category = Destructible.Category.OTHER
+        await DestructibleManager.remove_many(from_user.id, True, category)
 
         # Get the 'give' view.
         view = TradeView(self.bot)
@@ -528,13 +528,13 @@ class User(commands.Cog):
             return
 
         # Remove all 'DOUBLE OR NOTHING' buttons assigned to the user.
-        category = Destructable.Category.GAMBLE
-        await DestructableManager.remove_many(user.id, True, category)
+        category = Destructible.Category.GAMBLE
+        await DestructibleManager.remove_many(user.id, True, category)
 
         # Start the gambling process.
         old_gold = user.gold
         results = gamble(user, str(ctx.author), user_bet)
-        if results.iserror:
+        if results.is_error:
             color = discord.Colour.from_str(color_hex)
             embed = discord.Embed(description=results.msg, color=color)
             return await ctx.send(embed=embed, delete_after=60)
@@ -566,11 +566,11 @@ class User(commands.Cog):
         embed = discord.Embed(description=results.msg, color=color)
         embed.set_footer(text=f"Next minimum: {user.minimum(20)} gp")
 
-        # Spawn the message and create a destructable for it.
+        # Spawn the message and create a destructible for it.
         msg = await ctx.send(embed=embed, view=view)
         if view and msg:
-            category = Destructable.Category.GAMBLE
-            destruct = Destructable(category, user.id, 300)
+            category = Destructible.Category.GAMBLE
+            destruct = Destructible(category, user.id, 300)
             destruct.set_message(message=msg)
 
         if gold_dropped > 0:
@@ -590,7 +590,7 @@ class User(commands.Cog):
                     amount: int = param(description="Amount of winners."),
                     ) -> None:
         """Performs the lotto assigning all users with the defined lotto role
-        a new winner lotto role. Can take serveral seconds to process.
+        a new winner lotto role. Can take several seconds to process.
 
         Limit: 20
 
@@ -660,11 +660,11 @@ class User(commands.Cog):
             await ctx.send(f"{title}\n> └ No Winners.")
             return
 
-        # Assign the winner role to all winners..
+        # Assign the winner role to all winners.
         winner_text: list[str] = []
         for n, winner in enumerate(winners):
-            lfeed = '└' if n + 1 == len(winners) else '├'
-            winner_text.append(f"> {lfeed} {winner.mention} (**{winner}**)")
+            line_feed = '└' if n + 1 == len(winners) else '├'
+            winner_text.append(f"> {line_feed} {winner.mention} (**{winner}**)")
 
             # Remove the lotto role and add winning role.
             roles = [r for r in winner.roles if r != lotto_role]
@@ -684,7 +684,7 @@ class User(commands.Cog):
 
         # Send an embed to all winners.
         embed = discord.Embed(title="Your ticket won!")
-        embed.color = discord.Colour.from_str("#00ff08")
+        embed.colour = discord.Colour.from_str("#00ff08")
         embed.description = "You had a winning lotto/raffle ticket on "\
             f"**{guild.name}**!\nYour reward is the "\
             f"**{winner_role}** role.\n\nClick the link to access the "\
@@ -704,7 +704,7 @@ class User(commands.Cog):
 
     @commands.guild_only()
     @commands.has_guild_permissions(manage_messages=True)
-    @commands.command(name="lotto-verify", aliases=("lverify",))
+    @commands.command(name="lotto-verify")
     async def lotto_verify(self, ctx: commands.Context) -> None:
         """Verifies the lotto participants, notifies if a user has reacted but
         has not won nor has the lotto participant role.
@@ -783,7 +783,7 @@ class User(commands.Cog):
             total_missing = '\n'.join(missing_role)
 
         embed = discord.Embed(title="Lotto Verification")
-        embed.color = discord.Colour.blurple()
+        embed.colour = discord.Colour.blurple()
         embed.set_footer(text="Output above are potential errors.")
         embed.description = f"**Users who reacted**: {len(all_users)}\n"\
             f"**Users in lotto**: {len(lotto_role.members)}\n\n"\

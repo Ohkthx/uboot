@@ -42,7 +42,7 @@ class SupportRequestView(ui.View):
 
     @ui.button(label='✉ In-Game', style=ButtonStyle.green,
                custom_id='get_support_view:in_game')
-    async def in_game_opt(self, interaction: discord.Interaction, button: ui.Button):
+    async def in_game_opt(self, interaction: discord.Interaction, _: ui.Button):
         """For in-game related issues."""
         modal = SupportRequestModal("In_Game")
         await interaction.response.send_modal(modal)
@@ -50,7 +50,7 @@ class SupportRequestView(ui.View):
 
     @ui.button(label='✉ Discord', style=ButtonStyle.blurple,
                custom_id='get_support_view:discord')
-    async def discord_opt(self, interaction: discord.Interaction, button: ui.Button):
+    async def discord_opt(self, interaction: discord.Interaction, _: ui.Button):
         """For discord related issues."""
         modal = SupportRequestModal("Discord")
         await interaction.response.send_modal(modal)
@@ -58,7 +58,7 @@ class SupportRequestView(ui.View):
 
     @ui.button(label='✉ Website', style=ButtonStyle.red,
                custom_id='get_support_view:website')
-    async def website_opt(self, interaction: discord.Interaction, button: ui.Button):
+    async def website_opt(self, interaction: discord.Interaction, _: ui.Button):
         """For website related issues."""
         modal = SupportRequestModal("Website")
         await interaction.response.send_modal(modal)
@@ -66,7 +66,7 @@ class SupportRequestView(ui.View):
 
     @ui.button(label='✉ Other', style=ButtonStyle.grey,
                custom_id='get_support_view:other')
-    async def other_opt(self, interaction: discord.Interaction, button: ui.Button):
+    async def other_opt(self, interaction: discord.Interaction, _: ui.Button):
         """For unknown related issues."""
         modal = SupportRequestModal("Other")
         await interaction.response.send_modal(modal)

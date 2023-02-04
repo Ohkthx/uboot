@@ -1,10 +1,24 @@
 """Helper functions related to the Discord API that have no true home."""
 from typing import Optional
+from datetime import datetime, timezone
 
 import discord
 from discord import ForumChannel, TextChannel
 
 from managers import react_roles, settings
+
+
+def convert_age(created_at: datetime) -> str:
+    """Returns a string for the age based on the created_at datetime passed."""
+    age = datetime.now(timezone.utc) - created_at
+    year = '' if age.days // 365 < 1 else f"{age.days // 365} year(s)"
+    day = '' if age.days % 365 == 0 else f"{int(age.days % 365)} day(s)"
+
+    full_age: str = f"{year}, {day}"
+    if year == '':
+        full_age = day
+
+    return full_age
 
 
 async def check_minigame(client: discord.Client,
@@ -16,19 +30,19 @@ async def check_minigame(client: discord.Client,
     role_id = setting.minigame.role_id
     minigame_role = await get_role(client, guild_id, role_id)
     if not minigame_role:
-        return (False, "Minigame role may be current unset.")
+        return False, "Minigame role may be current unset."
 
     # User does not have the role and cannot play.
     if minigame_role not in user.roles:
         # Shows and optional text for easy role access.
         in_channel: str = ""
         if setting.reactrole.channel_id > 0:
-            in_channel = f"\nGo to <#{setting.reactrole.channel_id}> to get the"\
-                " required role."
+            in_channel = f"\nGo to <#{setting.reactrole.channel_id}> to get the" \
+                         " required role."
         return (False, f"You need to select the **{minigame_role}** role "
-                f"to do that. {in_channel}")
+                       f"to do that. {in_channel}")
 
-    return (True, "")
+    return True, ""
 
 
 def find_tag(tag: str, channel: ForumChannel) -> Optional[discord.ForumTag]:
@@ -49,7 +63,7 @@ async def get_role_by_name(client: discord.Client, guild_id: int,
         # Could not resolve guild, no tag found.
         return None
 
-    # Iterate all of the cached tags for the guild.
+    # Iterate all the cached tags for the guild.
     role = next((r for r in guild.roles if r.name == role_name), None)
     if not role:
         # Could not find it in cache, attempt to fetch it from API.
@@ -71,7 +85,7 @@ async def get_role(client: discord.Client, guild_id: int,
         # Could not resolve guild, no tag found.
         return None
 
-    # Iterate all of the cached tags for the guild.
+    # Iterate all the cached tags for the guild.
     role = next((r for r in guild.roles if r.id == role_id), None)
     if not role:
         # Could not find it in cache, attempt to fetch it from API.
@@ -91,7 +105,7 @@ async def get_guild(client: discord.Client,
     # Check cached guilds.
     guild = client.get_guild(guild_id)
     if not guild:
-        # Could not find in cachexd, try to fetch it from API.
+        # Could not find in cache, try to fetch it from API.
         try:
             guild = await client.fetch_guild(guild_id)
         except BaseException:
@@ -222,4 +236,4 @@ async def react_processor(client: discord.Client,
     if not guild_role:
         return None
 
-    return (user, guild_role, react_role.reversed)
+    return user, guild_role, react_role.reversed

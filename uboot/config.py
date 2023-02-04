@@ -1,4 +1,4 @@
-"""Manages the configuration file for the entire application. By default
+"""Manages the configuration file for the entire application. By default,
 the applications configuration file name is 'config.int'.
 Performs basic error checking on the configuration file as well.
 """
@@ -9,7 +9,7 @@ from typing import Optional
 CONFIG_FILENAME = 'config.ini'
 
 
-class DiscordConfig():
+class DiscordConfig:
     """Configuration Settings for Discords API."""
 
     def __init__(self, config: configparser.SectionProxy) -> None:
@@ -37,20 +37,20 @@ class DiscordConfig():
 
     @property
     def owner_id(self) -> int:
-        """Owner of the bots Discord Id, it is most likely a large integer.
+        """Owner of the bots Discord ID, it is most likely a large integer.
         Default: 0
         """
         return self._config.getint('OwnerId', 0)
 
     @property
-    def ccdm_id(self) -> int:
-        """DM Channel Id of the bots command server.
+    def ccserver_dm_id(self) -> int:
+        """DM Channel ID of the bots command server.
         Default: 0
         """
         return self._config.getint('CCDMId', 0)
 
 
-class GeneralConfig():
+class GeneralConfig:
     """General configurations, parent to all sub-configurations."""
 
     def __init__(self, config: configparser.ConfigParser) -> None:
@@ -68,7 +68,7 @@ class GeneralConfig():
 
     @property
     def debug(self) -> bool:
-        """Controls if the who program is running in DEBUG mode.
+        """Controls if the program is running in DEBUG mode.
         Default: 'False'
         """
         return self._config.getboolean('DEFAULT', 'Debug', fallback=False)

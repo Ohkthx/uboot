@@ -16,11 +16,11 @@ class Zombie(entities.Entity):
         self.image = "zombie_alive.png"
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(Rarity.COMMON, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.COMMON, self.is_paragon)
 
     @staticmethod
     def locations() -> list[tuple[Area, Level, int]]:
-        """Returns all of the locations the entity can spawn at."""
+        """Returns all the locations the entity can spawn at."""
         return [
             (Area.WILDERNESS, Level.ONE, 3),
             (Area.GRAVEYARD, Level.ONE, 7),

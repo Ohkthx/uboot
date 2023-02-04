@@ -8,7 +8,7 @@ from discord import ui
 
 from dclient.views.dm import DMDeleteView
 
-Messageable: TypeAlias = Union[discord.Thread, discord.TextChannel]
+Messagable: TypeAlias = Union[discord.Thread, discord.TextChannel]
 
 
 class EmbedModal(ui.Modal, title='Embed Manager'):
@@ -16,7 +16,7 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
     embeds.
     """
 
-    def __init__(self, channel: Messageable,
+    def __init__(self, channel: Messagable,
                  color: Optional[discord.Colour] = None,
                  message: Optional[discord.Message] = None) -> None:
         self.channel = channel
@@ -131,7 +131,7 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
 
         # Set the color, if it was passed.
         if self.color:
-            embed.color = self.color
+            embed.colour = self.color
 
         status: str = "created"
         if self.message:
@@ -145,7 +145,7 @@ class EmbedModal(ui.Modal, title='Embed Manager'):
         if self.message:
             url = f"Go to message: [**Click Here**]({self.message.jump_url})"
         embed = discord.Embed(title=f"Embed {status}", description=url)
-        embed.color = discord.Color.blurple()
+        embed.colour = discord.Color.blurple()
         view = DMDeleteView(interaction.client)
         await res.send_message(embed=embed, view=view, delete_after=60)
 

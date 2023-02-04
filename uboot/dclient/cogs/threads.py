@@ -1,10 +1,10 @@
 """Commands used to manage discord threads or add additional functionality to
-them. Most of these commands are reseved for staff/admins.
+them. Most of these commands are reserved for staff/admins.
 """
 import discord
 from discord.ext import commands
 
-from dclient import DiscordBot
+from dclient.bot import DiscordBot
 from dclient.helper import find_tag, thread_close, get_member
 from dclient.views.dm import DMDeleteView
 
@@ -57,9 +57,9 @@ class Threads(commands.Cog):
 
         await ctx.channel.remove_user(ctx.author)
 
-    @thread.command(name='isdone')
+    @thread.command(name='is_done')
     @commands.has_guild_permissions(manage_messages=True)
-    async def isdone(self, ctx: commands.Context) -> None:
+    async def is_done(self, ctx: commands.Context) -> None:
         """Prompts the members if the thread is complete or not."""
         await ctx.send("Is the thread ready to be permanently closed?\n"
                        f"If so, please type `{self.bot.prefix}thread close`")
@@ -90,7 +90,7 @@ class Threads(commands.Cog):
 
     @thread.command(name='close')
     async def close(self, ctx: commands.Context) -> None:
-        """Performs a full clean up and closure on the thread.
+        """Performs a full clean-up and closure on the thread.
         Actions:
             Unsubscribes all participants in the thread.
             Marks the thread with the 'close' tag if it is available.

@@ -1,4 +1,4 @@
-"""Dabase manager for React Role pairs."""
+"""Database manager for React Role pairs."""
 from typing import Optional
 
 from .db_socket import DbSocket, clean_name
@@ -11,7 +11,7 @@ ReactRoleRaw = tuple[int, int, str, bool]
 
 
 class RoleDb(DbSocket):
-    """Dabase manager for React Role pairs."""
+    """Database manager for React Role pairs."""
 
     def __init__(self, filename: str) -> None:
         super().__init__(filename)
@@ -50,5 +50,5 @@ class RoleDb(DbSocket):
 
     def delete_one(self, raw: ReactRoleRaw) -> None:
         """Removes a pair from database."""
-        wherekey = f"role_id = {raw[0]} AND guild_id = {raw[1]}"
-        self._delete(wherekey)
+        where_key = f"role_id = {raw[0]} AND guild_id = {raw[1]}"
+        self._delete(where_key)

@@ -16,11 +16,11 @@ class Titan(entities.Entity):
         self.image = "titan_alive.png"
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(Rarity.RARE, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.RARE, self.is_paragon)
 
     @staticmethod
     def locations() -> list[tuple[Area, Level, int]]:
-        """Returns all of the locations the entity can spawn at."""
+        """Returns all the locations the entity can spawn at."""
         return [
             (Area.DESPISE, Level.FOUR, 2),
         ]

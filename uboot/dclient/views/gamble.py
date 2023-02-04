@@ -2,20 +2,19 @@
 is slowly accumulated while users participate in conversation within servers.
 """
 import random
-from typing import Optional
 
 import discord
 from discord import ui
 
-from dclient import DiscordBot
-from dclient.destructable import DestructableManager, Destructable
+from dclient.bot import DiscordBot
+from dclient.destructible import DestructibleManager, Destructible
 from managers import users
 
 # All valid options for the generic betting game.
 valid_input = ("high", "low", "seven", "7")
 
 
-class ExtractedBet():
+class ExtractedBet:
     """Results of extracting a users bet parameters."""
 
     def __init__(self, amount: int, side: str,
@@ -26,18 +25,18 @@ class ExtractedBet():
         self.minimum: bool = minimum
 
 
-class GambleResult():
+class GambleResult:
     """Small wrapper for the result of a gamble session."""
 
-    def __init__(self, msg: str, iserror: bool) -> None:
+    def __init__(self, msg: str, is_error: bool) -> None:
         self.msg = msg
-        self.iserror = iserror
+        self.is_error = is_error
         self.winnings = 0
 
 
 def roll_dice() -> tuple[int, int]:
     """Calculates a 2d6 roll."""
-    return (random.randint(1, 6), random.randint(1, 6))
+    return random.randint(1, 6), random.randint(1, 6)
 
 
 def gamble(user: users.User, name: str,
@@ -45,7 +44,7 @@ def gamble(user: users.User, name: str,
            min_override: int = -1, mod: int = 1) -> GambleResult:
     """Performs the arithmetic and validation for a gambling session."""
     if bet.is_all and min_override < 0:
-        # Set the amount to all of the users gold if passed.
+        # Set the amount to all the users gold if passed.
         bet.amount = user.gold
     elif bet.minimum and min_override < 0:
         # Set the amount to minimum amount.
@@ -120,7 +119,7 @@ def gamble(user: users.User, name: str,
 class GambleView(ui.View):
     """Gamble View is presented to the user when they are partaking in
     gambling against the house. If the user wins, they are presented with
-    a 'DOUBLE OR NOTHIHNG' button.
+    a 'DOUBLE OR NOTHING' button.
     """
 
     def __init__(self, bot: DiscordBot,
@@ -136,7 +135,7 @@ class GambleView(ui.View):
 
     @ui.button(label='DOUBLE OR NOTHING', style=discord.ButtonStyle.red,
                custom_id='gamble_view:double')
-    async def gamble(self, interaction: discord.Interaction, button: ui.Button):
+    async def gamble(self, interaction: discord.Interaction, _: ui.Button):
         """This button presents itself only when the user has won their
         last gamble. After pressing the button or spawning another, it is
         deleted immediately to prevent exploits.
@@ -148,14 +147,14 @@ class GambleView(ui.View):
                                           ephemeral=True,
                                           delete_after=60)
 
-        # If somehow spawned outside of a text, channel- do nothing.
+        # If somehow spawned outside a text channel, do nothing.
         channel = interaction.channel
         if not channel or not isinstance(channel, discord.TextChannel):
             return
 
         # Destroy all other buttons assigned to the user to prevent exploits.
-        category = Destructable.Category.GAMBLE
-        await DestructableManager.remove_many(self.user.id, True, category)
+        category = Destructible.Category.GAMBLE
+        await DestructibleManager.remove_many(self.user.id, True, category)
 
         view = None
         color_hex = "#ff0f08"  # Loss color.
@@ -163,7 +162,7 @@ class GambleView(ui.View):
         # Perform the next gamble.
         results = gamble(self.user, str(interaction.user),
                          self.bet, self.loss_reset, self.bet.amount, 2)
-        if results.iserror:
+        if results.is_error:
             color = discord.Colour.from_str(color_hex)
             embed = discord.Embed(description=results.msg, color=color)
             return await res.send_message(embed=embed,
@@ -193,13 +192,12 @@ class GambleView(ui.View):
         embed.set_footer(text=f"Next minimum: {self.user.minimum(20)} gp")
 
         # Send the embed and/or view.
-        msg: Optional[discord.Message] = None
         if not view:
             return await channel.send(embed=embed)
 
         # Schedule to delete the view.
         msg = await channel.send(embed=embed, view=view)
         if view and msg:
-            category = Destructable.Category.GAMBLE
-            destruct = Destructable(category, self.user.id, 300)
+            category = Destructible.Category.GAMBLE
+            destruct = Destructible(category, self.user.id, 300)
             destruct.set_message(message=msg)

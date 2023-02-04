@@ -1,6 +1,5 @@
 """Admin and Staff commands for managing the server."""
 import os
-from datetime import datetime, timezone
 
 import discord
 from discord.ext import commands
@@ -8,8 +7,27 @@ from discord.ext.commands import param
 
 from managers import settings, react_roles
 from managers.logs import Log, LogType, Manager as LogManager
-from dclient import DiscordBot
-from dclient.helper import get_channel, get_message, get_member, get_role, get_role_by_name
+from dclient.bot import DiscordBot
+from dclient.helper import get_channel, get_message, get_member, get_role, get_role_by_name, convert_age
+
+
+async def convert_logs(ctx: commands.Context,
+                       logs: list[Log],
+                       ) -> str:
+    """Takes a list of logs and makes it pretty."""
+    log_res: list[str] = []
+    for log in logs:
+        log_res.append(f"> [{log.timestamp}] {log.message}")
+
+    log_full: str = "> none"
+    if len(log_res) > 0:
+        log_full = '\n'.join(log_res)
+
+    if len(log_full) > 2000:
+        await ctx.send("Too large of a request of logs.",
+                       delete_after=30)
+        return ''
+    return log_full
 
 
 class Admin(commands.Cog):
@@ -46,11 +64,6 @@ class Admin(commands.Cog):
         if not guild:
             return
 
-        # Calculate the servers age based on when they joined Discord.
-        age = datetime.now(timezone.utc) - guild.created_at
-        year_str = '' if age.days // 365 < 1 else f"{age.days//365} year(s), "
-        day_str = '' if age.days % 365 == 0 else f"{int(age.days%365)} day(s)"
-
         # Get the URLs for images.
         banner = f" [banner]({guild.banner.url})" if guild.banner else ""
         icon = f" [icon]({guild.icon.url})" if guild.icon else ""
@@ -69,13 +82,13 @@ class Admin(commands.Cog):
         if guild.icon:
             embed.set_thumbnail(url=guild.icon.url)
 
-        embed.description = f"**server name**: {guild.name}\n"\
-            f"**id**: {guild.id}\n"\
-            f"**age**: {year_str}{day_str}\n\n"\
-            f"**images**: {banner}{icon}\n"\
-            f"**members**: {members}\n"\
-            f"**channels**: {len(guild.channels)}\n"\
-            f"**roles**: {len(guild.roles)}\n"
+        embed.description = f"**server name**: {guild.name}\n" \
+                            f"**id**: {guild.id}\n" \
+                            f"**age**: {convert_age(guild.created_at)}\n\n" \
+                            f"**images**: {banner}{icon}\n" \
+                            f"**members**: {members}\n" \
+                            f"**channels**: {len(guild.channels)}\n" \
+                            f"**roles**: {len(guild.roles)}\n"
 
         await ctx.reply(embed=embed)
 
@@ -83,9 +96,9 @@ class Admin(commands.Cog):
     @server.command(name="sudo")
     async def sudo(self, ctx: commands.Context,
                    length: int = param(description="Amount of time to "
-                                       "hold the role.",
+                                                   "hold the role.",
                                        default=5)):
-        """Elevatates permissions."""
+        """Elevates permissions."""
         await ctx.message.delete()
         if not self.bot.user or not ctx.guild:
             return
@@ -151,8 +164,6 @@ class Admin(commands.Cog):
         if not ctx.guild or amount < 1:
             return
 
-        tlog: LogType = LogType.INFO
-
         try:
             tlog = LogType(logtype)
         except BaseException:
@@ -160,21 +171,12 @@ class Admin(commands.Cog):
             return
 
         logs = LogManager.get_guild_type(ctx.guild.id, tlog, amount)
-        log_res: list[str] = []
-        for log in logs:
-            log_res.append(f"> [{log.timestamp}] {log.message}")
-
-        log_full: str = "> none"
-        if len(log_res) > 0:
-            log_full = '\n'.join(log_res)
-
-        if len(log_full) > 2000:
-            await ctx.send("Too large of a request of logs.",
-                           delete_after=30)
+        log_full = await convert_logs(ctx, logs)
+        if log_full == '':
             return
 
         embed = discord.Embed(title=f"Server {tlog.name} Logs")
-        embed.color = discord.Colour.blurple()
+        embed.colour = discord.Colour.blurple()
         embed.description = log_full
         await ctx.send(embed=embed)
 
@@ -194,21 +196,12 @@ class Admin(commands.Cog):
             return
 
         logs = LogManager.get_guild_user(ctx.guild.id, user_id, amount)
-        log_res: list[str] = []
-        for log in logs:
-            log_res.append(f"> [{log.timestamp}] {log.message}")
-
-        log_full: str = "> none"
-        if len(log_res) > 0:
-            log_full = '\n'.join(log_res)
-
-        if len(log_full) > 2000:
-            await ctx.send("Too large of a request of logs.",
-                           delete_after=30)
+        log_full = await convert_logs(ctx, logs)
+        if log_full == '':
             return
 
         embed = discord.Embed(title=f"Server Logs for User: {user_id}")
-        embed.color = discord.Colour.blurple()
+        embed.colour = discord.Colour.blurple()
         embed.description = log_full
         await ctx.send(embed=embed)
 
@@ -228,8 +221,8 @@ class Admin(commands.Cog):
     async def add_role_all(self, ctx: commands.Context,
                            role_id: int = param(
                                description="Id of the role to add to every "
-                               "member.")):
-        """Adds a specified role by Id to all current guild members.
+                                           "member.")):
+        """Adds a specified role by ID to all current guild members.
 
         example:
             (prefix)server add-role-all 1234567890
@@ -247,7 +240,7 @@ class Admin(commands.Cog):
             await ctx.send("could not identify the targeted role.")
             return
 
-        # Give the role to all of the members.
+        # Give the role to all the members.
         added: int = 0
         async for member in ctx.guild.fetch_members(limit=None):
             if member.bot or guild_role in member.roles:
@@ -302,7 +295,7 @@ class Admin(commands.Cog):
 
     @settings.command(name='show')
     async def settings_show(self, ctx: commands.Context) -> None:
-        """Shows all of the current settings for the server."""
+        """Shows all the current settings for the server."""
         if ctx.guild is None:
             return
         setting = settings.Manager.get(ctx.guild.id)
@@ -404,13 +397,13 @@ class Admin(commands.Cog):
             total_has = '\n'.join(has_role)
 
         embed = discord.Embed(title="Reaction Role Verification")
-        embed.color = discord.Colour.blurple()
+        embed.colour = discord.Colour.blurple()
         embed.set_footer(text="Output above are potential errors.")
-        embed.description = f"**Users who reacted**: {len(users)}\n"\
-            f"**Users in role**: {len(role.members)}\n\n"\
-            "__**Has reacted, no role**__:\n"\
-            f"{total_missing}\n\n"\
-            f"__**Has role, no reaction**__:\n{total_has}"
+        embed.description = f"**Users who reacted**: {len(users)}\n" \
+                            f"**Users in role**: {len(role.members)}\n\n" \
+                            "__**Has reacted, no role**__:\n" \
+                            f"{total_missing}\n\n" \
+                            f"__**Has role, no reaction**__:\n{total_has}"
         await ctx.send(embed=embed)
 
     @react_role.command(name='bind')
@@ -419,7 +412,7 @@ class Admin(commands.Cog):
                    emoji: str = param(description="Emoji to represent role."),
                    role_id: int = param(description="Numeric Id of the role."),
                    reverse: bool = param(description="Reverse assignment, "
-                                         "selecting reaction removes role.",
+                                                     "selecting reaction removes role.",
                                          default=False)):
         """Binds an emoji that can be reacted to for role assignment.
         Only built-in emojis are currently supported.
@@ -517,14 +510,14 @@ class Admin(commands.Cog):
             await ctx.send("could not identify the guild.")
             return
 
-        # Iterate all of the react-roles for the server and combine them.
+        # Iterate all the react-roles for the server and combine them.
         res: list[str] = []
-        rroles = react_roles.Manager.guild_roles(ctx.guild.id)
-        for rrole in rroles:
-            role = ctx.guild.get_role(rrole.role_id)
+        for react_role in react_roles.Manager.guild_roles(ctx.guild.id):
+            role = ctx.guild.get_role(react_role.role_id)
+            react = react_role.reaction
             if not role:
                 continue
-            res.append(f"{rrole.reaction} => {role.name} ({rrole.role_id})")
+            res.append(f"{react} => {role.name} ({role.id})")
         if len(res) == 0:
             await ctx.send('no bound reactions to roles.')
             return

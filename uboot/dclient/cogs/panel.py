@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import param
 
-from dclient import DiscordBot
+from dclient.bot import DiscordBot
 from dclient.helper import get_channel
 from dclient.views.dm import DMDeleteView, DMResponseView
 from dclient.views.minigame import ResourceView, UserManagementView
@@ -186,7 +186,7 @@ class Panel(commands.Cog):
     async def manage(self, ctx: commands.Context,
                      msg_id: int = param(
                          description="id of the message to attach to.")):
-        """Applies the 'Management' Panel' to a Private Guild representation.
+        """Applies the 'Management Panel' to a Private Guild representation.
         Only need to do this if it is missing.
 
         examples:

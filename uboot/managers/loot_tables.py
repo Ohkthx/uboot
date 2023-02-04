@@ -1,6 +1,7 @@
 """Handles everything from creating items to generating loot tables."""
 
 import random
+import uuid
 from enum import IntEnum, auto
 from typing import Optional, Union
 
@@ -24,7 +25,7 @@ def rand_name(names: list[str]) -> str:
 
 
 class Items(IntEnum):
-    """Represents all of the item types that can exist."""
+    """Represents all the item types that can exist."""
     NONE = auto()
     GOLD = auto()
     POWERHOUR = auto()
@@ -86,19 +87,22 @@ class Material(IntEnum):
     VALORITE = auto()
 
 
-ItemRaw = tuple[int, str, int, int, int, int, int]
+ItemRaw = tuple[str, int, str, int, int, int, int, int]
 
 
-class Item():
+class Item:
     """Represents a unique item."""
 
-    def __init__(self, item_type: Items,
+    def __init__(self,
+                 item_id: str,
+                 item_type: Items,
                  name: Optional[str] = None,
                  rarity: Rarity = Rarity.COMMON,
                  material: Union[Material, Reagent] = Material.NONE,
                  value: int = 1,
                  uses: int = 1,
                  uses_max: int = 1):
+        self.id = item_id
         self.type = item_type
         self._name = name if name else item_type.name.title()
         self.rarity = rarity
@@ -139,7 +143,7 @@ class Item():
         """Gets the value of the item based on its type."""
         base_value = self.base_value
 
-        if self.isstackable:
+        if self.is_stackable:
             return base_value * self.uses
         if self.type not in (Items.WEAPON,):
             return base_value
@@ -151,34 +155,34 @@ class Item():
         return int(base_value * (1 + material_mod) * uses_mod)
 
     @property
-    def _raw(self) -> ItemRaw:
+    def raw(self) -> ItemRaw:
         """Gets the raw value of the item, used for database storage."""
-        return (int(self.type), self._name, int(self.rarity),
+        return (self.id, int(self.type), self._name, int(self.rarity),
                 int(self.material), self._value, self.uses, self.uses_max)
 
     @property
-    def isstackable(self) -> bool:
+    def is_stackable(self) -> bool:
         """Checks if an item can be stacked."""
         return self.type in (Items.POWERHOUR, Items.REAGENT, Items.ORE,
                              Items.BAG)
 
     @property
-    def isresource(self) -> bool:
+    def is_resource(self) -> bool:
         """Checks if an item can be stacked."""
         return self.type in (Items.REAGENT, Items.ORE)
 
     @property
-    def isusable(self) -> bool:
+    def is_usable(self) -> bool:
         """Checks if the item can be used."""
         return self.type in (Items.POWERHOUR, Items.WEAPON)
 
     @property
-    def isconsumable(self) -> bool:
+    def is_consumable(self) -> bool:
         """Checks if the item can be consumed."""
         return self.type in (Items.POWERHOUR,)
 
     @property
-    def isreal(self) -> bool:
+    def is_real(self) -> bool:
         """Checks if the item is real or just imaginary item."""
         return self.type not in (Items.NONE, Items.GOLD, Items.LOCATION,
                                  Items.CHEST)
@@ -186,16 +190,18 @@ class Item():
     @staticmethod
     def from_raw(raw: ItemRaw) -> 'Item':
         """Creates an item from a raw value."""
-        return Item(item_type=Items(raw[0]),
-                    name=raw[1],
-                    rarity=Rarity(raw[2]),
-                    material=Material(raw[3]),
-                    value=raw[4],
-                    uses=raw[5],
-                    uses_max=raw[6])
+        return Item(
+                    item_id=str(raw[0]),
+                    item_type=Items(raw[1]),
+                    name=raw[2],
+                    rarity=Rarity(raw[3]),
+                    material=Material(raw[4]),
+                    value=raw[5],
+                    uses=raw[6],
+                    uses_max=raw[7])
 
     def add_use(self, value: int) -> None:
-        """Adds an additional use to an object."""
+        """Adds a use to an object."""
         if value <= 0:
             return
         self.uses = min(self.uses + value, self.uses_max)
@@ -211,7 +217,7 @@ class Chest(Item):
     """Represents a chest with multiple items."""
 
     def __init__(self, rarity: Rarity, items: list[Item]) -> None:
-        super().__init__(Items.CHEST)
+        super().__init__(str(uuid.uuid4()), Items.CHEST)
         self.rarity = rarity
         self.items = items
 
@@ -221,7 +227,7 @@ class Chest(Item):
         return f"A Treasure Chest [{self.rarity.name.capitalize()}]"
 
 
-class ItemCreator():
+class ItemCreator:
     """Responsible for creating an item."""
 
     def __init__(self, item_type: Items,
@@ -240,7 +246,7 @@ class ItemCreator():
         self.modifier = modifier
 
     @property
-    def isunique(self) -> bool:
+    def is_unique(self) -> bool:
         """Checks if only 1 of the type of item is valid for looting."""
         uniques = (Items.POWERHOUR, Items.LOCATION,
                    Items.CHEST, Items.WEAPON, Items.BAG)
@@ -249,22 +255,23 @@ class ItemCreator():
     def generate(self) -> Item:
         """Creates an instance of this item."""
         self.stacks -= 1
+        item_id: str = str(uuid.uuid4())
 
         name: Optional[str] = None
         if self.type == Items.POWERHOUR:
             name = "powerhour potion"
-            return Item(self.type, name=name, uses=1, uses_max=4)
+            return Item(item_id, self.type, name=name, uses=1, uses_max=4)
 
         value = random.randint(self.min, self.max)
         if self.type == Items.WEAPON:
             name = rand_name(WEAPON_NAMES)
             material = Material(value)
             uses = material * 2
-            return Item(self.type, name=name, material=material,
+            return Item(item_id, self.type, name=name, material=material,
                         uses=uses, uses_max=uses)
         if self.type == Items.BAG:
             name = "bag"
-            return Item(self.type, name=name,
+            return Item(item_id, self.type, name=name,
                         uses=min(value, 8),
                         uses_max=8)
 
@@ -272,7 +279,7 @@ class ItemCreator():
             name = rand_name(TRASH_NAMES)
             value = int(value * self.modifier)
 
-        return Item(self.type, name=name, value=value)
+        return Item(item_id, self.type, name=name, value=value)
 
 
 class ChestCreator(ItemCreator):
@@ -297,7 +304,7 @@ class ChestCreator(ItemCreator):
         return Chest(self.rarity, items)
 
 
-class LootTable():
+class LootTable:
     """Represents a loot table, used to generate loot."""
 
     def __init__(self, max_loot: int) -> None:
@@ -306,24 +313,24 @@ class LootTable():
         self.rarity = Rarity.COMMON
 
     @staticmethod
-    def lootpack(lootpack: Rarity, upgrade: bool, ischest: bool = False):
+    def lootpack(lootpack: Rarity, upgrade: bool, is_chest: bool = False):
         """Gets loot based on the provided lootpack definition."""
         if upgrade and lootpack < Rarity.MYTHICAL:
             lootpack = Rarity(lootpack + 1)
 
         if lootpack == Rarity.COMMON:
-            return CommonLoot(upgrade, ischest)
+            return CommonLoot(upgrade, is_chest)
         if lootpack == Rarity.UNCOMMON:
-            return UncommonLoot(upgrade, ischest)
+            return UncommonLoot(upgrade, is_chest)
         if lootpack == Rarity.RARE:
-            return RareLoot(upgrade, ischest)
+            return RareLoot(upgrade, is_chest)
         if lootpack == Rarity.EPIC:
-            return EpicLoot(upgrade, ischest)
+            return EpicLoot(upgrade, is_chest)
         if lootpack == Rarity.LEGENDARY:
-            return LegendaryLoot(upgrade, ischest)
+            return LegendaryLoot(upgrade, is_chest)
         if lootpack == Rarity.MYTHICAL:
-            return MythicalLoot(upgrade, ischest)
-        return UncommonLoot(upgrade, ischest)
+            return MythicalLoot(upgrade, is_chest)
+        return UncommonLoot(upgrade, is_chest)
 
     def add_item(self, item: ItemCreator, weight: int) -> None:
         """Adds an item to the loot table."""
@@ -341,7 +348,7 @@ class LootTable():
                       max_loot: int) -> list[Item]:
         """Generates loot form a weighted table."""
         # Sort the list.
-        item_tables.sort(key=lambda i: i[0])
+        item_tables.sort(key=lambda item: item[0])
 
         # Build the lists.
         weights = [item[0] for item in item_tables]
@@ -368,7 +375,7 @@ class LootTable():
             # If the item already exists, we will ignore it.
             exists: bool = False
             for i in loot:
-                if i.type == item[0].type and item[0].isunique:
+                if i.type == item[0].type and item[0].is_unique:
                     exists = True
                     break
 
@@ -376,7 +383,7 @@ class LootTable():
                 loot.append(item[0].generate())
 
         # Organize the loot.
-        loot.sort(key=lambda i: i.type.value)
+        loot.sort(key=lambda item: item.type.value)
         return loot
 
 
@@ -473,12 +480,12 @@ class MythicalChest(ChestCreator):
 class CommonLoot(LootTable):
     """Common loot, nothing to write home about."""
 
-    def __init__(self, isparagon: bool, ischest: bool = False) -> None:
+    def __init__(self, is_paragon: bool, is_chest: bool = False) -> None:
         super().__init__(2)
         self.rarity = Rarity.COMMON
 
-        self.add_item(CommonChest(), 105 if isparagon else 5)
-        if ischest:
+        self.add_item(CommonChest(), 105 if is_paragon else 5)
+        if is_chest:
             return
 
         self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 25)
@@ -495,12 +502,12 @@ class CommonLoot(LootTable):
 class UncommonLoot(LootTable):
     """Uncommon loot, loot is meh."""
 
-    def __init__(self, isparagon: bool, ischest: bool = False) -> None:
+    def __init__(self, is_paragon: bool, is_chest: bool = False) -> None:
         super().__init__(2)
         self.rarity = Rarity.UNCOMMON
 
-        self.add_item(UncommonChest(), 105 if isparagon else 5)
-        if ischest:
+        self.add_item(UncommonChest(), 105 if is_paragon else 5)
+        if is_chest:
             return
 
         self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 25)
@@ -517,12 +524,12 @@ class UncommonLoot(LootTable):
 class RareLoot(LootTable):
     """Rare loot, finally worth keeping."""
 
-    def __init__(self, isparagon: bool, ischest: bool = False) -> None:
+    def __init__(self, is_paragon: bool, is_chest: bool = False) -> None:
         super().__init__(3)
         self.rarity = Rarity.RARE
 
-        self.add_item(RareChest(), 105 if isparagon else 5)
-        if ischest:
+        self.add_item(RareChest(), 105 if is_paragon else 5)
+        if is_chest:
             return
 
         self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 25)
@@ -539,12 +546,12 @@ class RareLoot(LootTable):
 class EpicLoot(LootTable):
     """Epic loot, I may never let go of this."""
 
-    def __init__(self, isparagon: bool, ischest: bool = False) -> None:
+    def __init__(self, is_paragon: bool, is_chest: bool = False) -> None:
         super().__init__(3)
         self.rarity = Rarity.EPIC
 
-        self.add_item(EpicChest(), 105 if isparagon else 5)
-        if ischest:
+        self.add_item(EpicChest(), 105 if is_paragon else 5)
+        if is_chest:
             return
 
         self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 23)
@@ -561,12 +568,12 @@ class EpicLoot(LootTable):
 class LegendaryLoot(LootTable):
     """Legendary loot, how did a mortal obtain this?"""
 
-    def __init__(self, isparagon: bool, ischest: bool = False) -> None:
+    def __init__(self, is_paragon: bool, is_chest: bool = False) -> None:
         super().__init__(4)
         self.rarity = Rarity.LEGENDARY
 
-        self.add_item(LegendaryChest(), 105 if isparagon else 5)
-        if ischest:
+        self.add_item(LegendaryChest(), 105 if is_paragon else 5)
+        if is_chest:
             return
 
         self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 20)
@@ -583,12 +590,12 @@ class LegendaryLoot(LootTable):
 class MythicalLoot(LootTable):
     """Mythical loot, only spoken in legend."""
 
-    def __init__(self, isparagon: bool, ischest: bool = False) -> None:
+    def __init__(self, is_paragon: bool, is_chest: bool = False) -> None:
         super().__init__(5)
         self.rarity = Rarity.MYTHICAL
 
-        self.add_item(MythicalChest(), 105 if isparagon else 5)
-        if ischest:
+        self.add_item(MythicalChest(), 105 if is_paragon else 5)
+        if is_chest:
             return
 
         self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 20)

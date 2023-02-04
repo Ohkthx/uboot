@@ -4,7 +4,7 @@ guild. This request is forwarded to staff/admins to approve or deny.
 import discord
 from discord import ui
 
-from dclient import DiscordBot
+from dclient.bot import DiscordBot
 from dclient.modals.guild_signup import GuildSignupModal
 
 
@@ -41,7 +41,7 @@ class GuildSignupView(ui.View):
 
     @ui.button(label='Create Guild Request', style=discord.ButtonStyle.blurple,
                custom_id='guild_signup_view:request')
-    async def request(self, interaction: discord.Interaction, button: ui.Button):
+    async def request(self, interaction: discord.Interaction, _: ui.Button):
         """Upon pressing the button, the user is prompted to supply information
         about their private guild. This information is sent to admin/staff to
         approve or deny the new guild request.

@@ -15,11 +15,11 @@ class FireSteed(entities.Entity):
         self.set_health(226, 240)
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(Rarity.RARE, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.RARE, self.is_paragon)
 
     @staticmethod
     def locations() -> list[tuple[Area, Level, int]]:
-        """Returns all of the locations the entity can spawn at."""
+        """Returns all the locations the entity can spawn at."""
         return [
             (Area.FIRE, Level.ONE, 1),
             (Area.FIRE, Level.TWO, 1),

@@ -15,12 +15,12 @@ class Skeleton(entities.Entity):
         self.set_health(34, 48)
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(Rarity.COMMON, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.COMMON, self.is_paragon)
         self.image = "skeleton_alive.png"
 
     @staticmethod
     def locations() -> list[tuple[Area, Level, int]]:
-        """Returns all of the locations the entity can spawn at."""
+        """Returns all the locations the entity can spawn at."""
         return [
             (Area.WILDERNESS, Level.ONE, 3),
             (Area.GRAVEYARD, Level.ONE, 7),

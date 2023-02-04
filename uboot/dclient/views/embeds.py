@@ -4,7 +4,7 @@ from typing import Optional
 import discord
 from discord import ui
 
-from dclient.modals.embed import EmbedModal, Messageable
+from dclient.modals.embed import EmbedModal, Messagable
 
 # All possible embed color options supported in the dropdown.
 options = ['green', 'red', 'black', 'blue', 'yellow']
@@ -13,7 +13,7 @@ options = ['green', 'red', 'black', 'blue', 'yellow']
 class EmbedView(ui.View):
     """Embed View is used to create and manage embeds created by the bot."""
 
-    def __init__(self, user: int, channel: Messageable,
+    def __init__(self, user: int, channel: Messagable,
                  message: Optional[discord.Message]) -> None:
         self.user = user
         self.channel = channel
@@ -25,7 +25,7 @@ class EmbedView(ui.View):
     def get_panel() -> discord.Embed:
         """Creates the panel that is sent to the user."""
         embed = discord.Embed(title="Embed Creator / Editor")
-        embed.color = discord.Color.blurple()
+        embed.colour = discord.Color.blurple()
         embed.set_footer(text="Note: This panel deletes after 2 minutes.")
         embed.description = "**Embed Color**:\nSelect the color to apply by "\
             "choosing it in the drop down menu before selecting a button.\n\n"\
@@ -69,7 +69,7 @@ class EmbedView(ui.View):
 
     @ui.button(label='Launch Creator', style=discord.ButtonStyle.green,
                custom_id='embed_view:create')
-    async def create(self, interaction: discord.Interaction, button: ui.Button):
+    async def create(self, interaction: discord.Interaction, _: ui.Button):
         """Create a new embed instead of editing one. The color selected in the
         dropdown menu will be the color of the newly created embed. Defaults
         to be just black.
@@ -91,7 +91,7 @@ class EmbedView(ui.View):
 
     @ui.button(label='Launch Editor', style=discord.ButtonStyle.red,
                custom_id='embed_view:edit')
-    async def edit(self, interaction: discord.Interaction, button: ui.Button):
+    async def edit(self, interaction: discord.Interaction, _: ui.Button):
         """Edits a previously existing embed. This requires the message id of
         the embed to be passed so that it can be edited. The currently selected
         dropdown color will be the new color of the embed.

@@ -1,4 +1,4 @@
-"""Database manager for Aliass."""
+"""Database manager for Aliases."""
 from typing import Optional
 
 from .db_socket import DbSocket, clean_name
@@ -65,5 +65,5 @@ class AliasDb(DbSocket):
 
     def delete_one(self, raw: AliasRaw) -> None:
         """Removes a pair from database."""
-        wherekey = f"id = {raw[0]} AND guild_id = {raw[1]}"
-        self._delete(wherekey)
+        where_key = f"id = {raw[0]} AND guild_id = {raw[1]}"
+        self._delete(where_key)

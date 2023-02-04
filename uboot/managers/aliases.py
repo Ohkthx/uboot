@@ -1,5 +1,5 @@
-"""Subguilds are privatized Discord threads within the greater guild.
-The associated manager handles all of the loading and saving to database. It is
+"""Sub-guilds are privatized Discord threads within the greater guild.
+The associated manager handles all the loading and saving to database. It is
 also equipped with finding aliases based on certain parameters.
 """
 from typing import Optional
@@ -11,11 +11,11 @@ def make_raw(guild_id: int, alias_id: int) -> AliasRaw:
     """Creates a raw alias (tuple) fit for storing into a database with
     pre-defined defaults.
     """
-    return (alias_id, guild_id, 0, "unknown", 0)
+    return alias_id, guild_id, 0, "unknown", 0
 
 
-class Alias():
-    """Representation of a alias. Initialized with AliasRaw."""
+class Alias:
+    """Representation of an alias. Initialized with AliasRaw."""
 
     def __init__(self, raw: AliasRaw) -> None:
         self.id = raw[0]
@@ -37,18 +37,18 @@ class Alias():
         """Stores the Alias into the database, saving or updating
         as necessary.
         """
-        if Manager._db:
-            Manager._db.update(self._raw)
+        if Manager.db:
+            Manager.db.update(self._raw)
 
     def delete(self) -> None:
         """Removes the Alias from the database."""
-        if Manager._db:
-            Manager._db.delete_one(self._raw)
+        if Manager.db:
+            Manager.db.delete_one(self._raw)
 
 
-class Manager():
+class Manager:
     """Manages the Alias database in memory and in storage."""
-    _db: Optional[AliasDb] = None
+    db: Optional[AliasDb] = None
     _aliases: dict[int, dict[int, Alias]] = {}
 
     @staticmethod
@@ -56,19 +56,19 @@ class Manager():
         """Initializes the Alias Manager, connecting and loading from
         database.
         """
-        Manager._db = AliasDb(dbname)
-        raw_aliases = Manager._db.find_all()
+        Manager.db = AliasDb(dbname)
+        raw_aliases = Manager.db.find_all()
         for raw in raw_aliases:
             Manager.add(Alias(raw))
 
     @staticmethod
     def last_id(guild_id: int) -> int:
-        """Gets the most recent Id created for a particular guild.
+        """Gets the most recent ID created for a particular guild.
         Defaults to 0 if there is none."""
-        if not Manager._db:
+        if not Manager.db:
             raise ValueError("could not get last alias id, no db.")
 
-        last = Manager._db.find_last(guild_id)
+        last = Manager.db.find_last(guild_id)
         if last:
             return Alias(last).id
         return 0
@@ -86,7 +86,7 @@ class Manager():
 
     @staticmethod
     def add(alias: Alias) -> Alias:
-        """Add a alias to memory, does not save it to database."""
+        """Add an alias to memory, does not save it to database."""
         guild_aliases = Manager._aliases.get(alias.guild_id)
         if not guild_aliases:
             # Create the guild.
@@ -130,7 +130,7 @@ class Manager():
 
     @staticmethod
     def get_all(guild_id: int) -> list[Alias]:
-        """Gets all of the aliases for a guild."""
+        """Gets all the aliases for a guild."""
         guild_aliases = Manager._aliases.get(guild_id)
         if not guild_aliases:
             return []

@@ -1,15 +1,15 @@
-"""Used for creating and managing entitys."""
+"""Used for creating and managing entities."""
 
-import os
-import sys
+import importlib.util
 import math
+import os
 import pathlib
 import random
-import importlib.util
-from typing import Optional, Type
+import sys
 from enum import Enum, auto
+from typing import Optional, Type
 
-from .locations import Area, Dungeon, Floor, Level, Manager as LocationManager
+from .locations import Area, Level, Manager as LocationManager
 from .loot_tables import LootTable, Item, Rarity
 
 creature_actions = ["was ambushed by", "was attacked by", "was approached by",
@@ -35,13 +35,13 @@ def _is_paragon(difficulty: float) -> bool:
 
 
 class Types(Enum):
-    """Idenfitifies the type of entity."""
+    """Identifies the type of entity."""
     CHEST = auto()
     CREATURE = auto()
     BOSS = auto()
 
 
-class Entity():
+class Entity:
     """Represents an entity who can be combated by users."""
 
     def __init__(self, location: Area, difficulty: float) -> None:
@@ -49,12 +49,12 @@ class Entity():
         self._health: int = -1
         self.difficulty = difficulty
 
-        self.isparagon = _is_paragon(difficulty)
+        self.is_paragon = _is_paragon(difficulty)
         self.location = location
         self._max_health: int = -1
 
         # Create a base loot table.
-        self.lootpack = LootTable.lootpack(Rarity.COMMON, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.COMMON, self.is_paragon)
         self.type = Types.CREATURE
         self.image: Optional[str] = None
 
@@ -62,29 +62,29 @@ class Entity():
         return f"{self.name} [{self.difficulty}]: {self.location}"
 
     @property
-    def ischest(self) -> bool:
+    def is_chest(self) -> bool:
         """Returns if the entity is a treasure chest or not."""
         return self.type == Types.CHEST
 
     @property
-    def isboss(self) -> bool:
+    def is_boss(self) -> bool:
         """Returns if the entity is a boss or not."""
         return self.type == Types.BOSS
 
     @staticmethod
     def locations() -> list[AreaWeight]:
-        """Gets all of the locations an entity can spawn at."""
+        """Gets all the locations an entity can spawn at."""
         return []
 
     def set_name(self, name: str, rarity: str = "") -> None:
         """Sets the name of the entity."""
         rarity = f" [{rarity.capitalize()}]" if rarity != "" else ""
-        mod: str = " (Paragon)" if self.isparagon else ""
+        mod: str = " (Paragon)" if self.is_paragon else ""
         self.name = f"{name}{rarity}{mod}"
 
     def set_health(self, min_hp: int, max_hp: int) -> None:
         """Sets the health of the entity."""
-        mod: int = 2 if self.isparagon else 1
+        mod: int = 2 if self.is_paragon else 1
         total_mod = mod * self.difficulty
         self._health = int(random.randint(min_hp, max_hp) * total_mod)
         self._max_health = self._health
@@ -111,8 +111,8 @@ class Entity():
         return mod * self.max_health
 
     def get_action(self) -> str:
-        """Gets flavored text for the entitys action."""
-        if self.ischest:
+        """Gets flavored text for the entity's action."""
+        if self.is_chest:
             return chest_actions[random.randrange(0, len(chest_actions))]
         return creature_actions[random.randrange(0, len(creature_actions))]
 
@@ -137,7 +137,7 @@ class Chest(Entity):
         self.type = Types.CHEST
         self.image = "chest.png"
 
-        self.lootpack = LootTable.lootpack(pack[0], self.isparagon, True)
+        self.lootpack = LootTable.lootpack(pack[0], self.is_paragon, True)
 
     def get_exp(self, _: int) -> float:
         """Gets the custom EXP for a treasure chest."""
@@ -151,7 +151,7 @@ def _resolve_name(name: str) -> str:
         raise ValueError(f"Entity not found: {name}") from exc
 
 
-class Manager():
+class Manager:
     """Manages the spawning of entities."""
     # Area => Weight, Entity
     _areas: dict[str, list[tuple[int, Type[Entity]]]] = {}
@@ -198,7 +198,7 @@ class Manager():
 
     @staticmethod
     def register(entity: Type[Entity], name: str) -> None:
-        """Used to register entites for factory use."""
+        """Used to register entities for factory use."""
         # Add to general tracked.
         Manager._entities[name.lower()] = entity
 
@@ -229,8 +229,8 @@ class Manager():
     @staticmethod
     def by_name(name: str) -> Optional[Type[Entity]]:
         """Attempts to find a spawn by name."""
-        for ename, entity in Manager._entities.items():
-            if ename == name.lower():
+        for entity_name, entity in Manager._entities.items():
+            if entity_name == name.lower():
                 return entity
         return None
 
@@ -258,7 +258,7 @@ class Manager():
     @staticmethod
     def check_spawn(area: Area, level: Level, difficulty: float,
                     powerhour: bool, user_powerhour: bool,
-                    istaunt: bool) -> Optional[Entity]:
+                    is_taunt: bool) -> Optional[Entity]:
         """Check if an entity should be spawned, if so- does."""
         dungeon_floor = LocationManager.get(area, level)
         if not dungeon_floor:
@@ -270,17 +270,17 @@ class Manager():
         if user_powerhour:
             multiplier += 0.5
 
-        if dungeon_floor.parent.isdungeon:
+        if dungeon_floor.parent.is_dungeon:
             multiplier *= 1.5
 
         # Put a hard limit on taunts
         taunt_multiplier = 2.0 if powerhour or user_powerhour else 1.0
-        multiplier = taunt_multiplier if istaunt else multiplier
+        multiplier = taunt_multiplier if is_taunt else multiplier
 
-        chest_base = 5 if not istaunt else 0
+        chest_base = 5 if not is_taunt else 0
         chest_range = float(chest_base * multiplier)
 
-        entity_base = 10 if not istaunt else int(max_range / 5)
+        entity_base = 10 if not is_taunt else int(max_range / 5)
         entity_range = float(entity_base * multiplier) + chest_range
 
         # Gets a decimal value.

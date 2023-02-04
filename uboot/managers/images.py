@@ -6,7 +6,7 @@ from typing import Optional
 import discord
 
 
-class Manager():
+class Manager:
     """Manages the images."""
     # [file name] path
     _images: dict[str, pathlib.Path] = {}
@@ -18,7 +18,7 @@ class Manager():
 
     @staticmethod
     def load_images() -> None:
-        """Loads all of the images from the image directory."""
+        """Loads all the images from the image directory."""
         dirname = os.getcwd()
         path = pathlib.Path(os.path.join(dirname, 'images', 'entities'))
         if not path.exists():

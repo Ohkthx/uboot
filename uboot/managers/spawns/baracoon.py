@@ -15,11 +15,11 @@ class BaracoonThePiper(entities.Entity):
         self.set_health(12000, 12000)
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(Rarity.MYTHICAL, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.MYTHICAL, self.is_paragon)
 
     @staticmethod
     def locations() -> list[tuple[Area, Level, int]]:
-        """Returns all of the locations the entity can spawn at."""
+        """Returns all the locations the entity can spawn at."""
         return [
             (Area(0), Level.ONE, 1),
         ]

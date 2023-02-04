@@ -48,8 +48,8 @@ LOCATIONS: dict[Area, Level] = {
 }
 
 
-class Locations():
-    """Represents all of the currently unlocked locations."""
+class Locations:
+    """Represents all the currently unlocked locations."""
 
     def __init__(self, unlocks: int) -> None:
         self.unlocks: Area = Area(unlocks)
@@ -83,7 +83,8 @@ class Locations():
                 areas.append(area)
         return areas
 
-    def connections(self, location: Area) -> list[Area]:
+    @staticmethod
+    def connections(location: Area) -> list[Area]:
         """Gets all possible unlockable locations from the location that is
         provided. This is for discovery.
         """
@@ -116,8 +117,8 @@ class Locations():
         return found_loc if found_loc else None
 
 
-class Floor():
-    """A single floor inside of a dungeon."""
+class Floor:
+    """A single floor inside a dungeon."""
 
     def __init__(self, dungeon: 'Dungeon', level: Level) -> None:
         self.parent = dungeon
@@ -146,7 +147,7 @@ class Floor():
         return f"{self.parent.area.value}:{self.level.value}"
 
 
-class Dungeon():
+class Dungeon:
     """Represents a dungeons with several floors."""
 
     def __init__(self, area: Area, levels: Level) -> None:
@@ -179,7 +180,7 @@ class Dungeon():
         return self.area.name.replace('_', ' ').title()
 
     @property
-    def isdungeon(self) -> bool:
+    def is_dungeon(self) -> bool:
         """Check if it is an actual dungeon."""
         return self.area not in (Area.WILDERNESS, Area.GRAVEYARD)
 
@@ -188,12 +189,12 @@ class Dungeon():
         return self._floors.get(level, None)
 
     def get_floors(self) -> list[Floor]:
-        """Gets all of the floors in numeric order."""
+        """Gets all the floors in numeric order."""
         floors = self._floors.values()
         return sorted(floors, key=lambda f: f.level)
 
 
-class Manager():
+class Manager:
     """Manages the locations and dungeons."""
     _locations: dict[Area, Dungeon] = {}
 

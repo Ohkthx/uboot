@@ -15,12 +15,12 @@ class Imp(entities.Entity):
         self.set_health(55, 70)
 
         # Add the lootpack.
-        self.lootpack = LootTable.lootpack(Rarity.UNCOMMON, self.isparagon)
+        self.lootpack = LootTable.lootpack(Rarity.UNCOMMON, self.is_paragon)
         self.image = "imp_alive.png"
 
     @staticmethod
     def locations() -> list[tuple[Area, Level, int]]:
-        """Returns all of the locations the entity can spawn at."""
+        """Returns all the locations the entity can spawn at."""
         return [
             (Area.WILDERNESS, Level.ONE, 1),
             (Area.HYTHLOTH, Level.ONE, 5),
