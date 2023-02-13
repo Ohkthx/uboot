@@ -9,8 +9,9 @@ import sys
 from enum import Enum, auto
 from typing import Optional, Type
 
-from .locations import Area, Level, Manager as LocationManager
-from .loot_tables import LootTable, Item, Rarity
+from .items import Item, Rarity
+from .locations import Area, Floor, Level, Manager as LocationManager
+from .loot_tables import LootTable
 
 creature_actions = ["was ambushed by", "was attacked by", "was approached by",
                     "is being stalked by"]
@@ -154,7 +155,7 @@ def _resolve_name(name: str) -> str:
 class Manager:
     """Manages the spawning of entities."""
     # Area => Weight, Entity
-    _areas: dict[str, list[tuple[int, Type[Entity]]]] = {}
+    _areas: dict[str, list[tuple[int, Type[Entity], str]]] = {}
     _entities: dict[str, Type[Entity]] = {}
     _loaded: dict = {}
 
@@ -223,7 +224,7 @@ class Manager:
                 continue
 
             # Add the entity to the area and sort it on the weight.
-            area_spawns.append((weight, entity))
+            area_spawns.append((weight, entity, name.lower()))
             area_spawns.sort(key=lambda a: a[0])
 
     @staticmethod
@@ -233,6 +234,30 @@ class Manager:
             if entity_name == name.lower():
                 return entity
         return None
+
+    @staticmethod
+    def floor_spawns(dungeon_floor: Floor) -> list[str]:
+        """Gets all of the expected spawns for the specified floor."""
+        spawns = Manager._areas.get(dungeon_floor.key, [])
+
+        names: list[str] = []
+        for spawn in spawns:
+            names.append(spawn[2])
+        return names
+
+    @staticmethod
+    def entity_locations(name: str) -> list[Floor]:
+        """Gets all of the floors that an entity exists on."""
+        entity = Manager._entities.get(name, None)
+        if not entity:
+            return []
+
+        locations: list[Floor] = []
+        for location in entity.locations():
+            loc = LocationManager.get(location[0], location[1])
+            if loc:
+                locations.append(loc)
+        return locations
 
     @staticmethod
     def spawn(area: Area, level: Level, difficulty: float) -> Optional[Entity]:

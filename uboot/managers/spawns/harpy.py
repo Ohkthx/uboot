@@ -2,8 +2,9 @@
 aspects for various creatures.
 """
 from managers import entities
+from managers.items import Rarity
 from managers.locations import Area, Level
-from managers.loot_tables import LootTable, Rarity
+from managers.loot_tables import LootTable
 
 
 class Harpy(entities.Entity):

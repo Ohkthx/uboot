@@ -12,8 +12,8 @@ from dclient.destructible import Destructible, DestructibleManager
 from dclient.helper import get_user, check_minigame
 from dclient.views.user import (InventoryView, LocationView, UserStatsView)
 from managers import users, entities
+from managers.items import Item, Items, Material, Reagent
 from managers.logs import Log
-from managers.loot_tables import Item, Items, Material, Reagent
 
 
 async def update_footer(message: discord.Message, updates: str) -> None:
@@ -60,8 +60,9 @@ async def extract_users(client: discord.Client,
 
 class ManageOptions(Enum):
     STATS = "view STATS"
-    BANK = "check BANK"
+    BACKPACK = "check BACKPACK"
     RESOURCES = "check RESOURCES"
+    BANK = "check BANK"
     RECALL = "perform RECALL"
 
 
@@ -110,18 +111,23 @@ class ManagementDropdown(ui.Select):
         stats = extract_ints(message)
 
         # Get the proper view for the sub menu.
-        if option == ManageOptions.BANK:
+        if option == ManageOptions.BACKPACK:
             stats[1] += 1
             view = InventoryView(interaction.client)
-            view.set_user(user, user_l.bank)
-            embed = InventoryView.get_panel(user, user_l.bank)
+            view.set_user(user, user_l.backpack)
+            embed = InventoryView.get_panel(user, user_l.backpack)
         elif option == ManageOptions.RESOURCES:
             stats[2] += 1
             view = InventoryView(interaction.client)
-            view.set_user(user, user_l.bank.resources)
-            embed = InventoryView.get_panel(user, user_l.bank.resources)
-        elif option == ManageOptions.RECALL:
+            view.set_user(user, user_l.backpack.resources)
+            embed = InventoryView.get_panel(user, user_l.backpack.resources)
+        elif option == ManageOptions.BANK:
             stats[3] += 1
+            view = InventoryView(interaction.client)
+            view.set_user(user, user_l.bank)
+            embed = InventoryView.get_panel(user, user_l.bank)
+        elif option == ManageOptions.RECALL:
+            stats[4] += 1
             view = LocationView(interaction.client)
             view.set_user(user)
             embed = LocationView.get_panel(user)
@@ -151,13 +157,14 @@ class UserManagementView(ui.View):
         """Creates the panels embed for the basic action view."""
         embed = discord.Embed()
         embed.colour = discord.Colour.from_str("#00ff08")
-        embed.description = "Manage your user account below.\n\n"\
-            f"__**Options**__:\n"\
-            f"> ├ **STATS**, check your player status.\n"\
-            f"> ├ **BANK**, manage your bank and sell items.\n"\
-            f"> ├ **RESOURCES**, manage your resources.\n"\
-            f"> └ **RECALL**, travel to a new location.\n"
-        embed.set_footer(text="0:0:0:0")
+        embed.description = "Manage your user account below.\n\n" \
+                            f"__**Options**__:\n" \
+                            f"> ├ **STATS**, check your player status.\n" \
+                            f"> ├ **BACKPACK**, manage your backpack.\n" \
+                            f"> ├ **RESOURCES**, manage your resources.\n" \
+                            f"> ├ **BANK**, manage your bank.\n" \
+                            f"> └ **RECALL**, travel to a new location.\n"
+        embed.set_footer(text="0:0:0:0:0")
 
         return embed
 
@@ -174,13 +181,13 @@ class ResourceView(ui.View):
         """Creates the panels embed for the resource view."""
         embed = discord.Embed(title="Fill your bank with loot or resources!")
         embed.colour = discord.Colour.from_str("#00ff08")
-        embed.description = "Interested in adventure?\nAre you brave?\n"\
-            f"Trying to farm for new weapons, armor, or materials?\n\n"\
-            f"__**Options**__:\n"\
-            f"> ├ **TAUNT**, attempt to attract nearby enemies.\n"\
-            f"> ├ **FORAGE**, try to find new reagents.\n"\
-            f"> └ **MINE**, swing your pickaxe to strike riches.\n\n"\
-            "**Note**: These actions can place you into combat."
+        embed.description = "Interested in adventure?\nAre you brave?\n" \
+                            f"Trying to farm for new weapons, armor, or materials?\n\n" \
+                            f"__**Options**__:\n" \
+                            f"> ├ **TAUNT**, attempt to attract nearby enemies.\n" \
+                            f"> ├ **FORAGE**, try to find new reagents.\n" \
+                            f"> └ **MINE**, swing your pickaxe to strike riches.\n\n" \
+                            "**Note**: These actions can place you into combat."
         embed.set_footer(text="0:0:0:0:0:0:0:0:0")
 
         return embed
@@ -259,7 +266,7 @@ class ResourceView(ui.View):
         stats_changes = ':'.join([str(i) for i in stats])
         await update_footer(message, stats_changes)
         message = await thread.send(content="Your taunt attracted "
-                                    f"**{entity.name}**!",
+                                            f"**{entity.name}**!",
                                     delete_after=30)
 
         if not message:
@@ -333,8 +340,8 @@ class ResourceView(ui.View):
                     uses=count,
                     uses_max=6)
 
-        user_l.bank.add_item(item)
-        user_l.bank.save()
+        user_l.backpack.resources.add_item(item)
+        user_l.backpack.resources.save()
 
         try:
             return await res.send_message(f"You found **{count} "
@@ -409,8 +416,8 @@ class ResourceView(ui.View):
                     uses=count,
                     uses_max=6)
 
-        user_l.bank.add_item(item)
-        user_l.bank.save()
+        user_l.backpack.resources.add_item(item)
+        user_l.backpack.resources.save()
 
         try:
             return await res.send_message(f"You struck a **{vein_name} vein** "

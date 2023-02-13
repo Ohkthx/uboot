@@ -1,7 +1,7 @@
 """The core of the Discord Bot and Client."""
 import logging
-import time
 import random
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -9,19 +9,19 @@ import aiohttp
 import discord
 from discord import RawReactionActionEvent
 from discord.ext import commands, tasks
-from dclient.views.dm import DMDeleteView
 
 from config import DiscordConfig
+from dclient.views.dm import DMDeleteView
 from managers import (settings, users, react_roles, tickets, subguilds,
-                      entities, aliases, images, banks, locations)
+                      entities, aliases, images, locations, inventories,
+                      items)
 from managers.logs import Log
-from .views.generic_panels import SuggestionView, BasicThreadView
-from .views.entity import EntityView, HelpMeView
 from .ccserver import CCServer
 from .destructible import DestructibleManager, Destructible
 from .helper import (get_member, get_user, thread_close, react_processor,
                      get_channel, find_tag, get_role)
-
+from .views.entity import EntityView, HelpMeView
+from .views.generic_panels import SuggestionView, BasicThreadView
 
 intents = discord.Intents.default()
 intents.message_content = True  # pylint: disable=assigning-non-slot
@@ -78,8 +78,9 @@ class Powerhour:
     async def send_end(self, bot: 'DiscordBot') -> None:
         """Notifies the channel that the powerhour has ended."""
         embed = discord.Embed()
-        embed.description = "__**Message POWERHOUR ended!**__\n"\
-            "> └ Gold generation per message returned to normal."
+        embed.description = "__**Message POWERHOUR ended!**__\n" \
+                            "> └ Gold generation per message returned "\
+                            "to normal."
         embed.colour = discord.Colour.from_str("#ff0f08")
 
         channel = await get_channel(bot, self.channel_id)
@@ -131,10 +132,11 @@ class DiscordBot(commands.Bot):
 
         # World building
         locations.Manager.init()
+        items.Manager.init("uboot.sqlite3")
+        inventories.Manager.init("uboot.sqlite3")
 
         # Initialize all the managers and their databases.
         tickets.Manager.init("uboot.sqlite3")
-        banks.Manager.init("uboot.sqlite3")
         users.Manager.init("uboot.sqlite3")
         react_roles.Manager.init("uboot.sqlite3")
         subguilds.Manager.init("uboot.sqlite3")

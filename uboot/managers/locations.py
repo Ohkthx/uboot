@@ -91,9 +91,30 @@ class Locations:
         if location == Area.BRITAIN_SEWERS:
             return [Area.WILDERNESS]
         if location == Area.WILDERNESS:
-            return [Area.BRITAIN_SEWERS, Area.GRAVEYARD, Area.DESPISE]
+            return [
+                Area.BRITAIN_SEWERS,
+                Area.GRAVEYARD,
+                Area.DESPISE,
+                Area.ICE,
+                Area.DESTARD,
+                Area.COVETOUS,
+                Area.DECEIT,
+                Area.WRONG,
+                Area.SHAME,
+                Area.ORC_DUNGEON,
+            ]
         if location == Area.GRAVEYARD:
-            return [Area.WILDERNESS, Area.DESPISE]
+            return [
+                Area.WILDERNESS,
+                Area.DESPISE,
+                Area.ICE,
+                Area.DESTARD,
+                Area.COVETOUS,
+                Area.DECEIT,
+                Area.WRONG,
+                Area.SHAME,
+                Area.ORC_DUNGEON,
+            ]
         if location == Area.DESPISE:
             return [Area.WILDERNESS, Area.GRAVEYARD, Area.FIRE]
         if location == Area.FIRE:
@@ -212,3 +233,17 @@ class Manager:
             return None
 
         return dungeon.get_floor(level)
+
+    @staticmethod
+    def starting_area() -> Floor:
+        """Get the starter floor for all players."""
+        starting_area: Area = Area.BRITAIN_SEWERS
+        starting_floor: Level = Level.ONE
+        location = Manager.get(starting_area, starting_floor)
+        if not location:
+            start = Dungeon(starting_area, starting_floor)
+            Manager._locations[starting_area] = start
+            location = start.get_floor(starting_floor)
+            if not location:
+                raise ValueError("Could not get starting area.")
+        return location

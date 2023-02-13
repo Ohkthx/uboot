@@ -1,17 +1,16 @@
 """Representation of a user. Keeps track of several settings and manages the
 connection between database and memory.
 """
-import json
 import math
 import random
-from enum import Enum, auto
 from datetime import datetime, timedelta
+from enum import Enum, auto
 from typing import Optional
 
 from db.users import UserDb, UserRaw
-from .banks import Manager as BankManager
+from .inventories import Manager as BagManager
+from .items import Item, Chest, Items, Material, Manager as ItemManager
 from .locations import Floor, Level, Locations, Area, Manager as LocationsManager
-from .loot_tables import Item, Chest, Items, Material, ItemRaw
 
 
 def make_raw(user_id: int) -> UserRaw:
@@ -53,16 +52,19 @@ class User:
 
         self._deaths = raw[11]
 
+        weapon_id: str = raw[12].replace("'", "")
         self.weapon: Optional[Item] = None
-        if raw[12].replace("'", '') != "":
-            weapon_raw: ItemRaw = json.loads(raw[12].replace("'", ''))
-            self.weapon = Item.from_raw(weapon_raw)
+        if weapon_id != "":
+            weapon = ItemManager.get(weapon_id)
+            if weapon and weapon.type == Items.WEAPON:
+                self.weapon = weapon
 
         self.is_bot = False
         self._in_combat = False
 
         self._cooldowns: dict[Cooldown, datetime] = {}
-        self.bank = BankManager.get(self.id)
+        self.backpack = BagManager.get_backpack(self.id)
+        self.bank = BagManager.get_bank(self.id)
 
     def __str__(self) -> str:
         """Overrides str to just display some basics."""
@@ -77,7 +79,7 @@ class User:
 
         weapon = "''"
         if self.weapon:
-            weapon = f"'{json.dumps(self.weapon.raw)}'"
+            weapon = f"'{self.weapon.id}'"
         return (self.id, gold, self.msg_count, self.gambles,
                 self.gambles_won, self.button_press,
                 self.monsters, self.kills, self.exp,
@@ -119,6 +121,7 @@ class User:
 
         # Destroy the weapon if the uses are now 0.
         if self.weapon.uses == 0:
+            ItemManager.remove(self.weapon.id)
             self.weapon = None
 
     def set_combat(self, value: bool) -> None:
@@ -213,7 +216,9 @@ class User:
         self.c_floor = level
         return dungeon_floor
 
-    def apply_loot(self, loot: list[Item], allow_area: bool) -> Optional[Area]:
+    def apply_loot(self, loot: list[Item],
+                   allow_area: bool,
+                   gold_only: bool) -> Optional[Area]:
         """Applies various items to the user. If a new area is unlocked, it will
         return the new area.
         """
@@ -226,19 +231,22 @@ class User:
             if item.type == Items.GOLD:
                 self.gold += item.value
             elif item.type == Items.CHEST and isinstance(item, Chest):
-                self.apply_loot(item.items, allow_area)
+                self.apply_loot(item.items, allow_area, gold_only)
+            elif gold_only:
+                continue
             elif item.type == Items.LOCATION and allow_area:
                 # Get all connections, removing the ones already discovered.
                 conn = self.locations.connections(self.c_location)
-                conn = [loc for loc in conn if not self.locations.is_unlocked(loc)]
+                conn = [
+                    loc for loc in conn if not self.locations.is_unlocked(loc)]
                 if len(conn) == 0:
                     continue
 
                 new_area = conn[random.randrange(0, len(conn))]
                 self.locations.unlock(new_area)
             else:
-                self.bank.add_item(item)
-        self.bank.save()
+                self.backpack.add_item(item)
+        self.backpack.save()
         return new_area
 
     @property
@@ -352,4 +360,3 @@ class Manager:
     def get_all() -> list[User]:
         """Gets all the users being managed."""
         return list(Manager._users.values())
- 

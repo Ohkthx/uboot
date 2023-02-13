@@ -1,9 +1,10 @@
 """Handles everything from creating items to generating loot tables."""
 
 import random
+from typing import Optional
 import uuid
-from enum import IntEnum, auto
-from typing import Optional, Union
+
+from .items import Item, Items, Material, Rarity, Chest
 
 WEAPON_NAMES: list[str] = ["sword", "longsword", "bardiche", "cleaver",
                            "cutlass", "katana", "scimitar", "scythe",
@@ -17,214 +18,15 @@ TRASH_NAMES: list[str] = ["vase", "trinket", "necklace", "ring", "earrings",
                           "statue", "dye tub", "shield", "buckler",
                           "heater shield", "ringmail tunic",
                           "ringmail leggings"]
+BAG_NAMES: list[str] = ["pouch", "bag", "wooden box", "basket",
+                        "small crate", "medium crate", "large crate",
+                        "decorative box", "picnic basket",
+                        ]
 
 
 def rand_name(names: list[str]) -> str:
     """Gets a random name from a list of names."""
     return names[random.randrange(0, len(names))]
-
-
-class Items(IntEnum):
-    """Represents all the item types that can exist."""
-    NONE = auto()
-    GOLD = auto()
-    POWERHOUR = auto()
-    LOCATION = auto()
-    WEAPON = auto()
-    TRASH = auto()
-    REAGENT = auto()
-    ORE = auto()
-    BAG = auto()
-    CHEST = auto()
-
-
-class Rarity(IntEnum):
-    """Tiers that a lootpacks and items can be."""
-    COMMON = auto()
-    UNCOMMON = auto()
-    RARE = auto()
-    EPIC = auto()
-    LEGENDARY = auto()
-    MYTHICAL = auto()
-
-
-class Potion(IntEnum):
-    """Types of Potions"""
-    POWERHOUR = auto()
-    HEAL = auto()
-    CURE = auto()
-    NIGHTSIGHT = auto()
-    RESURRECTION = auto()
-
-
-class Reagent(IntEnum):
-    """Types of reagents."""
-    NONE = auto()
-    BONE = auto()
-    DAEMON_BONE = auto()
-    BLACK_PEARL = auto()
-    BLOOD_MOSS = auto()
-    GARLIC = auto()
-    GINSENG = auto()
-    MANDRAKE_ROOT = auto()
-    NIGHTSHADE = auto()
-    SPIDERS_SILK = auto()
-    SULFUROUS_ASH = auto()
-
-
-class Material(IntEnum):
-    """Material for items."""
-    NONE = auto()
-    WOOD = auto()
-    IRON = auto()
-    DULL_COPPER = auto()
-    SHADOW_IRON = auto()
-    COPPER = auto()
-    BRONZE = auto()
-    GOLD = auto()
-    AGAPITE = auto()
-    VERITE = auto()
-    VALORITE = auto()
-
-
-ItemRaw = tuple[str, int, str, int, int, int, int, int]
-
-
-class Item:
-    """Represents a unique item."""
-
-    def __init__(self,
-                 item_id: str,
-                 item_type: Items,
-                 name: Optional[str] = None,
-                 rarity: Rarity = Rarity.COMMON,
-                 material: Union[Material, Reagent] = Material.NONE,
-                 value: int = 1,
-                 uses: int = 1,
-                 uses_max: int = 1):
-        self.id = item_id
-        self.type = item_type
-        self._name = name if name else item_type.name.title()
-        self.rarity = rarity
-        self.material = material
-        self._value = value
-        self.uses = uses
-        self.uses_max = uses_max
-
-    @property
-    def name(self) -> str:
-        """Gets the name of the item based on its type."""
-        if self.type == Items.REAGENT:
-            return Reagent(self.material.value).name.replace("_", ' ')
-        elif self.type == Items.BAG:
-            return self._name
-
-        rarity: str = ""
-        if self.material != Material.NONE:
-            rarity = f"{self.material.name.title().replace('_', ' ')} "
-
-        if not self.type.name and not self._name:
-            return f'{rarity}Unknown'
-        return f'{rarity}{self._name}'
-
-    @property
-    def base_value(self) -> int:
-        """Base unmodified value of the item."""
-        if self.type == Items.POWERHOUR:
-            return 20
-        if self.type == Items.BAG:
-            return 100
-        if self.type == Items.WEAPON:
-            return 150
-        return self._value
-
-    @property
-    def value(self) -> int:
-        """Gets the value of the item based on its type."""
-        base_value = self.base_value
-
-        if self.is_stackable:
-            return base_value * self.uses
-        if self.type not in (Items.WEAPON,):
-            return base_value
-
-        # 0 - 0.5
-        material_mod: float = (max(self.material, Material.NONE) - 1) / 5
-        uses_mod: float = max(self.uses / self.uses_max, 0)
-
-        return int(base_value * (1 + material_mod) * uses_mod)
-
-    @property
-    def raw(self) -> ItemRaw:
-        """Gets the raw value of the item, used for database storage."""
-        return (self.id, int(self.type), self._name, int(self.rarity),
-                int(self.material), self._value, self.uses, self.uses_max)
-
-    @property
-    def is_stackable(self) -> bool:
-        """Checks if an item can be stacked."""
-        return self.type in (Items.POWERHOUR, Items.REAGENT, Items.ORE,
-                             Items.BAG)
-
-    @property
-    def is_resource(self) -> bool:
-        """Checks if an item can be stacked."""
-        return self.type in (Items.REAGENT, Items.ORE)
-
-    @property
-    def is_usable(self) -> bool:
-        """Checks if the item can be used."""
-        return self.type in (Items.POWERHOUR, Items.WEAPON)
-
-    @property
-    def is_consumable(self) -> bool:
-        """Checks if the item can be consumed."""
-        return self.type in (Items.POWERHOUR,)
-
-    @property
-    def is_real(self) -> bool:
-        """Checks if the item is real or just imaginary item."""
-        return self.type not in (Items.NONE, Items.GOLD, Items.LOCATION,
-                                 Items.CHEST)
-
-    @staticmethod
-    def from_raw(raw: ItemRaw) -> 'Item':
-        """Creates an item from a raw value."""
-        return Item(
-                    item_id=str(raw[0]),
-                    item_type=Items(raw[1]),
-                    name=raw[2],
-                    rarity=Rarity(raw[3]),
-                    material=Material(raw[4]),
-                    value=raw[5],
-                    uses=raw[6],
-                    uses_max=raw[7])
-
-    def add_use(self, value: int) -> None:
-        """Adds a use to an object."""
-        if value <= 0:
-            return
-        self.uses = min(self.uses + value, self.uses_max)
-
-    def remove_use(self, value: int) -> None:
-        """Removes uses from an object."""
-        if value <= 0:
-            return
-        self.uses = max(self.uses - value, 0)
-
-
-class Chest(Item):
-    """Represents a chest with multiple items."""
-
-    def __init__(self, rarity: Rarity, items: list[Item]) -> None:
-        super().__init__(str(uuid.uuid4()), Items.CHEST)
-        self.rarity = rarity
-        self.items = items
-
-    @property
-    def name(self) -> str:
-        """Gets the name of the item based on its type."""
-        return f"A Treasure Chest [{self.rarity.name.capitalize()}]"
 
 
 class ItemCreator:
@@ -270,10 +72,10 @@ class ItemCreator:
             return Item(item_id, self.type, name=name, material=material,
                         uses=uses, uses_max=uses)
         if self.type == Items.BAG:
-            name = "bag"
+            name = rand_name(BAG_NAMES)
             return Item(item_id, self.type, name=name,
-                        uses=min(value, 8),
-                        uses_max=8)
+                        uses=self.max,
+                        uses_max=self.max)
 
         if self.type == Items.TRASH:
             name = rand_name(TRASH_NAMES)
@@ -399,7 +201,7 @@ class CommonChest(ChestCreator):
 
         worst, best = Material.WOOD, Material.DULL_COPPER
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 4)
-        self.add_item(ItemCreator(Items.BAG, 1, 1, 1), 1)
+        self.add_item(ItemCreator(Items.BAG, 1, 4, 4), 1)
 
 
 class UncommonChest(ChestCreator):
@@ -414,7 +216,7 @@ class UncommonChest(ChestCreator):
 
         worst, best = Material.IRON, Material.SHADOW_IRON
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 4)
-        self.add_item(ItemCreator(Items.BAG, 1, 1, 1), 1)
+        self.add_item(ItemCreator(Items.BAG, 1, 4, 4), 1)
 
 
 class RareChest(ChestCreator):
@@ -429,7 +231,7 @@ class RareChest(ChestCreator):
 
         worst, best = Material.DULL_COPPER, Material.BRONZE
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 4)
-        self.add_item(ItemCreator(Items.BAG, 1, 1, 2), 1)
+        self.add_item(ItemCreator(Items.BAG, 1, 8, 8), 1)
 
 
 class EpicChest(ChestCreator):
@@ -444,7 +246,7 @@ class EpicChest(ChestCreator):
 
         worst, best = Material.COPPER, Material.AGAPITE
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 9)
-        self.add_item(ItemCreator(Items.BAG, 1, 2, 3), 6)
+        self.add_item(ItemCreator(Items.BAG, 1, 12, 12), 6)
 
 
 class LegendaryChest(ChestCreator):
@@ -459,7 +261,7 @@ class LegendaryChest(ChestCreator):
 
         worst, best = Material.GOLD, Material.VERITE
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 9)
-        self.add_item(ItemCreator(Items.BAG, 1, 2, 4), 6)
+        self.add_item(ItemCreator(Items.BAG, 1, 16, 16), 6)
 
 
 class MythicalChest(ChestCreator):
@@ -474,7 +276,7 @@ class MythicalChest(ChestCreator):
 
         worst, best = Material.VERITE, Material.VALORITE
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 9)
-        self.add_item(ItemCreator(Items.BAG, 1, 3, 5), 6)
+        self.add_item(ItemCreator(Items.BAG, 1, 16, 16), 6)
 
 
 class CommonLoot(LootTable):
@@ -496,7 +298,7 @@ class CommonLoot(LootTable):
 
         worst, best = Material.WOOD, Material.DULL_COPPER
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 2)
-        self.add_item(ItemCreator(Items.BAG, 1, 1, 1), 1)
+        self.add_item(ItemCreator(Items.BAG, 1, 4, 4), 1)
 
 
 class UncommonLoot(LootTable):
@@ -518,7 +320,7 @@ class UncommonLoot(LootTable):
 
         worst, best = Material.IRON, Material.SHADOW_IRON
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 2)
-        self.add_item(ItemCreator(Items.BAG, 1, 1, 1), 1)
+        self.add_item(ItemCreator(Items.BAG, 1, 4, 4), 1)
 
 
 class RareLoot(LootTable):
@@ -540,7 +342,7 @@ class RareLoot(LootTable):
 
         worst, best = Material.DULL_COPPER, Material.BRONZE
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 2)
-        self.add_item(ItemCreator(Items.BAG, 1, 1, 2), 1)
+        self.add_item(ItemCreator(Items.BAG, 1, 8, 8), 1)
 
 
 class EpicLoot(LootTable):
@@ -562,7 +364,7 @@ class EpicLoot(LootTable):
 
         worst, best = Material.COPPER, Material.AGAPITE
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 3)
-        self.add_item(ItemCreator(Items.BAG, 1, 2, 3), 2)
+        self.add_item(ItemCreator(Items.BAG, 1, 12, 12), 2)
 
 
 class LegendaryLoot(LootTable):
@@ -584,7 +386,7 @@ class LegendaryLoot(LootTable):
 
         worst, best = Material.GOLD, Material.VERITE
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 5)
-        self.add_item(ItemCreator(Items.BAG, 1, 2, 4), 3)
+        self.add_item(ItemCreator(Items.BAG, 1, 16, 16), 3)
 
 
 class MythicalLoot(LootTable):
@@ -606,4 +408,4 @@ class MythicalLoot(LootTable):
 
         worst, best = Material.VERITE, Material.VALORITE
         self.add_item(ItemCreator(Items.WEAPON, 1, worst, best), 5)
-        self.add_item(ItemCreator(Items.BAG, 1, 3, 5), 3)
+        self.add_item(ItemCreator(Items.BAG, 1, 16, 16), 3)

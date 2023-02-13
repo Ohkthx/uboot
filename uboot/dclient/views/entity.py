@@ -5,10 +5,10 @@ from typing import Optional
 import discord
 from discord import ui
 
-from dclient.helper import get_role
 from dclient.destructible import DestructibleManager
+from dclient.helper import get_role
 from managers import users, entities, settings, images
-from managers.loot_tables import Chest, Items, Item
+from managers.items import Chest, Items, Item
 from managers.locations import Area
 from managers.logs import Log
 
@@ -104,12 +104,10 @@ def loot_text(user: discord.Member, all_loot: list[Item], indent: int,
     for n, item in enumerate(all_loot):
         line_feed = '└' if n + 1 == len(all_loot) else '├'
         amt_text: str = ''
-        if item.value > 1 and item.type == Items.BAG:
-            amt_text = f" [slots: {item.uses} / {item.uses_max}]"
-        elif item.value > 1 and item.type not in (Items.WEAPON, Items.TRASH):
-            amt_text = f" [{item.value}]"
-        elif item.type == Items.TRASH or item.is_usable:
+        if item.type == Items.TRASH or item.is_usable:
             amt_text = f" [value: {item.value} gp]"
+        elif item.value > 1:
+            amt_text = f" [{item.value}]"
 
         name = item.name.title()
         if new_area and item.type == Items.LOCATION:
@@ -164,11 +162,14 @@ def party_loot(party: Party) -> str:
         exp = helper.total_damage() / entity.max_health * total_exp
         user.exp += exp
         user.kills += 1
-        new_area = user.apply_loot(all_loot, party.count == 1)
+        new_area = user.apply_loot(all_loot,
+                                   party.count == 1,
+                                   helper.user.id != leader_user.id)
         if helper.deaths > 0:
             user.deaths -= helper.deaths
         user.save()
-        helpers_exp.append(f"> {line_feed} {helper.user} gained {exp:0.2f} exp.")
+        helpers_exp.append(f"> {line_feed} {helper.user} "
+                           f"gained {exp:0.2f} exp.")
     full_help = '\n'.join(helpers_exp)
 
     if not new_area:
@@ -188,10 +189,10 @@ def party_loot(party: Party) -> str:
     discarded_items: int = 0
     for helper in party.get_all():
         user = helper.user
-        bank = helper.user_l.bank
-        if len(bank.items) >= bank.max_capacity:
+        backpack = helper.user_l.backpack
+        if len(backpack.items) >= backpack.max_capacity:
             discarded_items += 1
-            notes_list.append(f"{user} has a __**full bank**__.")
+            notes_list.append(f"{user} has a __**full backpack**__.")
 
     notes_full = ""
     if len(notes_list) > 0:
@@ -201,27 +202,25 @@ def party_loot(party: Party) -> str:
     prefix = settings.Manager.prefix
     change_loc = ""
     if new_area:
-        area_name = "unknown"
-        if new_area.name:
-            area_name = new_area.name.lower()
         # Notify the user of how to change locations.
-        change_loc = "\nTo recall to a new area, use the "\
-            f"`{prefix}recall {area_name}` command"
+        change_loc = "\nTo recall to a new area, use the " \
+                     f"`{prefix}recall` command"
 
-    check_bank = ""
+    check_backpack = ""
     if discarded_items > 0:
-        check_bank = f"\n**Full bank detected**!\nBe sure to type `{prefix}bank` "\
-            f"to check out and sell your items."
+        check_backpack = f"\n**Full backpack detected**!\n" \
+                         f"Be sure to type `{prefix}backpack` " \
+                         f"to check out and sell your items."
 
     win = win_text[random.randrange(0, len(win_text))]
     if entity.is_chest:
         win = "heroically opens"
-    return f"**{leader_user}** {win} **{entity.name}**!\n\n"\
-        f"**Total Reward**: {total_exp:0.2f} exp\n"\
-        f"__**Participant Exp**__:\n{full_help}\n\n"\
-        f"{notes_full}"\
-        f"> __**Loot**__:\n  {full_loot}\n"\
-        f"{change_loc}{check_bank}"
+    return f"**{leader_user}** {win} **{entity.name}**!\n\n" \
+           f"**Total Reward**: {total_exp:0.2f} exp\n" \
+           f"__**Participant Exp**__:\n{full_help}\n\n" \
+           f"{notes_full}" \
+           f"> __**Loot**__:\n  {full_loot}\n" \
+           f"{change_loc}{check_backpack}"
 
 
 class Dropdown(ui.Select):
@@ -262,9 +261,9 @@ class Dropdown(ui.Select):
         cached = msg.reference.cached_message
         embed = discord.Embed()
         embed.colour = discord.Colour.from_str("#ff0f08")
-        embed.description = f"**{self.user}** flees like a coward.\n"\
-            f"Leaving {self.entity.get_exp(self.user_l.level):0.2f} exp.\n\n"\
-            f"**{self.entity.name.title()}** begins to hunt again."
+        embed.description = f"**{self.user}** flees like a coward.\n" \
+                            f"Leaving {self.entity.get_exp(self.user_l.level):0.2f} exp.\n\n" \
+                            f"**{self.entity.name.title()}** begins to hunt again."
         file: Optional[discord.File] = None
         if self.entity.image:
             file = images.Manager.get(self.entity.image)
@@ -367,13 +366,13 @@ class HelpMeView(ui.View):
             loc_name = self.entity.location.name.title()
 
         embed.colour = discord.Colour.from_str("#F1C800")
-        embed.description = f"**{self.user}** {action} by **{self.entity.name}**!\n"\
-            f"**Location**: {loc_name}\n"\
-            f"**Health Remaining**: {cost}\n\n"\
-            f"{participants_full}"\
-            "> __**Options**:__\n"\
-            f"> ├ **Help**: Costing {cost} gp, gaining {self.exp_gain:0.2f} exp.\n"\
-            "> └ **Do Nothing**: Watch them die.\n\n"
+        embed.description = f"**{self.user}** {action} by **{self.entity.name}**!\n" \
+                            f"**Location**: {loc_name}\n" \
+                            f"**Health Remaining**: {cost}\n\n" \
+                            f"{participants_full}" \
+                            "> __**Options**:__\n" \
+                            f"> ├ **Help**: Costing {cost} gp, gaining {self.exp_gain:0.2f} exp.\n" \
+                            "> └ **Do Nothing**: Watch them die.\n\n"
         other_than = f"other than {self.user}"
         embed.set_footer(text=f"Note: Only other users {other_than} can help.")
         return embed
@@ -422,9 +421,9 @@ class HelpMeView(ui.View):
 
         leader = party.leader
         party_text = "The **party**" if party.count > 1 else f"**{leader.user}**"
-        description = f"{party_text} has failed to kill **{self.entity.name}**.\n\n"\
-            f"{notes_full}"\
-            f"__**Losses**__:\n{dead_full}"
+        description = f"{party_text} has failed to kill **{self.entity.name}**.\n\n" \
+                      f"{notes_full}" \
+                      f"__**Losses**__:\n{dead_full}"
 
         embed = discord.Embed(description=description)
         embed.colour = discord.Colour.from_str("#ff0f08")
@@ -489,8 +488,8 @@ class HelpMeView(ui.View):
             # Shows and optional text for easy role access.
             in_channel: str = ""
             if setting.reactrole.channel_id > 0:
-                in_channel = f"\nGo to <#{setting.reactrole.channel_id}> to get the"\
-                    " required role."
+                in_channel = f"\nGo to <#{setting.reactrole.channel_id}> to get the" \
+                             " required role."
             await res.send_message(f"You need to select the "
                                    f"**{minigame_role}** role to do that. "
                                    f"{in_channel}",
@@ -581,8 +580,8 @@ class EntityView(ui.View):
 
         gold_warning: str = ""
         if user_l.gold < cost:
-            gold_warning = "__WARNING__: You do not have enough gold.\n"\
-                "By attacking, you risk losing all of it unless someone helps."
+            gold_warning = "__WARNING__: You do not have enough gold.\n" \
+                           "By attacking, you risk losing all of it unless someone helps."
 
         loc_name = 'Unknown'
         atk: str = "Attack"
@@ -591,16 +590,16 @@ class EntityView(ui.View):
         if self.entity.location.name:
             loc_name = self.entity.location.name.title()
         embed.colour = discord.Colour.from_str("#F1C800")
-        embed.description = f"**{self.user}** {action} **{self.entity.name}**!\n"\
-            f"**Location**: {loc_name}\n"\
-            f"**Health**: {cost}\n\n"\
-            "> __**Options**:__\n"\
-            f"> ├ **{atk}**: Costing {cost} gp, gaining {gained_exp:0.2f} exp.\n"\
-            "> └ **Flee**: Flee, keeping your gold.\n\n"\
-            f"{gold_warning}"
+        embed.description = f"**{self.user}** {action} **{self.entity.name}**!\n" \
+                            f"**Location**: {loc_name}\n" \
+                            f"**Health**: {cost}\n\n" \
+                            "> __**Options**:__\n" \
+                            f"> ├ **{atk}**: Costing {cost} gp, gaining {gained_exp:0.2f} exp.\n" \
+                            "> └ **Flee**: Flee, keeping your gold.\n\n" \
+                            f"{gold_warning}"
         embed.set_footer(text=f"Current gold: {user_l.gold} gp")
         return embed
 
-    async def loss_callback(self, msg: Optional[discord.Message]):
+    async def loss_callback(self, _: Optional[discord.Message]):
         """Cleans up after a loss."""
         self.user_l.set_combat(False)

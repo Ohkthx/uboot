@@ -7,17 +7,18 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import param
 
+from dclient.bot import DiscordBot
+from dclient.destructible import DestructibleManager, Destructible
+from dclient.helper import (get_member, get_message,
+                            get_role, get_user, check_minigame)
+from dclient.views.dm import DMDeleteView
+from dclient.views.gamble import GambleView, gamble, ExtractedBet
+from dclient.views.user import (TradeView, UserStatsView, InventoryView,
+                                LocationView, InventoryMoveView,
+                                InspectView)
 from managers import users, settings, react_roles, entities
 from managers.locations import Locations, Area, Floor, Level
 from managers.logs import Log
-from dclient.bot import DiscordBot
-from dclient.destructible import DestructibleManager, Destructible
-from dclient.views.gamble import GambleView, gamble, ExtractedBet
-from dclient.views.dm import DMDeleteView
-from dclient.views.user import (TradeView, UserStatsView, InventoryView,
-                                LocationView)
-from dclient.helper import (get_member, get_message,
-                            get_role, get_user, check_minigame)
 
 
 def parse_amount(amount: str) -> int:
@@ -144,8 +145,8 @@ class User(commands.Cog):
             elif category == 'exp':
                 suffix = f"[ lvl {user_l.level}, kills: {user_l.kills} ]"
             elif category == 'difficulty':
-                suffix = f"[ lvl {user_l.level}, exp: {user_l.exp}, "\
-                    f"kills: {user_l.kills} ]"
+                suffix = f"[ lvl {user_l.level}, exp: {user_l.exp}, " \
+                         f"kills: {user_l.kills} ]"
             elif category == 'level':
                 suffix = f"[ exp: {user_l.exp} ]"
             elif category == 'gold_multiplier':
@@ -171,12 +172,34 @@ class User(commands.Cog):
         embed.set_footer(text=f"Total kills: {kills}")
         await ctx.send(embed=embed)
 
+    @commands.command(name="inspect", aliases=("info",))
+    async def inspect(self, ctx: commands.Context) -> None:
+        """Inspect the current area for dungeon information and
+        current entities.
+
+        example:
+            (prefix)inspect
+        """
+        if not ctx.guild or not isinstance(ctx.author, discord.Member):
+            return
+
+        # Check that the user has the minigame role.
+        passed, msg = await check_minigame(self.bot, ctx.author, ctx.guild.id)
+        if not passed:
+            await ctx.reply(msg, delete_after=30)
+            return
+
+        view = InspectView(self.bot)
+        view.set_user(ctx.author)
+        embed = InspectView.get_panel(ctx.author)
+        await ctx.reply(embed=embed, view=view, delete_after=300)
+
     @commands.command(name="taunt")
     async def taunt(self, ctx: commands.Context) -> None:
         """Attempt to taunt a nearby creature to attack you.
 
         example:
-            (prefix}taunt
+            (prefix)taunt
         """
         if not ctx.guild or not isinstance(ctx.author, discord.Member):
             return
@@ -249,7 +272,6 @@ class User(commands.Cog):
         c_location: str = 'Unknown'
         if user_l.c_location.name:
             c_location = user_l.c_location.name.title()
-        new_loc_text: str = ""
 
         area: Optional[Area] = Locations.parse_area(location)
         if location != 'none' and area:
@@ -258,8 +280,8 @@ class User(commands.Cog):
             if not new_loc:
                 embed = discord.Embed()
                 embed.colour = discord.Colour.from_str("#ff0f08")
-                embed.description = "Sorry, you have not discovered that "\
-                    "location yet."
+                embed.description = "Sorry, you have not discovered that " \
+                                    "location yet."
                 embed.set_footer(text=f"Current Location: {c_location}")
                 return await ctx.send(embed=embed)
             new_loc_text = "`Location updated!`\n\n"
@@ -272,7 +294,75 @@ class User(commands.Cog):
         embed = LocationView.get_panel(user)
         await ctx.send(embed=embed, view=view)
 
-    @commands.command(name="bank", aliases=("items", "balance", "withdraw"))
+    @commands.command(name="move")
+    async def move(self, ctx: commands.Context) -> None:
+        """Moves an item from one bag to another bag.
+
+        example:
+            (prefix)move
+        """
+        if not ctx.guild or not isinstance(ctx.author, discord.Member):
+            return
+
+        # Check that the user has the minigame role.
+        passed, msg = await check_minigame(self.bot, ctx.author, ctx.guild.id)
+        if not passed:
+            await ctx.reply(msg, delete_after=30)
+            return
+
+        category = Destructible.Category.OTHER
+        await DestructibleManager.remove_many(ctx.author.id, True, category)
+
+        user_l = users.Manager.get(ctx.author.id)
+        view = InventoryMoveView(self.bot)
+        view.set_user(ctx.author, user_l.backpack)
+
+        embed = InventoryMoveView.get_panel(ctx.author)
+        message = await ctx.send(embed=embed, view=view)
+
+        # Create the destructible.
+        destruct = Destructible(category, ctx.author.id, 60, True)
+        destruct.set_message(message)
+
+    @commands.command(name="backpack", aliases=("items",))
+    async def backpack(self, ctx: commands.Context,
+                       user: discord.User = param(
+                           description="Optional Id of the user to lookup.",
+                           default=lambda ctx: ctx.author,
+                           displayed_default="self")):
+        """Shows the users backpack and stored items with an option to sell.
+        Defaults to the user who performed the command.
+
+        examples:
+            (prefix)backpack
+            (prefix)backpack @Gatekeeper
+            (prefix)backpack 1044706648964472902
+        """
+        if not ctx.guild or not isinstance(ctx.author, discord.Member):
+            return
+
+        # Check that the user has the minigame role.
+        passed, msg = await check_minigame(self.bot, ctx.author, ctx.guild.id)
+        if not passed:
+            await ctx.reply(msg, delete_after=30)
+            return
+
+        category = Destructible.Category.OTHER
+        await DestructibleManager.remove_many(ctx.author.id, True, category)
+
+        user_l = users.Manager.get(user.id)
+
+        view = InventoryView(self.bot)
+        view.set_user(user, user_l.backpack)
+
+        embed = InventoryView.get_panel(user, user_l.backpack)
+        message = await ctx.send(embed=embed, view=view)
+
+        # Create the destructible.
+        destruct = Destructible(category, ctx.author.id, 60, True)
+        destruct.set_message(message)
+
+    @commands.command(name="bank", aliases=("balance", "withdraw"))
     async def bank(self, ctx: commands.Context,
                    user: discord.User = param(
                        description="Optional Id of the user to lookup.",
@@ -379,10 +469,10 @@ class User(commands.Cog):
         color = discord.Color.from_str("#F1C800")
         title = "Transaction Receipt"
         status = "Increased by" if amount >= 0 else "Reduced by"
-        desc = f"**To**: {to}\n"\
-            f"**From**: {ctx.author}\n"\
-            f"**Amount**: {amount} gp\n\n"\
-            f"{status} {abs(amount)} gp from {ctx.author}."
+        desc = f"**To**: {to}\n" \
+               f"**From**: {ctx.author}\n" \
+               f"**Amount**: {amount} gp\n\n" \
+               f"{status} {abs(amount)} gp from {ctx.author}."
         embed = discord.Embed(title=title, description=desc, color=color)
         embed.set_footer(text="transaction type: spawn")
 
@@ -449,10 +539,10 @@ class User(commands.Cog):
         color = discord.Color.from_str("#F1C800")
         title = "Transaction Receipt"
         status = "Increased by" if amount >= 0 else "Reduced by"
-        desc = f"**To**: {to}\n"\
-            f"**From**: {ctx.author}\n"\
-            f"**Amount**: {amount} gp\n\n"\
-            f"{status} {abs(amount)} gp from {ctx.author}."
+        desc = f"**To**: {to}\n" \
+               f"**From**: {ctx.author}\n" \
+               f"**Amount**: {amount} gp\n\n" \
+               f"{status} {abs(amount)} gp from {ctx.author}."
         embed = discord.Embed(title=title, description=desc, color=color)
         embed.set_footer(text="transaction type: give")
 
@@ -493,7 +583,7 @@ class User(commands.Cog):
         view.set_user(ctx.author)
 
         # Reuse the bank / item panel, modify the user ids on the bottom.
-        embed = InventoryView.get_panel(ctx.author, from_user.bank)
+        embed = InventoryView.get_panel(ctx.author, from_user.backpack)
         embed.set_footer(text=f"{from_user.id}:{to_user.id}")
         await ctx.send(embed=embed, view=view)
 
@@ -579,8 +669,8 @@ class User(commands.Cog):
             dealer: str = "A voice"
             if self.bot.user:
                 dealer = str(self.bot.user)
-            embed.description = f'**{dealer}** whispers:\n"Down on your luck?'\
-                f' Here is **{gold_dropped}** gp to keep your spirits up."'
+            embed.description = f'**{dealer}** whispers:\n"Down on your luck?' \
+                                f' Here is **{gold_dropped}** gp to keep your spirits up."'
             await ctx.send(embed=embed)
 
     @commands.guild_only()
@@ -664,7 +754,8 @@ class User(commands.Cog):
         winner_text: list[str] = []
         for n, winner in enumerate(winners):
             line_feed = '└' if n + 1 == len(winners) else '├'
-            winner_text.append(f"> {line_feed} {winner.mention} (**{winner}**)")
+            winner_text.append(
+                f"> {line_feed} {winner.mention} (**{winner}**)")
 
             # Remove the lotto role and add winning role.
             roles = [r for r in winner.roles if r != lotto_role]
@@ -685,10 +776,10 @@ class User(commands.Cog):
         # Send an embed to all winners.
         embed = discord.Embed(title="Your ticket won!")
         embed.colour = discord.Colour.from_str("#00ff08")
-        embed.description = "You had a winning lotto/raffle ticket on "\
-            f"**{guild.name}**!\nYour reward is the "\
-            f"**{winner_role}** role.\n\nClick the link to access the "\
-            f"announcement: [**Lotto Results**]({msg.jump_url})"
+        embed.description = "You had a winning lotto/raffle ticket on " \
+                            f"**{guild.name}**!\nYour reward is the " \
+                            f"**{winner_role}** role.\n\nClick the link to access the " \
+                            f"announcement: [**Lotto Results**]({msg.jump_url})"
         if guild.icon:
             embed.set_thumbnail(url=guild.icon.url)
 
@@ -785,10 +876,10 @@ class User(commands.Cog):
         embed = discord.Embed(title="Lotto Verification")
         embed.colour = discord.Colour.blurple()
         embed.set_footer(text="Output above are potential errors.")
-        embed.description = f"**Users who reacted**: {len(all_users)}\n"\
-            f"**Users in lotto**: {len(lotto_role.members)}\n\n"\
-            "__**Has reacted, no roles**__:\n"\
-            f"{total_missing}"
+        embed.description = f"**Users who reacted**: {len(all_users)}\n" \
+                            f"**Users in lotto**: {len(lotto_role.members)}\n\n" \
+                            "__**Has reacted, no roles**__:\n" \
+                            f"{total_missing}"
         await ctx.send(embed=embed)
 
 
