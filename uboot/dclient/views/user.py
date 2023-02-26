@@ -972,6 +972,8 @@ class InspectView(ui.View):
         embed.description = f"**Current Location**: {dungeon_floor.name}\n\n" \
                             f"__**Area Information**__:\n" \
                             f"**Name**: {dungeon.name}\n" \
+                            f"**Difficulty**: {dungeon.difficulty}\n" \
+                            f"**Floor Difficulty**: {dungeon_floor.difficulty}\n" \
                             f"**Total Floors**: {dungeon.levels}\n" \
                             f"**Is Dungeon**: {str(dungeon.is_dungeon).lower()}\n\n" \
                             f"__**Connections:**__\n" \

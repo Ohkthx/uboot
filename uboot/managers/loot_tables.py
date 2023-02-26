@@ -290,10 +290,10 @@ class CommonLoot(LootTable):
         if is_chest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 25)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 35)
         self.add_item(ItemCreator(Items.GOLD, 1, 22, 40), 20)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 15)
-        self.add_item(ItemCreator(Items.LOCATION, 1), 25)
+        self.add_item(ItemCreator(Items.LOCATION, 1), 15)
         self.add_item(ItemCreator(Items.TRASH, 1, 22, 40, 0.75), 7)
 
         worst, best = Material.WOOD, Material.DULL_COPPER
@@ -312,10 +312,10 @@ class UncommonLoot(LootTable):
         if is_chest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 25)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 35)
         self.add_item(ItemCreator(Items.GOLD, 1, 44, 80), 20)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 15)
-        self.add_item(ItemCreator(Items.LOCATION, 1), 25)
+        self.add_item(ItemCreator(Items.LOCATION, 1), 15)
         self.add_item(ItemCreator(Items.TRASH, 1, 44, 80, 0.75), 7)
 
         worst, best = Material.IRON, Material.SHADOW_IRON
@@ -334,10 +334,10 @@ class RareLoot(LootTable):
         if is_chest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 25)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 35)
         self.add_item(ItemCreator(Items.GOLD, 1, 108, 240), 20)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 15)
-        self.add_item(ItemCreator(Items.LOCATION, 1), 25)
+        self.add_item(ItemCreator(Items.LOCATION, 1), 15)
         self.add_item(ItemCreator(Items.TRASH, 1, 108, 240, 0.75), 7)
 
         worst, best = Material.DULL_COPPER, Material.BRONZE
@@ -356,10 +356,10 @@ class EpicLoot(LootTable):
         if is_chest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 23)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 33)
         self.add_item(ItemCreator(Items.GOLD, 1, 303, 580), 20)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 15)
-        self.add_item(ItemCreator(Items.LOCATION, 1), 25)
+        self.add_item(ItemCreator(Items.LOCATION, 1), 15)
         self.add_item(ItemCreator(Items.TRASH, 1, 303, 580, 0.75), 7)
 
         worst, best = Material.COPPER, Material.AGAPITE
@@ -378,10 +378,10 @@ class LegendaryLoot(LootTable):
         if is_chest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 20)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 30)
         self.add_item(ItemCreator(Items.GOLD, 1, 606, 1200), 20)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 15)
-        self.add_item(ItemCreator(Items.LOCATION, 1), 25)
+        self.add_item(ItemCreator(Items.LOCATION, 1), 15)
         self.add_item(ItemCreator(Items.TRASH, 1, 606, 1200, 0.75), 7)
 
         worst, best = Material.GOLD, Material.VERITE
@@ -400,10 +400,10 @@ class MythicalLoot(LootTable):
         if is_chest:
             return
 
-        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 20)
+        self.add_item(ItemCreator(Items.NONE, -1, 0, 0), 30)
         self.add_item(ItemCreator(Items.GOLD, 1, 810, 1800), 20)
         self.add_item(ItemCreator(Items.POWERHOUR, 1), 15)
-        self.add_item(ItemCreator(Items.LOCATION, 1), 25)
+        self.add_item(ItemCreator(Items.LOCATION, 1), 15)
         self.add_item(ItemCreator(Items.TRASH, 1, 810, 1800, 0.75), 7)
 
         worst, best = Material.VERITE, Material.VALORITE

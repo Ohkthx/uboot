@@ -45,12 +45,12 @@ class Types(Enum):
 class Entity:
     """Represents an entity who can be combated by users."""
 
-    def __init__(self, location: Area, difficulty: float) -> None:
+    def __init__(self, location: Floor, difficulty: float) -> None:
         self.name = 'an Unknown'
         self._health: int = -1
-        self.difficulty = difficulty
+        self.difficulty = max(difficulty, 1.0)
 
-        self.is_paragon = _is_paragon(difficulty)
+        self.is_paragon = _is_paragon(self.difficulty)
         self.location = location
         self._max_health: int = -1
 
@@ -60,7 +60,7 @@ class Entity:
         self.image: Optional[str] = None
 
     def __str__(self) -> str:
-        return f"{self.name} [{self.difficulty}]: {self.location}"
+        return f"{self.name} [{self.difficulty}]: {self.location.name}"
 
     @property
     def is_chest(self) -> bool:
@@ -125,8 +125,8 @@ class Entity:
 class Chest(Entity):
     """Represents a treasure chest that can found."""
 
-    def __init__(self, location: Area, difficulty: float) -> None:
-        super().__init__(location, min(difficulty, 1.0))
+    def __init__(self, location: Floor, difficulty: float) -> None:
+        super().__init__(location, difficulty)
 
         # Get the rarity.
         packs = [Rarity.EPIC, Rarity.RARE, Rarity.UNCOMMON]
@@ -270,6 +270,9 @@ class Manager:
         if not area_spawns or len(area_spawns) == 0:
             return None
 
+        # Calculate the total difficulty
+        difficulty = difficulty + max((dungeon_floor.difficulty - 1), 0)
+
         # Build the lists.
         weights = [spawn[0] for spawn in area_spawns]
         entities = [spawn[1] for spawn in area_spawns]
@@ -278,7 +281,7 @@ class Manager:
         spawns = random.choices(entities, weights=weights, k=1)
         if len(spawns) == 0:
             return None
-        return spawns[0](area, difficulty)
+        return spawns[0](dungeon_floor, difficulty)
 
     @staticmethod
     def check_spawn(area: Area, level: Level, difficulty: float,
@@ -312,7 +315,7 @@ class Manager:
         val = random.randint(0, max_range * 100) / 100
         if val <= chest_range:
             # Chest spawned.
-            return Chest(area, difficulty)
+            return Chest(dungeon_floor, difficulty)
         if val <= entity_range:
             # Creature spawned.
             return Manager.spawn(area, level, difficulty)

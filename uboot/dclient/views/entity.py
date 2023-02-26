@@ -114,7 +114,7 @@ def loot_text(user: discord.Member, all_loot: list[Item], indent: int,
             # Have special text for new location discoveries.
             area_name = "Unknown"
             if new_area.name:
-                area_name = new_area.name.title()
+                area_name = new_area.name.replace("_", " ").title()
             name = f"NEW AREA FOUND: {area_name}"
 
         item_texts.append(f"> {spacer}{line_feed} **{name}**{amt_text}")
@@ -361,10 +361,7 @@ class HelpMeView(ui.View):
                 full_help = " > empty"
             participants_full = f"__**Party**__:\n{full_help}\n\n"
 
-        loc_name = 'Unknown'
-        if self.entity.location.name:
-            loc_name = self.entity.location.name.title()
-
+        loc_name = self.entity.location.name
         embed.colour = discord.Colour.from_str("#F1C800")
         embed.description = f"**{self.user}** {action} by **{self.entity.name}**!\n" \
                             f"**Location**: {loc_name}\n" \
@@ -583,12 +580,10 @@ class EntityView(ui.View):
             gold_warning = "__WARNING__: You do not have enough gold.\n" \
                            "By attacking, you risk losing all of it unless someone helps."
 
-        loc_name = 'Unknown'
+        loc_name = self.entity.location.name
         atk: str = "Attack"
         if self.entity.is_chest:
             atk = "Open"
-        if self.entity.location.name:
-            loc_name = self.entity.location.name.title()
         embed.colour = discord.Colour.from_str("#F1C800")
         embed.description = f"**{self.user}** {action} **{self.entity.name}**!\n" \
                             f"**Location**: {loc_name}\n" \

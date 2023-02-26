@@ -282,17 +282,26 @@ class User(commands.Cog):
                 embed.colour = discord.Colour.from_str("#ff0f08")
                 embed.description = "Sorry, you have not discovered that " \
                                     "location yet."
-                embed.set_footer(text=f"Current Location: {c_location}")
-                return await ctx.send(embed=embed)
+                embed.set_footer(text="Current Location: "
+                                 f"{c_location.replace('_',' ')}")
+                return await ctx.send(embed=embed, delete_after=60)
             new_loc_text = "`Location updated!`\n\n"
             user_l.save()
             await ctx.reply(new_loc_text, delete_after=60)
+            return
+
+        category = Destructible.Category.OTHER
+        await DestructibleManager.remove_many(ctx.author.id, True, category)
 
         view = LocationView(self.bot)
         view.set_user(user)
 
         embed = LocationView.get_panel(user)
-        await ctx.send(embed=embed, view=view)
+        message = await ctx.send(embed=embed, view=view)
+
+        # Create the destructible.
+        destruct = Destructible(category, ctx.author.id, 60, True)
+        destruct.set_message(message)
 
     @commands.command(name="move")
     async def move(self, ctx: commands.Context) -> None:

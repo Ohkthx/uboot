@@ -3,15 +3,15 @@ aspects for various creatures.
 """
 from managers import entities
 from managers.items import Rarity
-from managers.locations import Area, Level
+from managers.locations import Area, Level, Floor
 from managers.loot_tables import LootTable
 
 
 class Zombie(entities.Entity):
     """Represents a type of entity."""
 
-    def __init__(self, location: Area, difficulty: float) -> None:
-        super().__init__(location, min(difficulty, 1.0))
+    def __init__(self, location: Floor, difficulty: float) -> None:
+        super().__init__(location, difficulty)
         self.set_name("a Zombie")
         self.set_health(28, 42)
         self.image = "zombie_alive.png"

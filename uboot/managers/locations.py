@@ -31,20 +31,20 @@ class Level(IntEnum):
 
 
 # All currently accessible locations.
-LOCATIONS: dict[Area, Level] = {
-    Area.BRITAIN_SEWERS: Level.ONE,
-    Area.WILDERNESS: Level.ONE,
-    Area.GRAVEYARD: Level.ONE,
-    Area.DESPISE: Level.FOUR,
-    Area.FIRE: Level.TWO,
-    Area.ICE: Level.THREE,
-    Area.DESTARD: Level.THREE,
-    Area.COVETOUS: Level.FIVE,
-    Area.DECEIT: Level.FOUR,
-    Area.HYTHLOTH: Level.FOUR,
-    Area.WRONG: Level.TWO,
-    Area.SHAME: Level.FIVE,
-    Area.ORC_DUNGEON: Level.THREE,
+LOCATIONS: dict[Area, tuple[Level, float]] = {
+    Area.BRITAIN_SEWERS: (Level.ONE, 1.0),
+    Area.WILDERNESS: (Level.ONE, 1.1),
+    Area.GRAVEYARD: (Level.ONE, 1.1),
+    Area.DESPISE: (Level.FOUR, 1.2),
+    Area.FIRE: (Level.TWO, 1.5),
+    Area.ICE: (Level.THREE, 1.5),
+    Area.DESTARD: (Level.THREE, 1.5),
+    Area.COVETOUS: (Level.FIVE, 1.3),
+    Area.DECEIT: (Level.FOUR, 1.3),
+    Area.HYTHLOTH: (Level.FOUR, 1.5),
+    Area.WRONG: (Level.TWO, 1.4),
+    Area.SHAME: (Level.FIVE, 1.4),
+    Area.ORC_DUNGEON: (Level.THREE, 1.2),
 }
 
 
@@ -167,13 +167,19 @@ class Floor:
         """Identifier for the floor."""
         return f"{self.parent.area.value}:{self.level.value}"
 
+    @property
+    def difficulty(self) -> float:
+        """Difficulty for the floor."""
+        return self.parent.difficulty + (self.level / 100)
+
 
 class Dungeon:
     """Represents a dungeons with several floors."""
 
-    def __init__(self, area: Area, levels: Level) -> None:
+    def __init__(self, area: Area, levels: Level, difficulty: float) -> None:
         self.area = area
         self.levels = levels
+        self.difficulty = max(difficulty, 1.0)
 
         # Create the floors.
         self._floors: dict[Level, Floor] = {}
@@ -222,8 +228,8 @@ class Manager:
     @staticmethod
     def init() -> None:
         """Initialized all dungeons and floors."""
-        for area, levels in LOCATIONS.items():
-            Manager._locations[area] = Dungeon(area, levels)
+        for area, lvldiff in LOCATIONS.items():
+            Manager._locations[area] = Dungeon(area, lvldiff[0], lvldiff[1])
 
     @staticmethod
     def get(area: Area, level: Level) -> Optional[Floor]:
@@ -239,9 +245,10 @@ class Manager:
         """Get the starter floor for all players."""
         starting_area: Area = Area.BRITAIN_SEWERS
         starting_floor: Level = Level.ONE
+        starting_diff: float = 1.0
         location = Manager.get(starting_area, starting_floor)
         if not location:
-            start = Dungeon(starting_area, starting_floor)
+            start = Dungeon(starting_area, starting_floor, starting_diff)
             Manager._locations[starting_area] = start
             location = start.get_floor(starting_floor)
             if not location:
