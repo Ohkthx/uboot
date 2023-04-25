@@ -1,3 +1,19 @@
+<p align="center">
+    <a href="https://patreon.com/ohkthx" title="Donate to this project using Patreon">
+        <img src="https://img.shields.io/badge/patreon-donate-red.svg?style=for-the-badge&color=f38ba8&label=PATREON&logo=patreon&logoColor=f38ba8&labelColor=11111b"
+            alt="Patreon donate button"></a>
+    <a href="https://ko-fi.com/G2G0J79MY" title="Donate to this project using Ko-fi">
+        <img src="https://img.shields.io/badge/kofi-donate-ffffff.svg?style=for-the-badge&color=fab387&label=KOFI&logo=kofi&logoColor=fab387&labelColor=11111b"
+            alt="Buy me a coffee! Ko-fi"></a>
+<br>
+   <a href="https://github.com/ohkthx/uboot" title="Required Python Version.">
+        <img src="https://img.shields.io/badge/python-3.9.1+-11111b.svg?style=for-the-badge&color=f9e2af&label=PYTHON&logo=python&logoColor=f9e2af&labelColor=11111b"
+            alt="Required Python Version."></a>
+    <a href="https://github.com/ohkthx/uboot" title="Size of the repo!">
+        <img src="https://img.shields.io/github/repo-size/ohkthx/uboot?style=for-the-badge&color=cba6f7&label=SIZE&logo=codesandbox&logoColor=cba6f7&labelColor=11111b"
+            alt="No data."></a>
+</p>
+
 # UBOOT
 
 ------------
