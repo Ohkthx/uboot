@@ -202,7 +202,7 @@ class SuggestionView(ui.View):
 
         return discord.Embed(title=title, description=desc, color=color)
 
-    @ui.button(label='🗹 Approve', style=discord.ButtonStyle.green,
+    @ui.button(label='✓ Approve', style=discord.ButtonStyle.green,
                custom_id='suggestion_view:approve')
     async def approve(self, interaction: discord.Interaction, _: ui.Button):
         """Marks the suggestion as being approved. Only usable by staff/admins
@@ -231,6 +231,9 @@ class SuggestionView(ui.View):
         if add_tag is not None and add_tag not in tags:
             tags.append(add_tag)
 
+        user_msg = f"**Title**: {thread.name}\n" \
+                   f"Suggestion was __**approved**__ by **{interaction.user}**."
+
         # Apply the new tags.
         await thread.edit(applied_tags=tags)
 
@@ -240,6 +243,18 @@ class SuggestionView(ui.View):
                               color=discord.Color.green())
         res = interaction.response
         await res.send_message(embed=embed)
+
+        if not user_msg or user_msg == "":
+            return
+
+        owner = await get_member(interaction.client,
+                                 interaction.guild.id,
+                                 thread.owner_id)
+        if not owner:
+            return
+
+        view = DMDeleteView(interaction.client)
+        await owner.send(content=user_msg, view=view)
 
     @ui.button(label='⨯ Deny', style=discord.ButtonStyle.red,
                custom_id='suggestion_view:deny')
@@ -273,6 +288,9 @@ class SuggestionView(ui.View):
         if await reason.wait():
             return
 
+        user_msg = f"**Title**: {thread.name}\n" \
+                   f"Suggestion was __**denied**__ by **{interaction.user}**."
+
         # Find the tags from available tags.
         rm_names = ['open', 'approved']
         add_tag = find_tag('denied', thread.parent)
@@ -285,6 +303,18 @@ class SuggestionView(ui.View):
 
         # Apply the new tags.
         await thread.edit(applied_tags=tags)
+
+        if not user_msg or user_msg == "":
+            return
+
+        owner = await get_member(interaction.client,
+                                 interaction.guild.id,
+                                 thread.owner_id)
+        if not owner:
+            return
+
+        view = DMDeleteView(interaction.client)
+        await owner.send(content=user_msg, view=view)
 
     @ui.button(label='🔒 Close', style=discord.ButtonStyle.grey,
                custom_id='suggestion_view:close')
