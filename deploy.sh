@@ -22,9 +22,8 @@ docker build -t uboot .
 
 # Start new container.
 echo -e "\nStarting new container..."
-docker run -d --name uboot \
+docker run -d --restart unless-stopped --name uboot \
 	--mount source=uboot_dbs,destination=/dbs \
 	--mount source=uboot_images,destination=/images \
 	--mount source=uboot_configs,destination=/configs \
 	uboot
-
