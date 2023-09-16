@@ -226,7 +226,7 @@ class User(commands.Cog):
                     tag = result.find("a")
                     result_name = tag.get_text()
                     result_html = tag.get("href")
-                    output.append(f"- [{result_name}]({result_html})")
+                    output.append(f"- [{result_name}]({root_url}{result_html})")
                 except BaseException:
                     continue
 
@@ -236,8 +236,11 @@ class User(commands.Cog):
         if len(output) <= 1:
             output.append("- No results found, does it exist?")
 
-        res = '\n'.join(output)
-        await ctx.reply(res, delete_after=300)
+        embed = discord.Embed()
+        embed.colour = discord.Color.from_str("#F1C800")
+        embed.description = '\n'.join(output)
+
+        await ctx.reply(embed=embed, delete_after=300)
 
     @commands.command(name="taunt")
     async def taunt(self, ctx: commands.Context) -> None:
