@@ -1,7 +1,9 @@
 """Various commands that support the gambling mechanic."""
 import random
+import requests
 from datetime import datetime, timedelta
 from typing import Optional
+from bs4 import BeautifulSoup
 
 import discord
 from discord.ext import commands
@@ -193,6 +195,49 @@ class User(commands.Cog):
         view.set_user(ctx.author)
         embed = InspectView.get_panel(ctx.author)
         await ctx.reply(embed=embed, view=view, delete_after=300)
+
+    @commands.command(name="wiki", aliases=("lookup", "search"))
+    async def wiki(self, ctx: commands.Context,
+                        item: str = param(description="What to lookup.")) -> None:
+        """Look up the request on the wiki.
+
+        example:
+            (prefix)wiki ostard
+        """
+        if not ctx.guild or not isinstance(ctx.author, discord.Member):
+            return
+
+        output: list[str] = ["## Results"]
+        root_url = "https://shadowagereborn.com"
+        url = f"{root_url}/wiki/doku.php?do=search&id=start&sf=1&q=*{item}*"
+
+        # Make the request.
+        response = requests.get(url)
+        if response.status_code == 200:
+            # Parse the content.
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            # Get the list of items returned.
+            results = soup.find_all("div", class_="search_fullpage_result")
+
+            for result in results:
+                try:
+                    # Extract the text within the <a> tag
+                    tag = result.find("a")
+                    result_name = tag.get_text()
+                    result_html = tag.get("href")
+                    output.append(f"- [{result_name}]({result_html})")
+                except BaseException:
+                    continue
+
+        else:
+            output.append("- No results found, does it exist?")
+
+        if len(output) <= 1:
+            output.append("- No results found, does it exist?")
+
+        res = '\n'.join(output)
+        await ctx.reply(res, delete_after=300)
 
     @commands.command(name="taunt")
     async def taunt(self, ctx: commands.Context) -> None:

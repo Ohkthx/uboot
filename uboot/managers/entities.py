@@ -305,10 +305,10 @@ class Manager:
         taunt_multiplier = 2.0 if powerhour or user_powerhour else 1.0
         multiplier = taunt_multiplier if is_taunt else multiplier
 
-        chest_base = 5 if not is_taunt else 0
+        chest_base = 2 if not is_taunt else 0
         chest_range = float(chest_base * multiplier)
 
-        entity_base = 10 if not is_taunt else int(max_range / 5)
+        entity_base = 5 if not is_taunt else int(max_range / 5)
         entity_range = float(entity_base * multiplier) + chest_range
 
         # Gets a decimal value.
