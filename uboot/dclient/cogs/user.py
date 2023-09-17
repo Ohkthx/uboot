@@ -197,8 +197,7 @@ class User(commands.Cog):
         await ctx.reply(embed=embed, view=view, delete_after=300)
 
     @commands.command(name="wiki", aliases=("lookup", "search"))
-    async def wiki(self, ctx: commands.Context,
-                        item: str = param(description="What to lookup.")) -> None:
+    async def wiki(self, ctx: commands.Context) -> None:
         """Look up the request on the wiki.
 
         example:
@@ -207,9 +206,27 @@ class User(commands.Cog):
         if not ctx.guild or not isinstance(ctx.author, discord.Member):
             return
 
-        output: list[str] = ["## Results"]
+        if len(ctx.message.mentions) > 0:
+            await ctx.send("Mentioning others is not allowed.", delete_after=15)
+            return
+
+        # Extracts the question from the raw message.
+        left_strip = f"{ctx.prefix}{ctx.invoked_with} "
+        question = ctx.message.content.lstrip(left_strip)
+
+        if len(question) == 0:
+            await ctx.send("Missing query.", delete_after=15)
+            return
+
+        embed  = discord.Embed()
+        embed.colour = discord.Color.from_str("#F1C800")
+
+        output: list[str] = ["### Wiki Search Results"]
+
         root_url = "https://shadowagereborn.com"
-        url = f"{root_url}/wiki/doku.php?do=search&id=start&sf=1&q=*{item}*"
+        url = f"{root_url}/wiki/doku.php?do=search&id=start&sf=1&q=*{question}*"
+
+        wiki_footer = "Total results: 0"
 
         # Make the request.
         response = requests.get(url)
@@ -226,21 +243,22 @@ class User(commands.Cog):
                     tag = result.find("a")
                     result_name = tag.get_text()
                     result_html = tag.get("href")
-                    output.append(f"- [{result_name}]({root_url}{result_html})")
+                    link = f"{root_url}{result_html}".split("&s[]=")[0]
+                    output.append(f"- [{result_name}](<{link}>)")
                 except BaseException:
                     continue
 
+            wiki_footer = f"Total results: {len(output) - 1}"
         else:
-            output.append("- No results found, does it exist?")
+            output.append( "- No results found, does it exist?")
 
         if len(output) <= 1:
-            output.append("- No results found, does it exist?")
+            output.append( "- No results found, does it exist?")
 
-        embed = discord.Embed()
-        embed.colour = discord.Color.from_str("#F1C800")
+        output.append("\nAccess Wiki homepage: [Wiki Link](https://shadowagereborn.com/wiki/doku.php)")
         embed.description = '\n'.join(output)
-
-        await ctx.reply(embed=embed, delete_after=300)
+        embed.set_footer(text=wiki_footer)
+        await ctx.reply(embed=embed)
 
     @commands.command(name="taunt")
     async def taunt(self, ctx: commands.Context) -> None:
