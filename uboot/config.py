@@ -9,6 +9,33 @@ from typing import Optional
 CONFIG_FILENAME = 'config.ini'
 
 
+class TwitchConfig:
+    """Configuration Settings for Twitch API."""
+
+    def __init__(self, config: configparser.SectionProxy) -> None:
+        self._config = config
+
+    @property
+    def token(self) -> str:
+        """Token for access to Twitch API.
+        Default: unset
+        """
+        val = self._config.get('Token', fallback='unset')
+        if not val:
+            return "unset"
+        return val
+
+    @property
+    def secret(self) -> str:
+        """Secret for access to Twitch API.
+        Default: unset
+        """
+        val = self._config.get('Secret', fallback='unset')
+        if not val:
+            return "unset"
+        return val
+
+
 class DiscordConfig:
     """Configuration Settings for Discords API."""
 
@@ -60,11 +87,17 @@ class GeneralConfig:
         if not config.has_section('DISCORD'):
             raise ValueError("'DISCORD' is unset in configuration file.")
         self._discord = DiscordConfig(config['DISCORD'])
+        self._twitch = TwitchConfig(config['TWITCH'])
 
     @property
     def discord(self) -> DiscordConfig:
         """Discord configurations."""
         return self._discord
+
+    @property
+    def twitch(self) -> TwitchConfig:
+        """Twitch configurations."""
+        return self._twitch
 
     @property
     def debug(self) -> bool:
@@ -91,6 +124,9 @@ class GeneralConfig:
         config['DISCORD']['Prefix'] = '['
         config['DISCORD']['OwnerId'] = '0'
         config['DISCORD']['CCDMId'] = '0'
+        config['TWITCH'] = {}
+        config['TWITCH']['Token'] = 'unset'
+        config['TWITCH']['Secret'] = 'unset'
 
         # Save it locally.
         with open(CONFIG_FILENAME, 'w', encoding='utf-8') as configfile:

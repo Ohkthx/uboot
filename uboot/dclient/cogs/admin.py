@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import param
 
-from managers import settings, react_roles
+from managers import settings, react_roles, users
 from managers.logs import Log, LogType, Manager as LogManager
 from dclient.bot import DiscordBot
 from dclient.helper import get_channel, get_message, get_member, get_role, get_role_by_name, convert_age
@@ -130,6 +130,164 @@ class Admin(commands.Cog):
         except BaseException as err:
             Log.error(f"Error happened while performing SUDO, {err}",
                       guild_id=ctx.guild.id, user_id=user.id)
+
+    @server.group(name="twitch", aliases=("tw",))
+    async def twitch(self, ctx: commands.Context) -> None:
+        """Manages twitch integration.
+
+        examples:
+            (prefix)server twitch show
+            (prefix)server twitch add 123456789 gatekeeper
+            (prefix)server twitch rm 123456789
+        """
+        if ctx.invoked_subcommand is None:
+            await ctx.send('invalid twitch command.')
+
+    @twitch.command(name="show", aliases=("list",))
+    async def twitch_show(self, ctx: commands.Context) -> None:
+        """Shows all currently assigned streamers.
+
+        example:
+            (prefix)server twitch show
+        """
+        if not ctx.guild:
+            return
+
+        setting = settings.Manager.get(ctx.guild.id)
+        if not setting:
+            await ctx.send("Guild settings could not be found.")
+            return
+
+        all_users = users.Manager.get_all()
+        streamers = [u for u in all_users if u.is_streamer]
+
+        streamer_text = []
+        for s in streamers:
+            # Get the users Member account.
+            streamer_text.append(f"<@{s.id}>: {s.id} => {s.stream_name}")
+
+        if len(streamer_text) == 0:
+            streamer_text = ["None"]
+
+        # Build the description to display.
+        full_text = "\n".join(streamer_text)
+        titles_str = "\n".join(setting.twitch.titles)
+        titles = f"**Stream Titles:**\n{titles_str}"
+        desc = f"{titles}\n\n**Users:**\n{full_text}"
+
+        embed = discord.Embed(title=f"Current Streamers")
+        embed.colour = discord.Colour.blurple()
+        embed.description = desc
+        await ctx.send(embed=embed)
+
+    @twitch.command(name="add")
+    async def twitch_add(self, ctx: commands.Context,
+                         user: discord.User = param(
+                             description="Id of the user to make a streamer.",
+                         ),
+                         name: str = param(
+                             description="Twitch username."),
+                         ) -> None:
+        """Add a user as a streamer.
+
+        example:
+            (prefix)server twitch add 1234567890 gatekeeper
+        """
+        if not ctx.guild:
+            return
+
+        user_l = users.Manager.get(user.id)
+        if not user_l:
+            await ctx.send("could not identify the user.")
+            return
+
+        setting = settings.Manager.get(ctx.guild.id)
+        if not setting:
+            await ctx.send("Guild settings could not be found.")
+            return
+
+        # Get the role to assign to the new streamer.
+        twitch_role = await get_role(self.bot, ctx.guild.id, setting.twitch.role_id)
+        if not twitch_role:
+            await ctx.send("Twitch role could not be found.")
+            return
+
+        # Get the member profile to pull current roles.
+        member = await get_member(self.bot, ctx.guild.id, user.id)
+        if not member:
+            await ctx.send("Member could not be found.")
+            return
+
+        if twitch_role in member.roles:
+            await ctx.send("Twitch role already added.")
+            return
+
+        # Add the role.
+        try:
+            await member.add_roles(twitch_role)
+        except BaseException as exc:
+            Log.error(f"Could not add {user} to twitch role.\n{exc}",
+                      guild_id=ctx.guild.id, user_id=user.id)
+            await ctx.send("Could not update the role of the user.")
+            return
+
+        # Update the user to a streamer.
+        user_l.is_streamer = True
+        user_l.stream_name = name
+        user_l.save()
+
+        await ctx.send("User has been added as a streamer.")
+
+    @twitch.command(name="remove", aliases=("rm",))
+    async def twitch_remove(self, ctx: commands.Context,
+                            user: discord.User = param(
+                                description="Id of the user to make a streamer.",
+                            )) -> None:
+        """Remove a user as a streamer.
+
+        example:
+            (prefix)server twitch remove 1234567890
+        """
+        if not ctx.guild:
+            return
+
+        user_l = users.Manager.get(user.id)
+        if not user_l:
+            await ctx.send("could not identify the user.")
+            return
+
+        setting = settings.Manager.get(ctx.guild.id)
+        if not setting:
+            await ctx.send("Guild settings could not be found.")
+            return
+
+        # Get the role to remove from the streamer.
+        twitch_role = await get_role(self.bot, ctx.guild.id, setting.twitch.role_id)
+        if not twitch_role:
+            await ctx.send("Twitch role could not be found.")
+            return
+
+        # Get the member profile to pull current roles.
+        member = await get_member(self.bot, ctx.guild.id, user.id)
+        if not member:
+            await ctx.send("Member could not be found.")
+            return
+
+        # Remove the role.
+        roles = [r for r in member.roles if r != twitch_role]
+        try:
+            await member.remove_roles(twitch_role)
+        except BaseException as exc:
+            Log.error(f"Could not remove {user} from twitch role.\n{exc}",
+                      guild_id=ctx.guild.id, user_id=user.id)
+            await ctx.send("Could not update the role of the user.")
+            return
+
+        # Remove the user from being a streamer.
+        user_l.is_streamer = False
+        user_l.save()
+
+        await ctx.send("User has been removed as a streamer.")
 
     @server.group(name="log", aliases=("logs",))
     async def logs(self, ctx: commands.Context) -> None:

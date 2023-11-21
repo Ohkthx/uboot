@@ -218,7 +218,7 @@ class User(commands.Cog):
             await ctx.send("Missing query.", delete_after=15)
             return
 
-        embed  = discord.Embed()
+        embed = discord.Embed()
         embed.colour = discord.Color.from_str("#F1C800")
 
         output: list[str] = ["### Wiki Search Results"]
@@ -250,12 +250,13 @@ class User(commands.Cog):
 
             wiki_footer = f"Total results: {len(output) - 1}"
         else:
-            output.append( "- No results found, does it exist?")
+            output.append("- No results found, does it exist?")
 
         if len(output) <= 1:
-            output.append( "- No results found, does it exist?")
+            output.append("- No results found, does it exist?")
 
-        output.append("\nAccess Wiki homepage: [Wiki Link](https://shadowagereborn.com/wiki/doku.php)")
+        output.append(
+            "\nAccess Wiki homepage: [Wiki Link](https://shadowagereborn.com/wiki/doku.php)")
         embed.description = '\n'.join(output)
         embed.set_footer(text=wiki_footer)
         await ctx.reply(embed=embed)

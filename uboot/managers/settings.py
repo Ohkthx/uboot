@@ -11,7 +11,7 @@ from .logs import Log
 
 # Required sections for full operation.
 REQUIRED_SECTIONS = ["MARKET", "REACTROLE", "SUPPORT", "SUGGESTION", "SUBGUILD",
-                     "LOTTO", "MINIGAME", "ALIAS"]
+                     "LOTTO", "MINIGAME", "ALIAS", "TWITCH"]
 
 
 class Market:
@@ -183,6 +183,38 @@ class Alias:
         return self._config.getint('CHANNELID', 0)
 
 
+class Twitch:
+    """Settings for the Twitch system."""
+
+    def __init__(self, config: configparser.SectionProxy) -> None:
+        self._config = config
+
+    def __str__(self) -> str:
+        """Overrides the string representation."""
+        return f"Role Id: {self.role_id}\n" \
+               f"Streaming Role Id: {self.streaming_role_id}"
+
+    @property
+    def role_id(self) -> int:
+        """Role Id of lotto participants."""
+        return self._config.getint('ROLEID', 0)
+
+    @property
+    def streaming_role_id(self) -> int:
+        """Role ID given to those currently streaming."""
+        return self._config.getint('STREAMINGROLEID', 0)
+
+    @property
+    def titles(self) -> list[str]:
+        """Titles or words in the stream.
+        Default: unset
+        """
+        val = self._config.get('TITLES', fallback='unset')
+        if not val:
+            return ["unset"]
+        return val.split(',')
+
+
 class Settings:
     """Representation of a guilds settings."""
 
@@ -209,6 +241,7 @@ class Settings:
         self.lotto = Lotto(config['LOTTO'])
         self.minigame = MiniGame(config['MINIGAME'])
         self.alias = Alias(config['ALIAS'])
+        self.twitch = Twitch(config['TWITCH'])
 
     @property
     def filename(self) -> str:
@@ -282,6 +315,11 @@ class Settings:
 
         config['ALIAS'] = {}
         config['ALIAS']['CHANNELID'] = '0 ; channel id hosting alias embeds'
+
+        config['TWITCH'] = {}
+        config['TWITCH']['ROLEID'] = '0 ; role id of streamers'
+        config['TWITCH']['STREAMINGROLEID'] = '0 ; role id of when streaming'
+        config['TWITCH']['TITLES'] = 'unset ; possible titles of the stream'
 
         # Save it locally.
         with open(filename, 'w', encoding='utf-8') as configfile:

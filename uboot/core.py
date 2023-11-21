@@ -29,7 +29,7 @@ def main() -> None:
     LogManager.init("uboot.sqlite3")
 
     # Start the discord bot.
-    DiscordBot.init_run(config.discord)
+    DiscordBot.init_run(config.discord, config.twitch)
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ def make_raw(user_id: int) -> UserRaw:
     """
     return (user_id, 100, 0, 0, 0, 0, 0, 0, 0,
             Area.BRITAIN_SEWERS.value, Area.BRITAIN_SEWERS.value,
-            0, "''", Level.ONE)
+            0, "''", Level.ONE, 0, "''")
 
 
 class Cooldown(Enum):
@@ -49,6 +49,12 @@ class User:
         if not self.locations.is_unlocked(self.c_location):
             self.c_location = Area.BRITAIN_SEWERS
         self.c_floor = Level(raw[13])
+        self.is_streamer = bool(raw[14])
+
+        if not raw[15]:
+            self.stream_name = ""
+        else:
+            self.stream_name: str = raw[15].replace("'", "")
 
         self._deaths = raw[11]
 
@@ -80,11 +86,17 @@ class User:
         weapon = "''"
         if self.weapon:
             weapon = f"'{self.weapon.id}'"
+
+        stream_name = "''"
+        if self.stream_name:
+            stream_name = f"'{self.stream_name}'"
+
         return (self.id, gold, self.msg_count, self.gambles,
                 self.gambles_won, self.button_press,
                 self.monsters, self.kills, self.exp,
                 self.locations.raw, self.c_location.value,
-                self._deaths, weapon, int(self.c_floor))
+                self._deaths, weapon, int(self.c_floor),
+                int(self.is_streamer), stream_name)
 
     def timer_expired(self, cooldown: Cooldown) -> bool:
         """Checks if a specific timer is off of cooldown."""

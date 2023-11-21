@@ -10,12 +10,13 @@ import discord
 from discord import RawReactionActionEvent
 from discord.ext import commands, tasks
 
-from config import DiscordConfig
+from config import DiscordConfig, TwitchConfig
 from dclient.views.dm import DMDeleteView
 from managers import (settings, users, react_roles, tickets, subguilds,
                       entities, aliases, images, locations, inventories,
                       items)
 from managers.logs import Log
+from .twitch import TwitchHandler
 from .ccserver import CCServer
 from .destructible import DestructibleManager, Destructible
 from .helper import (get_member, get_user, thread_close, react_processor,
@@ -111,11 +112,11 @@ cog_extensions: list[str] = ['dclient.cogs.general',
 class DiscordBot(commands.Bot):
     """The core of the Discord Bot and Client."""
 
-    def __init__(self, config: DiscordConfig) -> None:
-        prefix = config.prefix
+    def __init__(self, dconfig: DiscordConfig, tconfig: TwitchConfig) -> None:
+        prefix = dconfig.prefix
         owner_id: Optional[int] = None
-        if config.owner_id > 0:
-            owner_id = config.owner_id
+        if dconfig.owner_id > 0:
+            owner_id = dconfig.owner_id
 
         super().__init__(command_prefix=commands.when_mentioned_or(prefix),
                          owner_id=owner_id,
@@ -123,7 +124,8 @@ class DiscordBot(commands.Bot):
                          member_cache_flags=member_cache,
                          help_command=defaultHelp)
 
-        self.conf = config
+        self.conf = dconfig
+        self.twitch = TwitchHandler(tconfig)
         self.prefix = prefix
         self._extensions = cog_extensions
         self.session: Optional[aiohttp.ClientSession] = None
@@ -236,6 +238,7 @@ class DiscordBot(commands.Bot):
 
         # Starts the updating loops.
         self.archiver.start()  # pylint: disable=no-member
+        self.twitch_checker.start()  # pylint: disable=no-member
         self.status_update.start()  # pylint: disable=no-member
 
     async def on_ready(self) -> None:
@@ -327,6 +330,14 @@ class DiscordBot(commands.Bot):
         )
         await self.change_presence(activity=activity)
 
+    @tasks.loop(minutes=5)
+    async def twitch_checker(self) -> None:
+        for guild in self.guilds:
+            setting = settings.Manager.get(guild.id)
+            if not setting:
+                continue
+            await self.twitch.check_streams(self, setting, guild.id)
+
     @tasks.loop(minutes=15)
     async def archiver(self) -> None:
         """Check if there is a market posts that have expired and need
@@ -372,6 +383,11 @@ class DiscordBot(commands.Bot):
 
     @status_update.before_loop
     async def status_update_wait_on_login(self) -> None:
+        """Pauses the update thread until the bot has authenticated."""
+        await self.wait_until_ready()
+
+    @twitch_checker.before_loop
+    async def twitch_checker_wait_on_login(self) -> None:
         """Pauses the update thread until the bot has authenticated."""
         await self.wait_until_ready()
 
@@ -565,7 +581,7 @@ class DiscordBot(commands.Bot):
                       guild_id=role.guild.id, user_id=user.id)
 
     @staticmethod
-    def init_run(config: DiscordConfig) -> None:
+    def init_run(dconfig: DiscordConfig, tconfig: TwitchConfig) -> None:
         """Initialized the Discord Bot."""
         try:
             # Set the logging.
@@ -574,8 +590,8 @@ class DiscordBot(commands.Bot):
                                           mode='w')
 
             # Initialize the Discord Bot.
-            dbot: DiscordBot = DiscordBot(config)
-            dbot.run(config.token, log_handler=handler,
+            dbot: DiscordBot = DiscordBot(dconfig, tconfig)
+            dbot.run(dconfig.token, log_handler=handler,
                      log_level=logging.DEBUG)
         except KeyboardInterrupt:
             Log.debug("Discord Bot killing self globally.")

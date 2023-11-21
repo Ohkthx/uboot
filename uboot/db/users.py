@@ -3,23 +3,26 @@ from typing import Optional
 
 from .db_socket import DbSocket, clean_name
 
-# 0 : int - user_id
-# 1 : int - gold
-# 2 : int - msg_count
-# 3 : int - gambles
-# 4 : int - gambles_won
-# 5 : int - button_press
-# 6 : int - monsters
-# 7 : int - kills
-# 8 : int - exp
-# 9 : int - locations
-# 10: int - c_location
-# 11: int - deaths
-# 12: str - weapon
-# 13: int - c_floor
+# 0 : int  - user_id
+# 1 : int  - gold
+# 2 : int  - msg_count
+# 3 : int  - gambles
+# 4 : int  - gambles_won
+# 5 : int  - button_press
+# 6 : int  - monsters
+# 7 : int  - kills
+# 8 : int  - exp
+# 9 : int  - locations
+# 10: int  - c_location
+# 11: int  - deaths
+# 12: str  - weapon
+# 13: int  - c_floor
+# 14: bool - is_streamer
+# 15: str  - stream_name
 UserRaw = tuple[int, int, int, int, int,
                 int, int, int, int, int,
-                int, int, str, int]
+                int, int, str, int, int,
+                str]
 
 
 class UserDb(DbSocket):
@@ -37,9 +40,11 @@ class UserDb(DbSocket):
             "locations INTEGER, c_location INTEGER, "\
             "deaths INTEGER,"\
             "weapon TEXT, "\
-            "c_floor INTEGER )"
+            "c_floor INTEGER, "\
+            "is_streamer INTEGER DEFAULT 0, "\
+            "stream_name TEXT DEFAULT '')"
         self.query['insert_one'] = "INSERT OR IGNORE INTO {table_name} "\
-            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
     def find_one(self, user_id: int) -> Optional[UserRaw]:
         """Gets a single user based on its id."""
@@ -70,7 +75,9 @@ class UserDb(DbSocket):
             f"locations = {raw[9]}, c_location = {raw[10]}, "\
             f"deaths = {raw[11]}, "\
             f"weapon = {raw[12]}, "\
-            f"c_floor = {raw[13]}"
+            f"c_floor = {raw[13]}, "\
+            f"is_streamer = {raw[14]}, "\
+            f"stream_name = {raw[15]}"
         where_key = f"id = {raw[0]}"
         self._update(set_key, where_key)
         return None
