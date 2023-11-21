@@ -330,7 +330,7 @@ class DiscordBot(commands.Bot):
         )
         await self.change_presence(activity=activity)
 
-    @tasks.loop(minutes=5)
+    @tasks.loop(minutes=1)
     async def twitch_checker(self) -> None:
         for guild in self.guilds:
             setting = settings.Manager.get(guild.id)

@@ -14,6 +14,15 @@ class TwitchHandler:
 
     def __init__(self, config: TwitchConfig) -> None:
         self._config = config
+        self._oauth_token = ""
+
+    @property
+    def client_id(self) -> str:
+        return self._config.token
+
+    @property
+    def secret(self) -> str:
+        return self._config.secret
 
     async def add_role(self, client: discord.Client, guild_id: int, user_id: int, role_id: int):
         """"Gives the streamer role to the user."""
@@ -43,7 +52,6 @@ class TwitchHandler:
             Log.error(f"Could not add {twitch_role.name} role to {str(member)}.\n"
                       f"{exc}",
                       guild_id=guild_id, user_id=user_id)
-            print("Could not update the streaming role of the user.")
 
     async def remove_role(self, client: discord.Client, guild_id: int, user_id: int, role_id: int):
         """"Removes the streamer role to the user."""
@@ -89,10 +97,8 @@ class TwitchHandler:
             return
 
         # Attempt to pull their info.
-        oauth: str = self.get_oauth_token()
         for s in streamers:
-            print(f"Checking: {s.id}")
-            title, game, online = self.get_stream_info(oauth, s.stream_name)
+            title, game, online = self.get_stream_info(s.stream_name)
             if not online:
                 await self.remove_role(client, guild_id, s.id, tset.streaming_role_id)
                 continue
@@ -101,11 +107,9 @@ class TwitchHandler:
                 continue
 
             # Check the titles.
-            lower_check = [chk.lower() for chk in tset.titles]
-            title_parts = title.split(" ")
             found: bool = False
-            for t in title_parts:
-                if t.lower() in lower_check:
+            for t in tset.titles:
+                if t.lower() in title.lower():
                     found = True
                     break
 
@@ -115,48 +119,63 @@ class TwitchHandler:
 
             # Add the role for streaming
             title_text = f", [{game}] {title}"
-            print(f'{s.stream_name}, streaming: {online}{title_text}')
+            print(f"{s.stream_name}, streaming: {online}{title_text}")
             await self.add_role(client, guild_id, s.id, tset.streaming_role_id)
 
-    def get_headers(self, oauth: str):
-        """Gets the headers to send to the API."""
-        return {
-            'Client-ID': self._config.token,
-            'Authorization': f'Bearer {oauth}'
-        }
-
-    def get_oauth_token(self) -> str:
-        """Obtains an oauth token from the API."""
-        url = 'https://id.twitch.tv/oauth2/token'
-        body = {
-            'client_id': self._config.token,
-            'client_secret': self._config.secret,
-            'grant_type': 'client_credentials'
-        }
-        response = requests.post(url, data=body)
-        return response.json()['access_token']
-
-    def get_game_name(self, oauth: str, game_id: str) -> str:
+    def get_game_name(self, game_id: str) -> str:
         """Obtains the game name from the API."""
-        url = f'https://api.twitch.tv/helix/games?id={game_id}'
-        response = requests.get(url, headers=self.get_headers(oauth))
+        url = f"https://api.twitch.tv/helix/games?id={game_id}"
+        response = requests.get(url, headers=self.get_headers())
 
         data = response.json()['data']
         if data:
             return data[0]['name']
         return "Unknown Game"
 
-    def get_stream_info(self, oauth: str, username: str) -> Tuple[str, str, bool]:
+    def get_stream_info(self, username: str) -> Tuple[str, str, bool]:
         """Obtains various stream information for a user."""
-        url = f'https://api.twitch.tv/helix/streams?user_login={username}'
-        response = requests.get(url, headers=self.get_headers(oauth))
+        url = f"https://api.twitch.tv/helix/streams?user_login={username}"
+        response = requests.get(url, headers=self.get_headers())
 
         data = response.json()['data']
-        if len(data) == 0:
+        if len(data) == 0 or response.status_code != 200:
             return "", "", False
 
         # Extract the information from the data.
-        title = data[0]['title']
-        game_id = data[0]['game_id']
-        game_name = self.get_game_name(oauth, game_id)
+        title: str = data[0]['title']
+        game_id: str = data[0]['game_id']
+
+        # Get the game information.
+        game_name: str = self.get_game_name(game_id)
         return title, game_name, True
+
+    def get_token(self) -> str:
+        """Checks the status of the OAuth Token."""
+        url = "https://id.twitch.tv/oauth2/validate"
+        headers = {'Authorization': f"Bearer {self._oauth_token}"}
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            return self._oauth_token
+
+        # Invalid token, get a new one.
+        url = "https://id.twitch.tv/oauth2/token"
+        body = {
+            'client_id': self.client_id,
+            'client_secret': self.secret,
+            'grant_type': "client_credentials"
+        }
+        response = requests.post(url, data=body)
+        if response.status_code != 200:
+            return ""
+
+        # Update the token.
+        self._oauth_token = response.json()['access_token']
+        return self._oauth_token
+
+    def get_headers(self):
+        """Gets the headers to send to the API."""
+        return {
+            'Client-ID': self.client_id,
+            'Authorization': f"Bearer {self.get_token()}"
+        }
