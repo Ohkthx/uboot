@@ -76,11 +76,22 @@ class TwitchHandler:
                       guild_id=guild_id)
             return
 
+        # Get all users streaming with promoter role.
         streamers: list[Tuple[discord.Member, str]] = []
         for member in promoter_role.members:
             for activity in member.activities:
                 if isinstance(activity, discord.Streaming) and activity.platform == "Twitch":
                     streamers.append((member, activity.twitch_name))
+
+        # Get all users streaming with twitch role.
+        for member in twitch_role.members:
+            found: bool = False
+            for activity in member.activities:
+                if isinstance(activity, discord.Streaming) and activity.platform == "Twitch":
+                    found = True
+            # User is no longer streaming.
+            if not found:
+                await self.remove_role(client, member, twitch_role)
 
         # Attempt to pull their info.
         for member, twitch_name in streamers:
@@ -104,8 +115,6 @@ class TwitchHandler:
                 continue
 
             # Add the role for streaming
-            title_text = f", [{game}] {title}"
-            print(f"{twitch_name}, streaming: {online}{title_text}")
             await self.add_role(client, member, twitch_role)
 
     def get_game_name(self, game_id: str) -> str:
