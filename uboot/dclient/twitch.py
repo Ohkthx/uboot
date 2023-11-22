@@ -24,65 +24,37 @@ class TwitchHandler:
     def secret(self) -> str:
         return self._config.secret
 
-    async def add_role(self, client: discord.Client, guild_id: int, user_id: int, role_id: int):
-        """"Gives the streamer role to the user."""
-        # Get the role to assign to the new streamer.
-        twitch_role = await get_role(client, guild_id, role_id)
-        if not twitch_role:
-            Log.error("Could not obtain twitch role for updating stream status.",
-                      guild_id=guild_id, user_id=user_id)
-            return
-
-        # Get the member profile to pull current roles.
-        member = await get_member(client, guild_id, user_id)
-        if not member:
-            Log.error(f"Could not obtain member account for updating stream status.",
-                      guild_id=guild_id, user_id=user_id)
-            return
-
-        if twitch_role in member.roles:
-            return
-
-        # Add the role.
-        try:
-            await member.add_roles(twitch_role)
-            Log.action(f"Adding {twitch_role.name} role from {member}.",
-                       guild_id=guild_id, user_id=user_id)
-        except BaseException as exc:
-            Log.error(f"Could not add {twitch_role.name} role to {str(member)}.\n"
-                      f"{exc}",
-                      guild_id=guild_id, user_id=user_id)
-
-    async def remove_role(self, client: discord.Client, guild_id: int, user_id: int, role_id: int):
+    async def add_role(self, client: discord.Client, member: discord.Member, role: discord.Role):
         """"Removes the streamer role to the user."""
-        # Get the role to assign to the new streamer.
-        twitch_role = await get_role(client, guild_id, role_id)
-        if not twitch_role:
-            Log.error("Could not obtain twitch role for updating stream status.",
-                      guild_id=guild_id, user_id=user_id)
+        if role in member.roles:
             return
 
-        # Get the member profile to pull current roles.
-        member = await get_member(client, guild_id, user_id)
-        if not member:
-            Log.error(f"Could not obtain member account for updating stream status.",
-                      guild_id=guild_id, user_id=user_id)
-            return
-
-        if twitch_role not in member.roles:
-            return
-
-        # Remove the role.
         try:
-            await member.remove_roles(twitch_role)
-            Log.action(f"Removing {twitch_role.name} role from {member}.",
-                       guild_id=guild_id, user_id=user_id)
+            # Add the role.
+            await member.add_roles(role)
+            Log.action(f"Adding {role.name} role to {member}.",
+                       guild_id=member.guild.id, user_id=member.id)
         except BaseException as exc:
-            Log.error(f"Could not remove {twitch_role.name} role from {str(member)}.\n"
+            Log.error(f"Could not add {role.name} role to {str(member)}.\n"
                       f"{exc}",
-                      guild_id=guild_id, user_id=user_id)
+                      guild_id=member.guild.id, user_id=member.id)
 
-    async def check_streams(self, client: discord.Client, setting, guild_id: int):
+    async def remove_role(self, client: discord.Client, member: discord.Member, role: discord.Role):
+        """"Removes the streamer role to the user."""
+        if role not in member.roles:
+            return
+
+        try:
+            # Remove the role.
+            await member.remove_roles(role)
+            Log.action(f"Removing {role.name} role from {member}.",
+                       guild_id=member.guild.id, user_id=member.id)
+        except BaseException as exc:
+            Log.error(f"Could not remove {role.name} role from {str(member)}.\n"
+                      f"{exc}",
+                      guild_id=member.guild.id, user_id=member.id)
+
+    async def check_streams(self, client: discord.Client, setting: settings.Settings, guild_id: int):
         """"Check all possibly live streams."""
         tset = setting.twitch
         if tset.role_id == 0 or tset.streaming_role_id == 0:
@@ -90,20 +62,34 @@ class TwitchHandler:
         elif len(tset.titles) == 0 or tset.titles[0] == "unset":
             return
 
-        # All streamer accounts.
-        all_users = users.Manager.get_all()
-        streamers = [u for u in all_users if u.is_streamer]
-        if len(streamers) == 0:
+        # Get the role to assign to the promoters.
+        promoter_role = await get_role(client, guild_id, tset.role_id)
+        if not promoter_role:
+            Log.error("Could not obtain promoter role for updating stream status.",
+                      guild_id=guild_id)
             return
 
+        # Get the role to assign to the new streamer.
+        twitch_role = await get_role(client, guild_id, tset.streaming_role_id)
+        if not twitch_role:
+            Log.error("Could not obtain twitch role for updating stream status.",
+                      guild_id=guild_id)
+            return
+
+        streamers: list[Tuple[discord.Member, str]] = []
+        for member in promoter_role.members:
+            for activity in member.activities:
+                if isinstance(activity, discord.Streaming) and activity.platform == "Twitch":
+                    streamers.append((member, activity.twitch_name))
+
         # Attempt to pull their info.
-        for s in streamers:
-            title, game, online = self.get_stream_info(s.stream_name)
+        for member, twitch_name in streamers:
+            title, game, online = self.get_stream_info(twitch_name)
             if not online:
-                await self.remove_role(client, guild_id, s.id, tset.streaming_role_id)
+                await self.remove_role(client, member, twitch_role)
                 continue
             elif game.lower() != "ultima online":
-                await self.remove_role(client, guild_id, s.id, tset.streaming_role_id)
+                await self.remove_role(client, member, twitch_role)
                 continue
 
             # Check the titles.
@@ -114,13 +100,13 @@ class TwitchHandler:
                     break
 
             if not found:
-                await self.remove_role(client, guild_id, s.id, tset.streaming_role_id)
+                await self.remove_role(client, member, twitch_role)
                 continue
 
             # Add the role for streaming
             title_text = f", [{game}] {title}"
-            print(f"{s.stream_name}, streaming: {online}{title_text}")
-            await self.add_role(client, guild_id, s.id, tset.streaming_role_id)
+            print(f"{twitch_name}, streaming: {online}{title_text}")
+            await self.add_role(client, member, twitch_role)
 
     def get_game_name(self, game_id: str) -> str:
         """Obtains the game name from the API."""

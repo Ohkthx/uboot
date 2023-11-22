@@ -24,7 +24,7 @@ from .helper import (get_member, get_user, thread_close, react_processor,
 from .views.entity import EntityView, HelpMeView
 from .views.generic_panels import SuggestionView, BasicThreadView
 
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 intents.message_content = True  # pylint: disable=assigning-non-slot
 intents.reactions = True  # pylint: disable=assigning-non-slot
 intents.members = True  # pylint: disable=assigning-non-slot
