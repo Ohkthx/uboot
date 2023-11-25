@@ -80,6 +80,26 @@ def extract_bet(arg1: str, arg2: str) -> ExtractedBet:
     return res
 
 
+def extract_html(root_url: str, section: str, soup: BeautifulSoup) -> dict[str, str]:
+    """Extracts HTML elements from search function for a doki wiki site."""
+    output: dict[str, str] = {}
+    # Get the list of items returned.
+    results = soup.find_all("div", class_=section)
+
+    for result in results:
+        try:
+            # Extract the text within the <a> tag
+            tag = result.find("a")
+            result_name = tag.get_text()
+            result_html = tag.get("href")
+            link = f"{root_url}{result_html}".split("&s[]=")[0]
+            output[result_name] = link
+        except BaseException:
+            continue
+
+    return output
+
+
 class User(commands.Cog):
     """Basic user commands.
 
@@ -222,6 +242,7 @@ class User(commands.Cog):
         embed.colour = discord.Color.from_str("#F1C800")
 
         output: list[str] = ["### Wiki Search Results"]
+        results: dict[str, str] = {}
 
         root_url = "https://shadowagereborn.com"
         url = f"{root_url}/wiki/doku.php?do=search&id=start&sf=1&q=*{question}*"
@@ -233,26 +254,15 @@ class User(commands.Cog):
         if response.status_code == 200:
             # Parse the content.
             soup = BeautifulSoup(response.text, "html.parser")
+            results = extract_html(root_url, "search_fullpage_result", soup)
+            results.update(extract_html(root_url, "search_quickresult", soup))
 
-            # Get the list of items returned.
-            results = soup.find_all("div", class_="search_fullpage_result")
+            wiki_footer = f"Total results: {len(results)}"
 
-            for result in results:
-                try:
-                    # Extract the text within the <a> tag
-                    tag = result.find("a")
-                    result_name = tag.get_text()
-                    result_html = tag.get("href")
-                    link = f"{root_url}{result_html}".split("&s[]=")[0]
-                    output.append(f"- [{result_name}](<{link}>)")
-                except BaseException:
-                    continue
-
-            wiki_footer = f"Total results: {len(output) - 1}"
+        if len(results) > 0:
+            for key, value in results.items():
+                output.append(f"- [{key}](<{value}>)")
         else:
-            output.append("- No results found, does it exist?")
-
-        if len(output) <= 1:
             output.append("- No results found, does it exist?")
 
         output.append(
