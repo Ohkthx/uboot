@@ -121,6 +121,7 @@ class DiscordBot(commands.Bot):
         super().__init__(command_prefix=commands.when_mentioned_or(prefix),
                          owner_id=owner_id,
                          intents=intents,
+                         case_insensitive=True,
                          member_cache_flags=member_cache,
                          help_command=defaultHelp)
 
