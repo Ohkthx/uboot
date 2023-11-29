@@ -1,4 +1,5 @@
 """Admin and Staff commands for managing the server."""
+from datetime import datetime
 import os
 
 import discord
@@ -28,6 +29,27 @@ async def convert_logs(ctx: commands.Context,
                        delete_after=30)
         return ''
     return log_full
+
+
+def parse_recent_timestamp(filename):
+    """Function to parse the most recent timestamp from the file."""
+    recent = None
+
+    with open(filename, 'r') as file:
+        for line in file:
+            try:
+                # Extract the timestamp from each line.
+                timestamp_str = line.split(' ')[0] + ' ' + line.split(' ')[1]
+                timestamp = datetime.fromisoformat(timestamp_str)
+
+                # Update the most recent timestamp.
+                if recent is None or timestamp > recent:
+                    recent = timestamp
+            except Exception:
+                # Ignore lines that do not contain a valid timestamp
+                continue
+
+    return recent
 
 
 class Admin(commands.Cog):
@@ -91,6 +113,74 @@ class Admin(commands.Cog):
                             f"**roles**: {len(guild.roles)}\n"
 
         await ctx.reply(embed=embed)
+
+    @server.command(name="extract")
+    async def extract(self, ctx: commands.Context,
+                      user: discord.Member = param(
+                          description="Id of the user to pull messages from."),
+                      amount: int = param(
+                          description="Amount of messages to obtain."),
+                      ) -> None:
+        """Pulls 'n' messages from the user specified.
+
+        example:
+            (prefix)test extract @Gatekeeper 10
+        """
+        if not ctx.guild or amount < 1:
+            return
+
+        await ctx.message.delete()
+        await ctx.send(f"Starting extraction.", delete_after=5)
+
+        filename: str = f"extracted/{user.id}.txt"
+        timestamp = parse_recent_timestamp(filename)
+        if timestamp:
+            print(f"Using timestamp: {timestamp}\n\n")
+        else:
+            print(f"Using timestamp: none\n\n")
+
+        messages: list[str] = []
+
+        print(f"Starting search.")
+        for channel in ctx.guild.text_channels:
+            total = 0
+            try:
+                async for message in channel.history(limit=amount, oldest_first=True, after=timestamp):
+                    total += 1
+                    print(
+                        f"  Search: {channel.name}, {channel.id} ({total})", end="\r")
+                    if message.author.id != user.id:
+                        continue
+                    elif not message.content or message.content == "":
+                        continue
+
+                    txt = message.content.replace("\n", " ")
+                    messages.append(f"{message.created_at} {txt}")
+            except discord.Forbidden:
+                # Skip channels where the bot does not have permission to view message history
+                continue
+            print(f"  Finished: {channel.name}, {channel.id} ({total})")
+        print(f"Finished search, {len(messages)} messages.")
+
+        if len(messages) > 0:
+            # Add header if new file.
+            if not os.path.exists(filename):
+                messages.insert(
+                    0, f"Username: {user.name}, Nickname: {user.nick}, Global name: {user.global_name}, Display name: {user.display_name}")
+
+            # Write the changes to file.
+            with open(filename, "a") as file:
+                file.write("\n".join(messages))
+
+        if not os.path.exists(filename):
+            await ctx.author.send("No messages exist.")
+            return
+
+        try:
+            await ctx.author.send(file=discord.File(
+                filename, description=f"{user.name} log."))
+        except BaseException:
+            await ctx.author.send("Could not send file.")
 
     @commands.is_owner()
     @server.command(name="sudo")

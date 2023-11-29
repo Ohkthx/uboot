@@ -23,7 +23,7 @@ class Test(commands.Cog):
     async def test(self, ctx: commands.Context) -> None:
         """Group of test commands that are not officially implemented yet."""
         if not ctx.invoked_subcommand:
-            await ctx.send('invalid button-test command.')
+            await ctx.send("invalid test command.", delete_after=30)
 
     @test.command(name="persist")
     async def persist(self, ctx: commands.Context):
