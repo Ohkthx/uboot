@@ -34,6 +34,8 @@ async def convert_logs(ctx: commands.Context,
 def parse_recent_timestamp(filename):
     """Function to parse the most recent timestamp from the file."""
     recent = None
+    if not os.path.exists(filename):
+        return recent
 
     with open(filename, 'r') as file:
         for line in file:
@@ -145,7 +147,11 @@ class Admin(commands.Cog):
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        timestamp = parse_recent_timestamp(filename)
+        timestamp = None
+        try:
+            timestamp = parse_recent_timestamp(filename)
+        except BaseException:
+            timestamp = None
 
         messages: list[str] = []
 
