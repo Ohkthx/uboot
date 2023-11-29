@@ -52,6 +52,13 @@ def parse_recent_timestamp(filename):
     return recent
 
 
+def to_csv(timestamp: datetime, channel_id: int, message: str):
+    """Converts into proper CSV format."""
+    msg = message.replace("\"", "\\\"").replace("\n", " ")
+    ts = f"{timestamp}".split(".")[0].split("+")[0]
+    return f'{ts},{channel_id},{msg}'
+
+
 class Admin(commands.Cog):
     """Grouped administrative commands for managing a server.
     Additional 'help' information on subgroups:
@@ -132,12 +139,13 @@ class Admin(commands.Cog):
         await ctx.message.delete()
         await ctx.send(f"Starting extraction.", delete_after=5)
 
-        filename: str = f"extracted/{user.id}.txt"
+        # Initialze where to store the results.
+        directory: str = "extracted"
+        filename: str = f"{directory}/{user.id}.csv"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
         timestamp = parse_recent_timestamp(filename)
-        if timestamp:
-            print(f"Using timestamp: {timestamp}\n\n")
-        else:
-            print(f"Using timestamp: none\n\n")
 
         messages: list[str] = []
 
@@ -145,17 +153,17 @@ class Admin(commands.Cog):
         for channel in ctx.guild.text_channels:
             total = 0
             try:
-                async for message in channel.history(limit=amount, oldest_first=True, after=timestamp):
+                async for msg in channel.history(limit=amount, oldest_first=True, after=timestamp):
                     total += 1
                     print(
                         f"  Search: {channel.name}, {channel.id} ({total})", end="\r")
-                    if message.author.id != user.id:
+                    if msg.author.id != user.id:
                         continue
-                    elif not message.content or message.content == "":
+                    elif not msg.content or msg.content == "":
                         continue
 
-                    txt = message.content.replace("\n", " ")
-                    messages.append(f"{message.created_at} {txt}")
+                    line = to_csv(msg.created_at, channel.id, msg.content)
+                    messages.append(line)
             except discord.Forbidden:
                 # Skip channels where the bot does not have permission to view message history
                 continue
@@ -165,8 +173,7 @@ class Admin(commands.Cog):
         if len(messages) > 0:
             # Add header if new file.
             if not os.path.exists(filename):
-                messages.insert(
-                    0, f"Username: {user.name}, Nickname: {user.nick}, Global name: {user.global_name}, Display name: {user.display_name}")
+                messages.insert(0, "timestamp,channel,message")
 
             # Write the changes to file.
             with open(filename, "a") as file:
