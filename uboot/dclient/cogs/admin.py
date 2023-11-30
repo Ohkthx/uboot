@@ -41,7 +41,7 @@ def parse_recent_timestamp(filename):
         for line in file:
             try:
                 # Extract the timestamp from each line.
-                timestamp_str = line.split(' ')[0] + ' ' + line.split(' ')[1]
+                timestamp_str = line.split(',')[0]
                 timestamp = datetime.fromisoformat(timestamp_str)
 
                 # Update the most recent timestamp.
@@ -58,7 +58,7 @@ def to_csv(timestamp: datetime, channel_id: int, message: str):
     """Converts into proper CSV format."""
     msg = message.replace("\"", "\\\"").replace("\n", " ")
     ts = f"{timestamp}".split(".")[0].split("+")[0]
-    return f'{ts},{channel_id},{msg}'
+    return f'{ts},{channel_id},"{msg}"'
 
 
 class Admin(commands.Cog):
