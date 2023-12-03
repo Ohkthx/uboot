@@ -125,7 +125,7 @@ class Admin(commands.Cog):
 
     @server.command(name="extract")
     async def extract(self, ctx: commands.Context,
-                      user: discord.Member = param(
+                      user: int = param(
                           description="Id of the user to pull messages from."),
                       amount: int = param(
                           description="Amount of messages to obtain."),
@@ -143,7 +143,7 @@ class Admin(commands.Cog):
 
         # Initialze where to store the results.
         directory: str = "extracted"
-        filename: str = f"{directory}/{user.id}.csv"
+        filename: str = f"{directory}/{user}.csv"
         if not os.path.exists(directory):
             os.makedirs(directory)
 
@@ -163,7 +163,7 @@ class Admin(commands.Cog):
                     total += 1
                     print(
                         f"  Search: {channel.name}, {channel.id} ({total})", end="\r")
-                    if msg.author.id != user.id:
+                    if msg.author.id != user:
                         continue
                     elif not msg.content or msg.content == "":
                         continue
@@ -191,7 +191,7 @@ class Admin(commands.Cog):
 
         try:
             await ctx.author.send(file=discord.File(
-                filename, description=f"{user.name} log."))
+                filename, description=f"{user} log."))
         except BaseException:
             await ctx.author.send("Could not send file.")
 
