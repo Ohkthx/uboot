@@ -58,22 +58,26 @@ def parse_recent_timestamp(filename: str):
 
 def sanitize_text(text: str) -> str:
     """Sanitizes text for CSV format."""
-    # Decode HTML entities
-    text = html.unescape(text).strip().replace("\r", "")
+    if text is None:
+        return ""
 
-    data: list[str] = []
-    for line in text.split("\n"):
-        line = line.strip().replace('"', '\\"').replace("’", "'")
-        if line != "" and line is not None:
-            data.append(line)
+    # Decode HTML entities, replace special characters.
+    text = html.unescape(text).replace('\r', "").strip()
+    text = text.replace('​', '').replace('’', '\'')
+    text = text.replace('"', "\"\"")
 
-    return " ".join(data)
+    # Remove whitespace and double quote on special characters..
+    text = " ".join(line.strip() for line in text.split("\n") if line.strip())
+    if ',' in text or '\n' in text or '\"' in text:
+        text = f'"{text}"'
+
+    return text
 
 
 def to_csv(timestamp: datetime, level: int, channel_id: int, id: int, message: str):
     """Converts into proper CSV format."""
     ts = f"{timestamp.isoformat()}".split(".")[0].split("+")[0]
-    return f'{ts},discord,{level},{channel_id},{id},"{sanitize_text(message)}"'
+    return f'{ts},discord,{level},{channel_id},{id},{sanitize_text(message)}'
 
 
 class Admin(commands.Cog):
