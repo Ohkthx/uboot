@@ -1,6 +1,7 @@
 """Admin and Staff commands for managing the server."""
 from datetime import datetime
 import os
+import html
 
 import discord
 from discord.ext import commands
@@ -31,7 +32,7 @@ async def convert_logs(ctx: commands.Context,
     return log_full
 
 
-def parse_recent_timestamp(filename):
+def parse_recent_timestamp(filename: str):
     """Function to parse the most recent timestamp from the file."""
     recent = None
     if not os.path.exists(filename):
@@ -41,11 +42,12 @@ def parse_recent_timestamp(filename):
         for line in file:
             try:
                 # Extract the timestamp from each line.
-                timestamp_str = line.split(',')[0]
-                timestamp = datetime.fromisoformat(timestamp_str)
+                items: list[str] = line.split(",")
+                timestamp: datetime = datetime.fromisoformat(items[0])
+                source: str = items[1]
 
                 # Update the most recent timestamp.
-                if recent is None or timestamp > recent:
+                if recent is None or (source == "discord" and timestamp > recent):
                     recent = timestamp
             except Exception:
                 # Ignore lines that do not contain a valid timestamp
@@ -54,11 +56,24 @@ def parse_recent_timestamp(filename):
     return recent
 
 
-def to_csv(timestamp: datetime, channel_id: int, message: str):
+def sanitize_text(text: str) -> str:
+    """Sanitizes text for CSV format."""
+    # Decode HTML entities
+    text = html.unescape(text).strip().replace("\r", "")
+
+    data: list[str] = []
+    for line in text.split("\n"):
+        line = line.strip().replace('"', '\\"').replace("’", "'")
+        if line != "" and line is not None:
+            data.append(line)
+
+    return " ".join(data)
+
+
+def to_csv(timestamp: datetime, level: int, channel_id: int, id: int, message: str):
     """Converts into proper CSV format."""
-    msg = message.replace("\"", "\\\"").replace("\n", " ")
-    ts = f"{timestamp}".split(".")[0].split("+")[0]
-    return f'{ts},{channel_id},"{msg}"'
+    ts = f"{timestamp.isoformat()}".split(".")[0].split("+")[0]
+    return f'{ts},discord,{level},{channel_id},{id},"{sanitize_text(message)}"'
 
 
 class Admin(commands.Cog):
@@ -125,15 +140,17 @@ class Admin(commands.Cog):
 
     @server.command(name="extract")
     async def extract(self, ctx: commands.Context,
-                      user: int = param(
+                      user_id: int = param(
                           description="Id of the user to pull messages from."),
                       amount: int = param(
                           description="Amount of messages to obtain."),
+                      channel_id: int = param(
+                          description="Optional Channel Id to search.", default=None),
                       ) -> None:
         """Pulls 'n' messages from the user specified.
 
         example:
-            (prefix)test extract @Gatekeeper 10
+            (prefix)server extract @Gatekeeper 10
         """
         if not ctx.guild or amount < 1:
             return
@@ -143,7 +160,7 @@ class Admin(commands.Cog):
 
         # Initialze where to store the results.
         directory: str = "extracted"
-        filename: str = f"{directory}/{user}.csv"
+        filename: str = f"{directory}/{user_id}.csv"
         if not os.path.exists(directory):
             os.makedirs(directory)
 
@@ -155,20 +172,29 @@ class Admin(commands.Cog):
 
         messages: list[str] = []
 
+        channels: list[discord.TextChannel] = []
+        if channel_id:
+            channel = ctx.guild.get_channel(channel_id)
+            if channel:
+                channels = [channel]
+        else:
+            channels = ctx.guild.text_channels
+
         print(f"Starting search.")
-        for channel in ctx.guild.text_channels:
+        for channel in channels:
             total = 0
             try:
-                async for msg in channel.history(limit=amount, oldest_first=True, after=timestamp):
+                async for msg in channel.history(limit=amount, after=timestamp):
                     total += 1
                     print(
                         f"  Search: {channel.name}, {channel.id} ({total})", end="\r")
-                    if msg.author.id != user:
+                    if msg.author.id != user_id:
                         continue
                     elif not msg.content or msg.content == "":
                         continue
 
-                    line = to_csv(msg.created_at, channel.id, msg.content)
+                    line = to_csv(msg.created_at, 0, channel.id,
+                                  msg.id, msg.content)
                     messages.append(line)
             except discord.Forbidden:
                 # Skip channels where the bot does not have permission to view message history
@@ -179,11 +205,12 @@ class Admin(commands.Cog):
         if len(messages) > 0:
             # Add header if new file.
             if not os.path.exists(filename):
-                messages.insert(0, "timestamp,channel,message")
+                messages.insert(
+                    0, "timestamp,platform,level,parent_id,id,text")
 
             # Write the changes to file.
             with open(filename, "a") as file:
-                file.write("\n".join(messages))
+                file.write("\n".join(messages) + "\n")
 
         if not os.path.exists(filename):
             await ctx.author.send("No messages exist.")
@@ -191,7 +218,7 @@ class Admin(commands.Cog):
 
         try:
             await ctx.author.send(file=discord.File(
-                filename, description=f"{user} log."))
+                filename, description=f"{user_id} log."))
         except BaseException:
             await ctx.author.send("Could not send file.")
 
